@@ -428,6 +428,8 @@ body {
 /* ===== TABLES ===== */
 .table-container {
   width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -1040,6 +1042,11 @@ tbody td {
     margin-left: 0;
   }
 
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
   .hamburger {
     display: block;
   }
@@ -1063,7 +1070,28 @@ tbody td {
 
 @media (max-width: 480px) {
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 14px 12px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    line-height: 1.2;
   }
 
   .login-card {
@@ -1075,6 +1103,13 @@ tbody td {
 .chart-container {
   height: 280px;
   margin: 8px 0;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 /* ===== MISC UTILITIES ===== */
