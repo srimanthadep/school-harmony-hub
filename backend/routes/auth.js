@@ -11,7 +11,7 @@ router.post('/register', register); // Used during seeding; restrict in producti
 router.use(protect); // All routes below require auth
 router.get('/me', getMe);
 router.put('/change-password', changePassword);
-router.get('/users', authorize('admin'), getUsers);
-router.put('/users/:id/status', authorize('admin'), updateUserStatus);
+router.get('/users', authorize('admin', 'owner'), getUsers);
+router.put('/users/:id/status', authorize('admin', 'owner'), updateUserStatus);
 
 module.exports = router;

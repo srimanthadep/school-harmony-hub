@@ -43,12 +43,7 @@ const studentSchema = new mongoose.Schema({
         required: [true, 'Class is required'],
         enum: ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th']
     },
-    section: {
-        type: String,
-        required: [true, 'Section is required'],
-        uppercase: true,
-        maxlength: 1
-    },
+
     rollNo: {
         type: String,
         required: [true, 'Roll number is required']
@@ -130,7 +125,7 @@ studentSchema.pre('save', async function (next) {
 });
 
 // Index for faster queries
-studentSchema.index({ class: 1, section: 1 });
+studentSchema.index({ class: 1 });
 studentSchema.index({ name: 'text' });
 
 module.exports = mongoose.model('Student', studentSchema);

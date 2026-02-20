@@ -17,6 +17,11 @@ exports.getDashboard = async (req, res) => {
         const totalFeesPending = students.reduce((s, st) => s + st.pendingAmount, 0);
         const totalSalaryPaid = staff.reduce((s, st) => s + st.totalSalaryPaid, 0);
         const totalMonthlySalary = staff.reduce((s, st) => s + st.monthlySalary, 0);
+        const totalFeesExpected = students.reduce((s, st) => s + st.totalFee, 0);
+        const studentsFullyPaid = students.filter(st => st.pendingAmount <= 0 && st.totalFee > 0).length;
+        const collectionRate = totalFeesExpected > 0
+            ? Math.round((totalFeesCollected / totalFeesExpected) * 100)
+            : 0;
 
         // Class-wise breakdown
         const classWise = {};
@@ -72,6 +77,8 @@ exports.getDashboard = async (req, res) => {
                 totalFeesPending,
                 totalSalaryPaid,
                 totalMonthlySalary,
+                studentsFullyPaid,
+                collectionRate,
                 classWise,
                 monthlyCollections: monthlyData,
                 monthlySalaryPaid: monthlySalaryData,
@@ -100,7 +107,7 @@ exports.getPendingFees = async (req, res) => {
                 studentId: s.studentId,
                 name: s.name,
                 class: s.class,
-                section: s.section,
+
                 rollNo: s.rollNo,
                 parentPhone: s.parentPhone,
                 totalFee: s.totalFee,

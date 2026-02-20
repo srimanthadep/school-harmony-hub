@@ -57,8 +57,8 @@ function Sidebar({ isOpen, onClose }) {
                         <img src="/logo.png" alt="logo"
                             style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', mixBlendMode: 'screen', flexShrink: 0 }} />
                         <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>Oxford School</div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Administrator</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{user?.name || 'Oxford School'}</div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{user?.role === 'owner' ? '👑 Owner' : 'Administrator'}</div>
                         </div>
                     </div>
                     <button className="nav-item" onClick={logout} style={{ color: 'rgba(229,57,53,0.8)' }}>
@@ -94,8 +94,8 @@ function AdminLayout({ children, pageTitle, pageSubtitle }) {
                             <img src="/logo.png" alt="logo"
                                 style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
                             <div className="user-info-text">
-                                <div className="user-name">Oxford School</div>
-                                <div className="user-role">Administrator</div>
+                                <div className="user-name">{user?.name || 'Oxford School'}</div>
+                                <div className="user-role">{user?.role === 'owner' ? '👑 Owner' : 'Administrator'}</div>
                             </div>
                         </div>
                     </div>
@@ -110,8 +110,8 @@ function ProtectedRoute({ children }) {
     const { user, loading } = useAuth();
     if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
     if (!user) return <Navigate to="/login" replace />;
-    // Only admin role allowed — any other role gets redirected to login
-    if (user.role !== 'admin') return <Navigate to="/login" replace />;
+    // Only admin and owner roles allowed
+    if (user.role !== 'admin' && user.role !== 'owner') return <Navigate to="/login" replace />;
     return children;
 }
 

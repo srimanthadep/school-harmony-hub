@@ -39,7 +39,7 @@ export default function SettingsPage() {
         e.preventDefault();
         try {
             const res = await API.post('/settings/fee-structures', { ...feeForm, class: editFee });
-            toast.success(`Fee structure for ${editFee} saved!`);
+            toast.success(res.data.message || `Fee structure for ${editFee} saved!`);
             const updated = await API.get('/settings/fee-structures');
             setFeeStructures(updated.data.structures);
             setEditFee(null);

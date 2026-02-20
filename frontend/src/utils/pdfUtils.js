@@ -101,7 +101,7 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
 
     doc.setTextColor(50, 50, 50); doc.setFont('helvetica', 'normal');
     doc.text(`Name: ${student.name}`, 12, 78);
-    doc.text(`Class: ${student.class} - ${student.section}`, 12, 84);
+    doc.text(`Class: ${student.class}`, 12, 84);
     doc.text(`Roll No: ${student.rollNo}`, 12, 90);
     doc.text(`Student ID: ${student.studentId}`, pageW / 2, 78);
     doc.text(`Parent: ${student.parentName}`, pageW / 2, 84);
@@ -266,7 +266,7 @@ export const exportStudentsExcel = (students) => {
         'Student ID': s.studentId,
         'Name': s.name,
         'Class': s.class,
-        'Section': s.section,
+
         'Roll No': s.rollNo,
         'Gender': s.gender,
         'Parent Name': s.parentName,
@@ -292,7 +292,7 @@ export const exportStudentsExcel = (students) => {
     }
 
     ws['!cols'] = [
-        { wch: 12 }, { wch: 22 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+        { wch: 12 }, { wch: 22 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
         { wch: 22 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }
     ];
 
@@ -320,9 +320,9 @@ export const exportStudentsPDF = (students, settings = {}) => {
 
     doc.autoTable({
         startY: 32,
-        head: [['ID', 'Name', 'Class', 'Sec', 'Roll', 'Parent', 'Phone', 'Total Fee', 'Paid', 'Pending', 'Status']],
+        head: [['ID', 'Name', 'Class', 'Roll', 'Parent', 'Phone', 'Total Fee', 'Paid', 'Pending', 'Status']],
         body: students.map(s => [
-            s.studentId, s.name, s.class, s.section, s.rollNo,
+            s.studentId, s.name, s.class, s.rollNo,
             s.parentName, s.parentPhone,
             `₹${Number(s.totalFee).toLocaleString('en-IN')}`,
             `₹${Number(s.totalPaid).toLocaleString('en-IN')}`,

@@ -158,7 +158,7 @@ export default function ReportsPage() {
                         <table>
                             <thead>
                                 <tr>
-                                    <th>ID</th><th>Name</th><th>Class</th><th>Section</th><th>Roll</th>
+                                    <th>ID</th><th>Name</th><th>Class</th><th>Roll</th>
                                     <th>Parent Phone</th><th>Total Fee</th><th>Paid</th><th>Pending</th><th>Status</th>
                                 </tr>
                             </thead>
@@ -168,7 +168,7 @@ export default function ReportsPage() {
                                         <td><code style={{ fontSize: 11, color: '#1a237e' }}>{s.studentId}</code></td>
                                         <td style={{ fontWeight: 600 }}>{s.name}</td>
                                         <td>{s.class}</td>
-                                        <td>{s.section}</td>
+
                                         <td>{s.rollNo}</td>
                                         <td style={{ fontSize: 12 }}>{s.parentPhone}</td>
                                         <td>{formatCurrency(s.totalFee)}</td>

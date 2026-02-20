@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'student', 'staff'],
+        enum: ['admin', 'owner', 'student', 'staff'],
         default: 'student'
     },
     // Link to student or staff profile

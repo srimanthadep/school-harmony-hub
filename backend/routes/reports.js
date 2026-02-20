@@ -5,7 +5,7 @@ const {
 } = require('../controllers/reportController');
 const { protect, authorize } = require('../middleware/auth');
 
-router.use(protect, authorize('admin'));
+router.use(protect, authorize('admin', 'owner'));
 
 router.get('/dashboard', getDashboard);
 router.get('/pending-fees', getPendingFees);

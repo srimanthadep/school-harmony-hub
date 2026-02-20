@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
     MdPeople, MdSchool, MdAccountBalance, MdWarning,
-    MdPayments, MdTrendingUp, MdReceipt
+    MdPayments, MdTrendingUp, MdReceipt, MdCheckCircle
 } from 'react-icons/md';
 
 const COLORS = ['#1a237e', '#f9a825', '#00897b', '#e53935', '#7b1fa2'];
@@ -67,6 +67,19 @@ export default function Dashboard() {
                     <div className="stat-icon"><MdPayments /></div>
                     <div className="stat-value">{formatCurrency(data.totalSalaryPaid)}</div>
                     <div className="stat-label">Salary Paid</div>
+                </div>
+                <div className="stat-card green" style={{ background: 'linear-gradient(135deg,#e8f5e9,#f1f8e9)' }}>
+                    <div className="stat-icon" style={{ background: 'rgba(67,160,71,0.12)', color: '#2e7d32' }}><MdCheckCircle /></div>
+                    <div className="stat-value" style={{ color: '#2e7d32' }}>{data.studentsFullyPaid ?? 0}</div>
+                    <div className="stat-label">Fully Paid Students</div>
+                </div>
+                <div className="stat-card" style={{ background: 'linear-gradient(135deg,#e0f7fa,#e0f2f1)' }}>
+                    <div className="stat-icon" style={{ background: 'rgba(0,137,123,0.12)', color: '#00796b' }}><MdTrendingUp /></div>
+                    <div className="stat-value" style={{ color: '#00796b' }}>{data.collectionRate ?? 0}%</div>
+                    <div className="stat-label">Collection Rate</div>
+                    <div style={{ marginTop: 8, background: '#b2dfdb', borderRadius: 99, height: 5, overflow: 'hidden' }}>
+                        <div style={{ width: `${data.collectionRate ?? 0}%`, background: '#00897b', height: '100%', borderRadius: 99, transition: 'width 0.8s ease' }} />
+                    </div>
                 </div>
             </div>
 

@@ -1,5 +1,6 @@
 const Settings = require('../models/Settings');
 const FeeStructure = require('../models/FeeStructure');
+const Student = require('../models/Student');
 
 // @desc    Get settings
 // @route   GET /api/settings
@@ -51,12 +52,30 @@ exports.getFeeStructures = async (req, res) => {
 // @access  Admin
 exports.upsertFeeStructure = async (req, res) => {
     try {
+        const data = { ...req.body };
+
+        // Manually compute totalFee since findOneAndUpdate bypasses pre-save hooks
+        data.totalFee = ['tuitionFee', 'admissionFee', 'examFee', 'libraryFee', 'sportsFee', 'transportFee', 'miscFee']
+            .reduce((sum, key) => sum + Number(data[key] || 0), 0);
+
         const fee = await FeeStructure.findOneAndUpdate(
-            { class: req.body.class, academicYear: req.body.academicYear || '2024-25' },
-            req.body,
-            { new: true, upsert: true, runValidators: true }
+            { class: data.class, academicYear: data.academicYear || '2024-25' },
+            data,
+            { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
         );
-        res.json({ success: true, message: 'Fee structure saved', fee });
+
+        // Cascade: update totalFee on all active students of this class
+        const updateResult = await Student.updateMany(
+            { class: data.class, isActive: true },
+            { $set: { totalFee: data.totalFee } }
+        );
+
+        res.json({
+            success: true,
+            message: `Fee structure saved. Updated totalFee for ${updateResult.modifiedCount} student(s) in ${data.class}.`,
+            fee,
+            studentsUpdated: updateResult.modifiedCount
+        });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

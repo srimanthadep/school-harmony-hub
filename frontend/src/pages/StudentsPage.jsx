@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate, generateFeeReceiptPDF, exportStudentsExcel, exportStudentsPDF } from '../utils/pdfUtils';
 import {
     MdAdd, MdEdit, MdDelete, MdSearch,
@@ -10,6 +11,7 @@ import {
 
 const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 const PAYMENT_MODES = ['cash', 'online', 'cheque', 'dd'];
+const ACADEMIC_YEARS = ['2022-23', '2023-24', '2024-25', '2025-26', '2026-27', '2027-28'];
 
 const STATUS_BADGE = {
     paid: 'badge-paid',
@@ -18,7 +20,7 @@ const STATUS_BADGE = {
 };
 
 const emptyStudent = {
-    name: '', class: 'Nursery', section: 'A', rollNo: '',
+    name: '', class: 'Nursery', rollNo: '',
     gender: 'male', parentName: '', parentPhone: '', parentEmail: '',
     dateOfBirth: '', address: '', totalFee: '', academicYear: '2024-25'
 };
@@ -28,7 +30,8 @@ export default function StudentsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [classFilter, setClassFilter] = useState('');
-    const [sectionFilter, setSectionFilter] = useState('');
+    const [yearFilter, setYearFilter] = useState('');
+
     const [sortField, setSortField] = useState('name');
     const [sortDir, setSortDir] = useState(1);
 
@@ -49,12 +52,26 @@ export default function StudentsPage() {
 
     const [settings, setSettings] = useState({});
 
+    // Edit payment (owner only)
+    const { user } = useAuth();
+    const isOwner = user?.role === 'owner';
+    const isAdmin = user?.role === 'admin';
+    const [editPaymentTarget, setEditPaymentTarget] = useState(null);
+    const [editPaymentForm, setEditPaymentForm] = useState({});
+    const [editPaymentLoading, setEditPaymentLoading] = useState(false);
+
+    // Promote students
+    const [showPromote, setShowPromote] = useState(false);
+    const [promoteForm, setPromoteForm] = useState({ fromYear: '2024-25', toYear: '2025-26' });
+    const [promoteLoading, setPromoteLoading] = useState(false);
+    const [promoteResult, setPromoteResult] = useState(null);
+
     const fetchStudents = useCallback(async () => {
         setLoading(true);
         try {
             const params = { limit: 10000 };
             if (classFilter) params.class = classFilter;
-            if (sectionFilter) params.section = sectionFilter;
+            if (yearFilter) params.academicYear = yearFilter;
             if (search) params.search = search;
             const res = await API.get('/students', { params });
             setStudents(res.data.students);
@@ -63,7 +80,7 @@ export default function StudentsPage() {
         } finally {
             setLoading(false);
         }
-    }, [classFilter, sectionFilter, search]);
+    }, [classFilter, yearFilter, search]);
 
     useEffect(() => { fetchStudents(); }, [fetchStudents]);
     useEffect(() => {
@@ -107,7 +124,7 @@ export default function StudentsPage() {
     const openEdit = (student) => {
         setEditStudent(student);
         setFormData({
-            name: student.name, class: student.class, section: student.section,
+            name: student.name, class: student.class,
             rollNo: student.rollNo, gender: student.gender || 'male',
             parentName: student.parentName, parentPhone: student.parentPhone,
             parentEmail: student.parentEmail || '', address: student.address || '',
@@ -134,6 +151,56 @@ export default function StudentsPage() {
             const res = await API.get(`/students/${student._id}/payments`);
             setHistoryData(res.data);
         } catch { toast.error('Failed to load history'); }
+    };
+
+    const openEditPayment = (payment) => {
+        setEditPaymentTarget({ studentId: showHistory._id, payment });
+        setEditPaymentForm({
+            amount: payment.amount,
+            paymentDate: payment.paymentDate ? payment.paymentDate.split('T')[0] : '',
+            paymentMode: payment.paymentMode || 'cash',
+            remarks: payment.remarks || ''
+        });
+    };
+
+    const handleEditPayment = async (e) => {
+        e.preventDefault();
+        // Allow 0 — only reject empty string / undefined
+        if (editPaymentForm.amount === '' || editPaymentForm.amount === undefined || editPaymentForm.amount === null) {
+            toast.error('Please enter an amount (0 is allowed for corrections)');
+            return;
+        }
+        setEditPaymentLoading(true);
+        try {
+            await API.put(
+                `/students/${editPaymentTarget.studentId}/payments/${editPaymentTarget.payment._id}`,
+                editPaymentForm
+            );
+            toast.success('Payment updated successfully!');
+            const studentId = editPaymentTarget.studentId;
+            setEditPaymentTarget(null);
+            const res = await API.get(`/students/${studentId}/payments`);
+            setHistoryData(res.data);
+            fetchStudents();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to update payment');
+        } finally {
+            setEditPaymentLoading(false);
+        }
+    };
+
+    const handlePromote = async () => {
+        setPromoteLoading(true);
+        try {
+            const res = await API.post('/students/promote', promoteForm);
+            setPromoteResult(res.data);
+            toast.success(res.data.message);
+            fetchStudents();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Promotion failed');
+        } finally {
+            setPromoteLoading(false);
+        }
     };
 
     const handlePayment = async (e) => {
@@ -182,12 +249,18 @@ export default function StudentsPage() {
         }
     };
 
+    const STATUS_ORDER = { unpaid: 0, partial: 1, paid: 2 };
     const sortedStudents = [...students].sort((a, b) => {
         // If class filter is active, primary sort = roll number numerically
         if (classFilter && sortField === 'name') {
             const rA = parseInt(a.rollNo) || 0;
             const rB = parseInt(b.rollNo) || 0;
             return rA - rB;
+        }
+        if (sortField === 'paymentStatus') {
+            const av = STATUS_ORDER[a.paymentStatus] ?? 0;
+            const bv = STATUS_ORDER[b.paymentStatus] ?? 0;
+            return (av - bv) * sortDir;
         }
         const av = sortField === 'totalFee' ? a.totalFee
             : sortField === 'pendingAmount' ? a.pendingAmount
@@ -222,10 +295,11 @@ export default function StudentsPage() {
                             <option value="">All Classes</option>
                             {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <select className="form-control" style={{ width: 160 }} value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
-                            <option value="">All Sections</option>
-                            {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>{s}</option>)}
+                        <select className="form-control" style={{ width: 130 }} value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+                            <option value="">All Years</option>
+                            {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
+
                     </div>
                     <div className="btn-group">
                         <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsExcel(sortedStudents)}>
@@ -234,6 +308,13 @@ export default function StudentsPage() {
                         <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsPDF(sortedStudents, settings)}>
                             <MdPictureAsPdf /> PDF
                         </button>
+                        {(isAdmin || isOwner) && (
+                            <button className="btn btn-sm"
+                                style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                                onClick={() => { setPromoteResult(null); setShowPromote(true); }}>
+                                🎓 Promote Students
+                            </button>
+                        )}
                         <button className="btn btn-primary" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setFormErrors({}); setShowForm(true); }}>
                             <MdAdd /> Add Student
                         </button>
@@ -262,12 +343,12 @@ export default function StudentsPage() {
                                     <th onClick={() => toggleSort('studentId')}>ID <SortArrow field="studentId" /></th>
                                     <th onClick={() => toggleSort('name')}>Name <SortArrow field="name" /></th>
                                     <th onClick={() => toggleSort('class')}>Class <SortArrow field="class" /></th>
-                                    <th>Section</th>
+
                                     <th>Roll No</th>
                                     <th>Parent</th>
                                     <th onClick={() => toggleSort('totalFee')}>Total Fee <SortArrow field="totalFee" /></th>
                                     <th onClick={() => toggleSort('pendingAmount')}>Pending <SortArrow field="pendingAmount" /></th>
-                                    <th>Status</th>
+                                    <th onClick={() => toggleSort('paymentStatus')} style={{ cursor: 'pointer' }}>Status <SortArrow field="paymentStatus" /></th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -280,7 +361,7 @@ export default function StudentsPage() {
                                             <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.parentPhone}</div>
                                         </td>
                                         <td>{s.class}</td>
-                                        <td>{s.section}</td>
+
                                         <td>{s.rollNo}</td>
                                         <td style={{ fontSize: 13 }}>{s.parentName}</td>
                                         <td style={{ fontWeight: 600 }}>{formatCurrency(s.totalFee)}</td>
@@ -389,13 +470,7 @@ export default function StudentsPage() {
                                             {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Section <span className="required">*</span></label>
-                                        <select className="form-control" value={formData.section}
-                                            onChange={e => setFormData({ ...formData, section: e.target.value })}>
-                                            {['A', 'B', 'C', 'D'].map(s => <option key={s}>{s}</option>)}
-                                        </select>
-                                    </div>
+
                                     <div className="form-group">
                                         <label className="form-label">Roll Number <span className="required">*</span></label>
                                         <input className={`form-control ${formErrors.rollNo ? 'error' : ''}`}
@@ -489,7 +564,7 @@ export default function StudentsPage() {
                         </div>
                         <div className="modal-body">
                             <div className="highlight-box" style={{ marginBottom: 16 }}>
-                                <strong>{showPayment.name}</strong> - {showPayment.class} {showPayment.section}
+                                <strong>{showPayment.name}</strong> - {showPayment.class}
                                 <div style={{ marginTop: 8, display: 'flex', gap: 20 }}>
                                     <span style={{ fontSize: 13 }}>Total: <strong>{formatCurrency(showPayment.totalFee)}</strong></span>
                                     <span style={{ fontSize: 13 }}>Paid: <strong style={{ color: '#43a047' }}>{formatCurrency(showPayment.totalPaid)}</strong></span>
@@ -503,7 +578,7 @@ export default function StudentsPage() {
                                         <input type="number" className="form-control"
                                             value={paymentForm.amount}
                                             onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                                            max={showPayment.pendingAmount} min={1} placeholder="Enter amount" />
+                                            min={1} step={1} placeholder="Enter amount" />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Payment Date</label>
@@ -577,6 +652,7 @@ export default function StudentsPage() {
                                                         <th>Mode</th>
                                                         <th>Remarks</th>
                                                         <th>Download</th>
+                                                        {isOwner && <th>Edit</th>}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -596,6 +672,18 @@ export default function StudentsPage() {
                                                                     <MdDownload />
                                                                 </button>
                                                             </td>
+                                                            {isOwner && (
+                                                                <td>
+                                                                    <button
+                                                                        className="btn btn-sm"
+                                                                        title="Edit Payment"
+                                                                        style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                                                                        onClick={() => openEditPayment(p)}
+                                                                    >
+                                                                        <MdEdit style={{ fontSize: 14 }} /> Edit
+                                                                    </button>
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -609,6 +697,146 @@ export default function StudentsPage() {
                         </div>
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => { setShowHistory(null); setHistoryData(null); }}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Edit Payment Modal - OWNER ONLY */}
+            {isOwner && editPaymentTarget && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setEditPaymentTarget(null)}>
+                    <div className="modal" style={{ maxWidth: 500 }}>
+                        <div className="modal-header" style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', borderRadius: '12px 12px 0 0' }}>
+                            <h3 style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                👑 Edit Fee Payment
+                            </h3>
+                            <button className="btn-close" style={{ color: '#fff' }} onClick={() => setEditPaymentTarget(null)}><MdClose /></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="highlight-box" style={{ marginBottom: 16, background: '#f5f3ff', border: '1px solid #c4b5fd' }}>
+                                <div style={{ fontSize: 12, color: '#7c3aed', fontWeight: 600 }}>⚠️ Owner-only action</div>
+                                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                                    Editing receipt <strong>{editPaymentTarget.payment.receiptNo}</strong> for <strong>{showHistory?.name}</strong>
+                                </div>
+                            </div>
+                            <form id="edit-payment-form" onSubmit={handleEditPayment}>
+                                <div className="form-grid">
+                                    <div className="form-group">
+                                        <label className="form-label">Amount (₹) <span className="required">*</span></label>
+                                        <input type="number" className="form-control"
+                                            value={editPaymentForm.amount}
+                                            onChange={e => setEditPaymentForm({ ...editPaymentForm, amount: e.target.value })}
+                                            min={0} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Payment Date</label>
+                                        <input type="date" className="form-control"
+                                            value={editPaymentForm.paymentDate}
+                                            onChange={e => setEditPaymentForm({ ...editPaymentForm, paymentDate: e.target.value })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Payment Mode</label>
+                                        <select className="form-control"
+                                            value={editPaymentForm.paymentMode}
+                                            onChange={e => setEditPaymentForm({ ...editPaymentForm, paymentMode: e.target.value })}>
+                                            {PAYMENT_MODES.map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Remarks</label>
+                                        <input className="form-control"
+                                            value={editPaymentForm.remarks}
+                                            onChange={e => setEditPaymentForm({ ...editPaymentForm, remarks: e.target.value })}
+                                            placeholder="Optional note" />
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setEditPaymentTarget(null)}>Cancel</button>
+                            <button form="edit-payment-form" type="submit"
+                                className="btn"
+                                disabled={editPaymentLoading}
+                                style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff' }}>
+                                {editPaymentLoading ? 'Saving...' : '✓ Update Payment'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Promote Students Modal */}
+            {showPromote && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !promoteLoading && setShowPromote(false)}>
+                    <div className="modal" style={{ maxWidth: 500 }}>
+                        <div className="modal-header" style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', borderRadius: '12px 12px 0 0' }}>
+                            <h3 style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>🎓 Promote Students</h3>
+                            <button className="btn-close" style={{ color: '#fff' }} onClick={() => setShowPromote(false)} disabled={promoteLoading}><MdClose /></button>
+                        </div>
+                        <div className="modal-body">
+                            {promoteResult ? (
+                                <div>
+                                    <div style={{ padding: '20px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #86efac', marginBottom: 16, textAlign: 'center' }}>
+                                        <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
+                                        <div style={{ fontWeight: 700, fontSize: 16, color: '#15803d' }}>Promotion Complete!</div>
+                                        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 8 }}>{promoteResult.message}</div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                                        <div style={{ textAlign: 'center', padding: 12, background: '#eff6ff', borderRadius: 8 }}>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: '#1d4ed8' }}>{promoteResult.promoted}</div>
+                                            <div style={{ fontSize: 12, color: '#6b7280' }}>Promoted</div>
+                                        </div>
+                                        <div style={{ textAlign: 'center', padding: 12, background: '#fef3c7', borderRadius: 8 }}>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: '#d97706' }}>{promoteResult.graduated}</div>
+                                            <div style={{ fontSize: 12, color: '#6b7280' }}>Graduated (10th)</div>
+                                        </div>
+                                        <div style={{ textAlign: 'center', padding: 12, background: '#f5f5f5', borderRadius: 8 }}>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: '#6b7280' }}>{promoteResult.skipped}</div>
+                                            <div style={{ fontSize: 12, color: '#6b7280' }}>Skipped</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div style={{ padding: 14, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, marginBottom: 20 }}>
+                                        <div style={{ fontWeight: 700, color: '#c2410c', fontSize: 14, marginBottom: 6 }}>⚠️ Important — Read before proceeding</div>
+                                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#6b7280', lineHeight: 1.8 }}>
+                                            <li>All active students from <strong>{promoteForm.fromYear}</strong> will be moved to <strong>{promoteForm.toYear}</strong></li>
+                                            <li>Each student is promoted to the <strong>next class</strong> (Nursery→LKG, 1st→2nd, etc.)</li>
+                                            <li>Fee payment history is <strong>cleared</strong> — fresh start for the new year</li>
+                                            <li>Fees are updated from the new year's fee structure (if set)</li>
+                                            <li>10th class students are <strong>graduated</strong> (marked inactive)</li>
+                                            <li style={{ color: '#dc2626', fontWeight: 600 }}>This action cannot be undone!</li>
+                                        </ul>
+                                    </div>
+                                    <div className="form-grid">
+                                        <div className="form-group">
+                                            <label className="form-label">From Academic Year (current)</label>
+                                            <select className="form-control" value={promoteForm.fromYear}
+                                                onChange={e => setPromoteForm({ ...promoteForm, fromYear: e.target.value })}>
+                                                {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">To Academic Year (new)</label>
+                                            <select className="form-control" value={promoteForm.toYear}
+                                                onChange={e => setPromoteForm({ ...promoteForm, toYear: e.target.value })}>
+                                                {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowPromote(false)} disabled={promoteLoading}>
+                                {promoteResult ? 'Close' : 'Cancel'}
+                            </button>
+                            {!promoteResult && (
+                                <button className="btn" disabled={promoteLoading || promoteForm.fromYear === promoteForm.toYear}
+                                    style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff' }}
+                                    onClick={handlePromote}>
+                                    {promoteLoading ? '⏳ Processing...' : '🎓 Confirm & Promote'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

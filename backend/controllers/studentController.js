@@ -7,15 +7,15 @@ const Settings = require('../models/Settings');
 // @access  Admin
 exports.getStudents = async (req, res) => {
     try {
-        const { class: cls, section, search, page = 1, limit = 50 } = req.query;
+        const { class: cls, academicYear, search, page = 1, limit = 50 } = req.query;
         const query = { isActive: true };
 
         if (cls) query.class = cls;
-        if (section) query.section = section.toUpperCase();
+        if (academicYear) query.academicYear = academicYear;
         if (search) query.name = { $regex: search, $options: 'i' };
 
         const students = await Student.find(query)
-            .sort({ class: 1, section: 1, rollNo: 1 })
+            .sort({ class: 1, rollNo: 1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
 
@@ -142,7 +142,7 @@ exports.recordPayment = async (req, res) => {
         if (settings) await settings.save();
 
         const payment = {
-            amount: req.body.amount,
+            amount: Math.round(Number(req.body.amount)),  // always store as integer rupees
             paymentDate: req.body.paymentDate || new Date(),
             paymentMode: req.body.paymentMode || 'cash',
             receiptNo,
@@ -184,6 +184,109 @@ exports.getPaymentHistory = async (req, res) => {
             totalPaid: student.totalPaid,
             pendingAmount: student.pendingAmount,
             paymentStatus: student.paymentStatus
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Edit an existing payment (OWNER ONLY)
+// @route   PUT /api/students/:id/payments/:paymentId
+// @access  Owner only
+exports.editPayment = async (req, res) => {
+    try {
+        // Extra guard: admins must never access this
+        if (req.user.role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Admins are not authorized to edit payments.' });
+        }
+
+        const student = await Student.findById(req.params.id);
+        if (!student) {
+            return res.status(404).json({ success: false, message: 'Student not found' });
+        }
+
+        const payment = student.feePayments.id(req.params.paymentId);
+        if (!payment) {
+            return res.status(404).json({ success: false, message: 'Payment not found' });
+        }
+
+        // Update allowed fields (allow 0 as a valid amount for corrections)
+        const { amount, paymentDate, paymentMode, remarks } = req.body;
+        if (amount !== undefined && amount !== null && amount !== '') payment.amount = Number(amount);
+        if (paymentDate !== undefined) payment.paymentDate = paymentDate;
+        if (paymentMode !== undefined) payment.paymentMode = paymentMode;
+        if (remarks !== undefined) payment.remarks = remarks;
+
+        await student.save();
+
+        res.json({
+            success: true,
+            message: 'Payment updated successfully',
+            payment,
+            student
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+
+// @desc    Promote all students to next class (year-end operation)
+// @route   POST /api/students/promote
+// @access  Admin | Owner
+exports.promoteStudents = async (req, res) => {
+    try {
+        const CLASS_ORDER = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+        const { fromYear, toYear } = req.body;
+
+        if (!fromYear || !toYear) {
+            return res.status(400).json({ success: false, message: 'fromYear and toYear are required' });
+        }
+        if (fromYear === toYear) {
+            return res.status(400).json({ success: false, message: 'fromYear and toYear must be different' });
+        }
+
+        // Load all active students of the fromYear
+        const students = await Student.find({ isActive: true, academicYear: fromYear });
+        if (students.length === 0) {
+            return res.status(404).json({ success: false, message: `No active students found for academic year ${fromYear}` });
+        }
+
+        // Load fee structures for new year (toYear)
+        const FeeStructure = require('../models/FeeStructure');
+        const feeStructures = await FeeStructure.find({ academicYear: toYear });
+        const feeMap = {};
+        feeStructures.forEach(f => { feeMap[f.class] = f.totalFee; });
+
+        let promoted = 0, graduated = 0, skipped = 0;
+
+        for (const student of students) {
+            const currentIndex = CLASS_ORDER.indexOf(student.class);
+            if (currentIndex === -1) { skipped++; continue; }
+
+            if (currentIndex === CLASS_ORDER.length - 1) {
+                // 10th class — graduate (mark inactive)
+                student.isActive = false;
+                graduated++;
+            } else {
+                const nextClass = CLASS_ORDER[currentIndex + 1];
+                student.class = nextClass;
+                student.academicYear = toYear;
+                // Reset fee payments for new year
+                student.feePayments = [];
+                // Apply new year fee structure if available
+                if (feeMap[nextClass]) {
+                    student.totalFee = feeMap[nextClass];
+                }
+                promoted++;
+            }
+            await student.save({ validateBeforeSave: false });
+        }
+
+        res.json({
+            success: true,
+            message: `Promotion complete: ${promoted} promoted, ${graduated} graduated (10th → inactive), ${skipped} skipped.`,
+            promoted, graduated, skipped
         });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

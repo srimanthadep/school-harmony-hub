@@ -50,7 +50,7 @@ export default function StudentPortal() {
                     <div className="portal-avatar">{student.name.charAt(0)}</div>
                     <div>
                         <h2>{student.name}</h2>
-                        <p>Class {student.class} - Section {student.section} | Roll No: {student.rollNo}</p>
+                        <p>Class {student.class} | Roll No: {student.rollNo}</p>
                         <p style={{ marginTop: 4 }}>{student.studentId} · {settings.academicYear || '2024-25'}</p>
                     </div>
                     <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }} onClick={logout}>

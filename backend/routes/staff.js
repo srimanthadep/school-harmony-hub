@@ -8,18 +8,19 @@ const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect);
 
-router.get('/stats/overview', authorize('admin'), getStaffStats);
+router.get('/stats/overview', authorize('admin', 'owner'), getStaffStats);
+
 router.route('/')
-    .get(authorize('admin'), getStaff)
-    .post(authorize('admin'), createStaff);
+    .get(authorize('admin', 'owner'), getStaff)
+    .post(authorize('admin', 'owner'), createStaff);
 
 router.route('/:id')
-    .get(authorize('admin', 'staff'), getStaffMember)
-    .put(authorize('admin'), updateStaff)
-    .delete(authorize('admin'), deleteStaff);
+    .get(authorize('admin', 'owner', 'staff'), getStaffMember)
+    .put(authorize('admin', 'owner'), updateStaff)
+    .delete(authorize('admin', 'owner'), deleteStaff);
 
 router.route('/:id/salaries')
-    .get(authorize('admin', 'staff'), getSalaryHistory)
-    .post(authorize('admin'), recordSalaryPayment);
+    .get(authorize('admin', 'owner', 'staff'), getSalaryHistory)
+    .post(authorize('admin', 'owner'), recordSalaryPayment);
 
 module.exports = router;

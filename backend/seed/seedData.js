@@ -12,41 +12,41 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/school
 
 const feeStructures = [
     { class: 'Nursery', tuitionFee: 15000, admissionFee: 5000, examFee: 1000, libraryFee: 500, sportsFee: 1000, miscFee: 500 },
-    { class: 'LKG',     tuitionFee: 16000, admissionFee: 5000, examFee: 1000, libraryFee: 500, sportsFee: 1000, miscFee: 500 },
-    { class: 'UKG',     tuitionFee: 17000, admissionFee: 5000, examFee: 1000, libraryFee: 500, sportsFee: 1000, miscFee: 500 },
-    { class: '1st',     tuitionFee: 20000, admissionFee: 4000, examFee: 1500, libraryFee: 1000, sportsFee: 1500, miscFee: 1000 },
-    { class: '2nd',     tuitionFee: 21000, admissionFee: 4000, examFee: 1500, libraryFee: 1000, sportsFee: 1500, miscFee: 1000 },
-    { class: '3rd',     tuitionFee: 22000, admissionFee: 4000, examFee: 1500, libraryFee: 1000, sportsFee: 1500, miscFee: 1000 },
-    { class: '4th',     tuitionFee: 23000, admissionFee: 4000, examFee: 1500, libraryFee: 1000, sportsFee: 1500, miscFee: 1000 },
-    { class: '5th',     tuitionFee: 25000, admissionFee: 4000, examFee: 2000, libraryFee: 1500, sportsFee: 2000, miscFee: 1500 },
-    { class: '6th',     tuitionFee: 27000, admissionFee: 4000, examFee: 2000, libraryFee: 1500, sportsFee: 2000, miscFee: 1500 },
-    { class: '7th',     tuitionFee: 28000, admissionFee: 4000, examFee: 2000, libraryFee: 1500, sportsFee: 2000, miscFee: 1500 },
-    { class: '8th',     tuitionFee: 30000, admissionFee: 4000, examFee: 2500, libraryFee: 2000, sportsFee: 2500, miscFee: 2000 },
-    { class: '9th',     tuitionFee: 35000, admissionFee: 4000, examFee: 2500, libraryFee: 2000, sportsFee: 2500, miscFee: 2000 },
-    { class: '10th',    tuitionFee: 40000, admissionFee: 4000, examFee: 3000, libraryFee: 2000, sportsFee: 2500, miscFee: 2500 },
+    { class: 'LKG', tuitionFee: 16000, admissionFee: 5000, examFee: 1000, libraryFee: 500, sportsFee: 1000, miscFee: 500 },
+    { class: 'UKG', tuitionFee: 17000, admissionFee: 5000, examFee: 1000, libraryFee: 500, sportsFee: 1000, miscFee: 500 },
+    { class: '1st', tuitionFee: 20000, admissionFee: 4000, examFee: 1500, libraryFee: 1000, sportsFee: 1500, miscFee: 1000 },
+    { class: '2nd', tuitionFee: 21000, admissionFee: 4000, examFee: 1500, libraryFee: 1000, sportsFee: 1500, miscFee: 1000 },
+    { class: '3rd', tuitionFee: 22000, admissionFee: 4000, examFee: 1500, libraryFee: 1000, sportsFee: 1500, miscFee: 1000 },
+    { class: '4th', tuitionFee: 23000, admissionFee: 4000, examFee: 1500, libraryFee: 1000, sportsFee: 1500, miscFee: 1000 },
+    { class: '5th', tuitionFee: 25000, admissionFee: 4000, examFee: 2000, libraryFee: 1500, sportsFee: 2000, miscFee: 1500 },
+    { class: '6th', tuitionFee: 27000, admissionFee: 4000, examFee: 2000, libraryFee: 1500, sportsFee: 2000, miscFee: 1500 },
+    { class: '7th', tuitionFee: 28000, admissionFee: 4000, examFee: 2000, libraryFee: 1500, sportsFee: 2000, miscFee: 1500 },
+    { class: '8th', tuitionFee: 30000, admissionFee: 4000, examFee: 2500, libraryFee: 2000, sportsFee: 2500, miscFee: 2000 },
+    { class: '9th', tuitionFee: 35000, admissionFee: 4000, examFee: 2500, libraryFee: 2000, sportsFee: 2500, miscFee: 2000 },
+    { class: '10th', tuitionFee: 40000, admissionFee: 4000, examFee: 3000, libraryFee: 2000, sportsFee: 2500, miscFee: 2500 },
 ];
 
 // Staff data (same as before - no user logins created)
 const staffData = [
-    { name: 'Dr. Rajesh Kumar',   email: 'rajesh@oxfordschool.edu',  phone: '9876543210', role: 'principal',     monthlySalary: 75000, joiningDate: new Date('2010-06-01'), qualification: 'Ph.D Education',    experience: 20 },
-    { name: 'Mrs. Sunita Sharma', email: 'sunita@oxfordschool.edu',  phone: '9876543211', role: 'vice_principal', subject: 'Science', monthlySalary: 55000, joiningDate: new Date('2012-07-15'), qualification: 'M.Sc, B.Ed', experience: 15 },
-    { name: 'Mr. Amit Verma',     email: 'amit@oxfordschool.edu',    phone: '9876543212', role: 'teacher',        subject: 'Mathematics', monthlySalary: 35000, joiningDate: new Date('2015-06-01'), qualification: 'M.Sc Math, B.Ed', experience: 10 },
-    { name: 'Mrs. Priya Patel',   email: 'priya@oxfordschool.edu',   phone: '9876543213', role: 'teacher',        subject: 'English', monthlySalary: 33000, joiningDate: new Date('2016-07-10'), qualification: 'M.A English, B.Ed', experience: 9 },
-    { name: 'Mr. Ravi Singh',     email: 'ravi@oxfordschool.edu',    phone: '9876543214', role: 'teacher',        subject: 'Hindi', monthlySalary: 31000, joiningDate: new Date('2017-06-01'), qualification: 'M.A Hindi, B.Ed', experience: 8 },
+    { name: 'Dr. Rajesh Kumar', email: 'rajesh@oxfordschool.edu', phone: '9876543210', role: 'principal', monthlySalary: 75000, joiningDate: new Date('2010-06-01'), qualification: 'Ph.D Education', experience: 20 },
+    { name: 'Mrs. Sunita Sharma', email: 'sunita@oxfordschool.edu', phone: '9876543211', role: 'vice_principal', subject: 'Science', monthlySalary: 55000, joiningDate: new Date('2012-07-15'), qualification: 'M.Sc, B.Ed', experience: 15 },
+    { name: 'Mr. Amit Verma', email: 'amit@oxfordschool.edu', phone: '9876543212', role: 'teacher', subject: 'Mathematics', monthlySalary: 35000, joiningDate: new Date('2015-06-01'), qualification: 'M.Sc Math, B.Ed', experience: 10 },
+    { name: 'Mrs. Priya Patel', email: 'priya@oxfordschool.edu', phone: '9876543213', role: 'teacher', subject: 'English', monthlySalary: 33000, joiningDate: new Date('2016-07-10'), qualification: 'M.A English, B.Ed', experience: 9 },
+    { name: 'Mr. Ravi Singh', email: 'ravi@oxfordschool.edu', phone: '9876543214', role: 'teacher', subject: 'Hindi', monthlySalary: 31000, joiningDate: new Date('2017-06-01'), qualification: 'M.A Hindi, B.Ed', experience: 8 },
 ];
 
 // CSV file → class name mapping
 const CSV_CLASS_MAP = {
     'Nursery.csv': 'Nursery',
-    'LKG.csv':     'LKG',
-    'UKG.csv':     'UKG',
-    '1st.csv':     '1st',
-    '2nd.csv':     '2nd',
-    '3rd.csv':     '3rd',
-    '4thh.csv':    '4th',   // note: typo in filename, maps to '4th'
-    '5th.csv':     '5th',
-    '6th.csv':     '6th',
-    '7th.csv':     '7th',
+    'LKG.csv': 'LKG',
+    'UKG.csv': 'UKG',
+    '1st.csv': '1st',
+    '2nd.csv': '2nd',
+    '3rd.csv': '3rd',
+    '4thh.csv': '4th',   // note: typo in filename, maps to '4th'
+    '5th.csv': '5th',
+    '6th.csv': '6th',
+    '7th.csv': '7th',
 };
 
 // Fee per class (sum of all fees from feeStructures)
@@ -54,7 +54,7 @@ function getTotalFeeForClass(cls) {
     const fs = feeStructures.find(f => f.class === cls);
     if (!fs) return 20000;
     return (fs.tuitionFee || 0) + (fs.admissionFee || 0) + (fs.examFee || 0) +
-           (fs.libraryFee || 0) + (fs.sportsFee || 0) + (fs.miscFee || 0);
+        (fs.libraryFee || 0) + (fs.sportsFee || 0) + (fs.miscFee || 0);
 }
 
 // Parse a single CSV line: rollNo, name, fatherName, phone
@@ -88,7 +88,7 @@ function parseCSVLine(line, className) {
         parentName: fatherName || 'Parent of ' + name,
         parentPhone: phone || '0000000000',
         class: className,
-        section: 'A',
+
         totalFee: getTotalFeeForClass(className),
         academicYear: '2024-25',
         gender: 'male' // default; actual gender not in CSV

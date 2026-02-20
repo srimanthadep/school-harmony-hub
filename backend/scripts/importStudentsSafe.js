@@ -73,7 +73,7 @@ function parseCSVLine(line, className) {
         parentName: fatherName || 'Parent of ' + name,
         parentPhone: phone || '0000000000',
         class: className,
-        section: 'A',
+
         totalFee: getTotalFeeForClass(className),
         academicYear: '2024-25',
         gender: 'male',
