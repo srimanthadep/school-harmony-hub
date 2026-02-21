@@ -439,16 +439,20 @@ export default function StudentsPage() {
                                         <td>{s.rollNo}</td>
                                         <td>
                                             <div style={{ fontSize: 13 }}>{s.parentName}</div>
-                                            <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.parentPhone}</div>
+                                            <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                                                <a href={`tel:${s.parentPhone}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                                                    Ph. {s.parentPhone}
+                                                </a>
+                                            </div>
                                         </td>
                                         <td style={{ minWidth: 90 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2, alignItems: 'center' }}>
                                                 <span style={{ color: '#6b7280' }}>Tot:</span>
-                                                <span style={{ fontWeight: 600 }}>{formatCurrency(s.totalFee)}</span>
+                                                <span style={{ fontWeight: 600, fontSize: 13 }}>{formatCurrency(s.totalFee)}</span>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, alignItems: 'center' }}>
                                                 <span style={{ color: '#6b7280' }}>Pend:</span>
-                                                <span style={{ fontWeight: 600, color: s.pendingAmount > 0 ? '#e53935' : '#43a047' }}>
+                                                <span style={{ fontWeight: 600, fontSize: 13, color: s.pendingAmount > 0 ? '#e53935' : '#43a047' }}>
                                                     {formatCurrency(s.pendingAmount)}
                                                 </span>
                                             </div>
@@ -461,13 +465,13 @@ export default function StudentsPage() {
                                             )}
                                         </td>
                                         <td style={{ minWidth: 90 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2, alignItems: 'center' }}>
                                                 <span style={{ color: '#6b7280' }}>Tot:</span>
-                                                <span style={{ fontWeight: 600 }}>{formatCurrency(s.totalBookFee || 0)}</span>
+                                                <span style={{ fontWeight: 600, fontSize: 13 }}>{formatCurrency(s.totalBookFee || 0)}</span>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, alignItems: 'center' }}>
                                                 <span style={{ color: '#6b7280' }}>Pend:</span>
-                                                <span style={{ fontWeight: 600, color: (s.pendingBookAmount || 0) > 0 ? '#e53935' : '#43a047' }}>
+                                                <span style={{ fontWeight: 600, fontSize: 13, color: (s.pendingBookAmount || 0) > 0 ? '#e53935' : '#43a047' }}>
                                                     {formatCurrency(s.pendingBookAmount || 0)}
                                                 </span>
                                             </div>

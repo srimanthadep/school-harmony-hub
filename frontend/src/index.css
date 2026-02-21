@@ -493,6 +493,12 @@ tbody td {
   padding: 8px 4px;
 }
 
+.students-table .badge {
+  padding: 3px 6px;
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
 /* ===== BADGES ===== */
 .badge {
   display: inline-flex;
