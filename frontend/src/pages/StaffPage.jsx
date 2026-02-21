@@ -221,7 +221,6 @@ export default function StaffPage() {
                                     <th>ID</th>
                                     <th>Name</th>
                                     <th>Role</th>
-                                    <th>Subject</th>
                                     <th>Monthly Salary</th>
                                     <th>Total Paid</th>
                                     <th>Session</th>
@@ -235,13 +234,13 @@ export default function StaffPage() {
                                         <td><code style={{ fontSize: 11, color: '#1a237e' }}>{s.staffId}</code></td>
                                         <td>
                                             <div style={{ fontWeight: 600 }}>{s.name}</div>
+                                            {s.subject && <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.subject}</div>}
                                         </td>
                                         <td>
                                             <span className="badge badge-admin" style={{ textTransform: 'capitalize' }}>
                                                 {ROLE_DISPLAY(s.role)}
                                             </span>
                                         </td>
-                                        <td style={{ fontSize: 13 }}>{s.subject || '-'}</td>
                                         <td style={{ fontWeight: 600 }}>{formatCurrency(s.monthlySalary)}</td>
                                         <td style={{ fontWeight: 600, color: '#43a047' }}>{formatCurrency(s.totalSalaryPaid)}</td>
                                         <td>
