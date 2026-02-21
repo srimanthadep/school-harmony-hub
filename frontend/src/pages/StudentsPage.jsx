@@ -56,6 +56,7 @@ export default function StudentsPage() {
     const [formLoading, setFormLoading] = useState(false);
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+    const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState(null);
     const [showPayment, setShowPayment] = useState(null);
     const [showHistory, setShowHistory] = useState(null);
 
@@ -203,10 +204,14 @@ export default function StudentsPage() {
         }
     };
 
-    const handleDeletePayment = async (paymentId) => {
-        if (!window.confirm('Are you sure you want to delete this payment record? This action cannot be undone.')) return;
+    const handleDeletePayment = (paymentId) => {
+        setShowDeletePaymentConfirm(paymentId);
+    };
+
+    const confirmDeletePayment = async () => {
+        if (!showDeletePaymentConfirm) return;
         try {
-            await API.delete(`/students/${showHistory._id}/payments/${paymentId}`);
+            await API.delete(`/students/${showHistory._id}/payments/${showDeletePaymentConfirm}`);
             toast.success('Payment deleted successfully');
             // Refresh history
             const res = await API.get(`/students/${showHistory._id}/payments`);
@@ -214,6 +219,8 @@ export default function StudentsPage() {
             fetchStudents();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to delete payment');
+        } finally {
+            setShowDeletePaymentConfirm(null);
         }
     };
 
@@ -618,6 +625,31 @@ export default function StudentsPage() {
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(null)}>Cancel</button>
                             <button className="btn btn-danger" onClick={handleDelete}>Delete Student</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Payment Confirm */}
+            {showDeletePaymentConfirm && (
+                <div className="modal-overlay" style={{ zIndex: 1200 }}>
+                    <div className="modal" style={{ maxWidth: 400 }}>
+                        <div className="modal-header">
+                            <h3>Confirm Delete</h3>
+                            <button className="btn-close" onClick={() => setShowDeletePaymentConfirm(null)}><MdClose /></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="confirm-dialog">
+                                <div className="confirm-icon">🗑️</div>
+                                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Delete Payment Record?</p>
+                                <p style={{ fontSize: 13, color: '#6b7280' }}>
+                                    This action cannot be undone. The fee payment will be permanently deleted.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowDeletePaymentConfirm(null)}>Cancel</button>
+                            <button className="btn btn-danger" onClick={confirmDeletePayment}>Delete Record</button>
                         </div>
                     </div>
                 </div>
