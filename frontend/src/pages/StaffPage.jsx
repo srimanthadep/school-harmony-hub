@@ -27,7 +27,23 @@ export default function StaffPage() {
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
+
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalStaffCount, setTotalStaffCount] = useState(0);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, roleFilter]);
 
     const [showForm, setShowForm] = useState(false);
     const [editStaff, setEditStaff] = useState(null);
@@ -50,14 +66,16 @@ export default function StaffPage() {
     const fetchStaff = useCallback(async () => {
         setLoading(true);
         try {
-            const params = {};
+            const params = { page, limit: 50 };
             if (roleFilter) params.role = roleFilter;
-            if (search) params.search = search;
+            if (debouncedSearch) params.search = debouncedSearch;
             const res = await API.get('/staff', { params });
             setStaff(res.data.staff);
+            setTotalStaffCount(res.data.total || 0);
+            setTotalPages(Math.ceil((res.data.total || 0) / 50));
         } catch { toast.error('Failed to load staff'); }
         finally { setLoading(false); }
-    }, [roleFilter, search]);
+    }, [roleFilter, debouncedSearch, page]);
 
     useEffect(() => { fetchStaff(); }, [fetchStaff]);
     useEffect(() => { API.get('/settings').then(r => setSettings(r.data.settings)).catch(() => { }); }, []);
@@ -164,7 +182,7 @@ export default function StaffPage() {
                     </button>
                 </div>
                 <div style={{ padding: '8px 24px', fontSize: 13, color: '#6b7280' }}>
-                    {staff.length} staff members found
+                    Showing <strong>{(page - 1) * 50 + 1} - {(page - 1) * 50 + staff.length}</strong> of <strong>{totalStaffCount}</strong> staff members
                 </div>
             </div>
 
@@ -245,6 +263,29 @@ export default function StaffPage() {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {/* Pagination Controls */}
+                {!loading && totalPages > 1 && (
+                    <div className="pagination" style={{ padding: '0 24px 20px' }}>
+                        <button
+                            className="pagination-btn"
+                            disabled={page === 1}
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                        >
+                            Previous
+                        </button>
+                        <span className="pagination-info">
+                            Page <strong>{page}</strong> of {totalPages}
+                        </span>
+                        <button
+                            className="pagination-btn"
+                            disabled={page === totalPages}
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        >
+                            Next
+                        </button>
                     </div>
                 )}
             </div>

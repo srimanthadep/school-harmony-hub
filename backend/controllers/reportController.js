@@ -6,87 +6,166 @@ const Staff = require('../models/Staff');
 // @access  Admin
 exports.getDashboard = async (req, res) => {
     try {
-        const [students, staff] = await Promise.all([
-            Student.find({ isActive: true }),
-            Staff.find({ isActive: true })
+        const [
+            studentStats,
+            classStats,
+            monthlyFeeStats,
+            staffStats,
+            monthlySalaryStats,
+            recentFeePayments
+        ] = await Promise.all([
+            // 1. Overall Student Stats
+            Student.aggregate([
+                { $match: { isActive: true } },
+                {
+                    $group: {
+                        _id: null,
+                        totalStudents: { $sum: 1 },
+                        totalFeesExpected: { $sum: "$totalFee" },
+                        totalFeesCollected: { $sum: { $sum: "$feePayments.amount" } }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        totalStudents: 1,
+                        totalFeesExpected: 1,
+                        totalFeesCollected: 1,
+                        totalFeesPending: { $subtract: ["$totalFeesExpected", "$totalFeesCollected"] }
+                    }
+                }
+            ]),
+
+            // 2. Class-wise Breakdown
+            Student.aggregate([
+                { $match: { isActive: true } },
+                {
+                    $group: {
+                        _id: "$class",
+                        students: { $sum: 1 },
+                        totalFee: { $sum: "$totalFee" },
+                        collected: { $sum: { $sum: "$feePayments.amount" } }
+                    }
+                },
+                {
+                    $project: {
+                        class: "$_id",
+                        students: 1,
+                        collected: 1,
+                        pending: { $subtract: ["$totalFee", "$collected"] }
+                    }
+                }
+            ]),
+
+            // 3. Monthly Fee Collections (Last 6 Months)
+            Student.aggregate([
+                { $unwind: "$feePayments" },
+                {
+                    $group: {
+                        _id: {
+                            month: { $month: "$feePayments.paymentDate" },
+                            year: { $year: "$feePayments.paymentDate" }
+                        },
+                        total: { $sum: "$feePayments.amount" }
+                    }
+                },
+                { $sort: { "_id.year": -1, "_id.month": -1 } },
+                { $limit: 6 }
+            ]),
+
+            // 4. Staff Overview
+            Staff.aggregate([
+                { $match: { isActive: true } },
+                {
+                    $group: {
+                        _id: null,
+                        totalStaff: { $sum: 1 },
+                        totalMonthlySalary: { $sum: "$monthlySalary" },
+                        totalSalaryPaid: { $sum: { $sum: "$salaryPayments.amount" } }
+                    }
+                }
+            ]),
+
+            // 5. Monthly Salary Trends
+            Staff.aggregate([
+                { $unwind: "$salaryPayments" },
+                {
+                    $group: {
+                        _id: {
+                            month: { $month: "$salaryPayments.paymentDate" },
+                            year: { $year: "$salaryPayments.paymentDate" }
+                        },
+                        total: { $sum: "$salaryPayments.amount" }
+                    }
+                },
+                { $sort: { "_id.year": -1, "_id.month": -1 } },
+                { $limit: 6 }
+            ]),
+
+            // 6. Recent 10 Fee Payments
+            Student.aggregate([
+                { $match: { isActive: true } },
+                { $unwind: "$feePayments" },
+                { $sort: { "feePayments.paymentDate": -1 } },
+                { $limit: 10 },
+                {
+                    $project: {
+                        _id: 0,
+                        studentName: "$name",
+                        class: "$class",
+                        amount: "$feePayments.amount",
+                        paymentDate: "$feePayments.paymentDate",
+                        receiptNo: "$feePayments.receiptNo",
+                        paymentMode: "$feePayments.paymentMode"
+                    }
+                }
+            ])
         ]);
 
-        const totalStudents = students.length;
-        const totalStaff = staff.length;
-        const totalFeesCollected = students.reduce((s, st) => s + st.totalPaid, 0);
-        const totalFeesPending = students.reduce((s, st) => s + st.pendingAmount, 0);
-        const totalSalaryPaid = staff.reduce((s, st) => s + st.totalSalaryPaid, 0);
-        const totalMonthlySalary = staff.reduce((s, st) => s + st.monthlySalary, 0);
-        const totalFeesExpected = students.reduce((s, st) => s + st.totalFee, 0);
-        const studentsFullyPaid = students.filter(st => st.pendingAmount <= 0 && st.totalFee > 0).length;
-        const collectionRate = totalFeesExpected > 0
-            ? Math.round((totalFeesCollected / totalFeesExpected) * 100)
-            : 0;
+        // Post-process to match frontend structure
+        const s = studentStats[0] || { totalStudents: 0, totalFeesExpected: 0, totalFeesCollected: 0, totalFeesPending: 0 };
+        const st = staffStats[0] || { totalStaff: 0, totalMonthlySalary: 0, totalSalaryPaid: 0 };
 
-        // Class-wise breakdown
         const classWise = {};
-        students.forEach(s => {
-            if (!classWise[s.class]) {
-                classWise[s.class] = { students: 0, collected: 0, pending: 0 };
-            }
-            classWise[s.class].students++;
-            classWise[s.class].collected += s.totalPaid;
-            classWise[s.class].pending += s.pendingAmount;
+        classStats.forEach(c => { classWise[c.class] = c; });
+
+        const monthlyCollections = {};
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        monthlyFeeStats.forEach(m => {
+            const label = `${months[m._id.month - 1]} ${m._id.year}`;
+            monthlyCollections[label] = m.total;
         });
 
-        // Monthly collections (last 6 months)
-        const monthlyData = {};
-        students.forEach(st => {
-            st.feePayments.forEach(p => {
-                const monthKey = new Date(p.paymentDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                monthlyData[monthKey] = (monthlyData[monthKey] || 0) + p.amount;
-            });
+        const monthlySalaryPaid = {};
+        monthlySalaryStats.forEach(m => {
+            const label = `${months[m._id.month - 1]} ${m._id.year}`;
+            monthlySalaryPaid[label] = m.total;
         });
 
-        const monthlySalaryData = {};
-        staff.forEach(st => {
-            st.salaryPayments.forEach(p => {
-                const monthKey = new Date(p.paymentDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                monthlySalaryData[monthKey] = (monthlySalaryData[monthKey] || 0) + p.amount;
-            });
-        });
-
-        // Recent payments
-        const allPayments = [];
-        students.forEach(st => {
-            st.feePayments.forEach(p => {
-                allPayments.push({
-                    type: 'fee',
-                    studentName: st.name,
-                    class: st.class,
-                    amount: p.amount,
-                    paymentDate: p.paymentDate,
-                    receiptNo: p.receiptNo,
-                    paymentMode: p.paymentMode
-                });
-            });
-        });
-        allPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+        const collectionRate = s.totalFeesExpected > 0
+            ? Math.round((s.totalFeesCollected / s.totalFeesExpected) * 100)
+            : 0;
 
         res.json({
             success: true,
             dashboard: {
-                totalStudents,
-                totalStaff,
-                totalFeesCollected,
-                totalFeesPending,
-                totalSalaryPaid,
-                totalMonthlySalary,
-                studentsFullyPaid,
+                totalStudents: s.totalStudents,
+                totalStaff: st.totalStaff,
+                totalFeesCollected: s.totalFeesCollected,
+                totalFeesPending: s.totalFeesPending,
+                totalSalaryPaid: st.totalSalaryPaid,
+                totalMonthlySalary: st.totalMonthlySalary,
                 collectionRate,
                 classWise,
-                monthlyCollections: monthlyData,
-                monthlySalaryPaid: monthlySalaryData,
-                recentPayments: allPayments.slice(0, 10)
+                monthlyCollections,
+                monthlySalaryPaid,
+                recentPayments: recentFeePayments
             }
         });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error(err);
+        res.status(500).json({ success: false, message: "Optimization Error: " + err.message });
     }
 };
 
@@ -96,26 +175,42 @@ exports.getDashboard = async (req, res) => {
 exports.getPendingFees = async (req, res) => {
     try {
         const { class: cls } = req.query;
-        const query = { isActive: true };
-        if (cls) query.class = cls;
+        const match = { isActive: true };
+        if (cls) match.class = cls;
 
-        const students = await Student.find(query);
-        const pendingStudents = students
-            .filter(s => s.pendingAmount > 0)
-            .map(s => ({
-                _id: s._id,
-                studentId: s.studentId,
-                name: s.name,
-                class: s.class,
-
-                rollNo: s.rollNo,
-                parentPhone: s.parentPhone,
-                totalFee: s.totalFee,
-                totalPaid: s.totalPaid,
-                pendingAmount: s.pendingAmount,
-                paymentStatus: s.paymentStatus
-            }))
-            .sort((a, b) => b.pendingAmount - a.pendingAmount);
+        const pendingStudents = await Student.aggregate([
+            { $match: match },
+            {
+                $addFields: {
+                    totalPaid: { $sum: "$feePayments.amount" }
+                }
+            },
+            {
+                $addFields: {
+                    pendingAmount: { $subtract: ["$totalFee", "$totalPaid"] }
+                }
+            },
+            { $match: { pendingAmount: { $gt: 0 } } },
+            { $sort: { pendingAmount: -1 } },
+            {
+                $project: {
+                    _id: 1,
+                    studentId: 1,
+                    name: 1,
+                    class: 1,
+                    rollNo: 1,
+                    parentPhone: 1,
+                    totalFee: 1,
+                    totalPaid: 1,
+                    pendingAmount: 1,
+                    paymentStatus: {
+                        $cond: [
+                            { $eq: ["$totalPaid", 0] }, "unpaid", "partial"
+                        ]
+                    }
+                }
+            }
+        ]);
 
         res.json({
             success: true,
@@ -133,24 +228,44 @@ exports.getPendingFees = async (req, res) => {
 // @access  Admin
 exports.getClasswiseFees = async (req, res) => {
     try {
-        const classes = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
-        const report = [];
-
-        for (const cls of classes) {
-            const students = await Student.find({ class: cls, isActive: true });
-            if (students.length > 0) {
-                report.push({
-                    class: cls,
-                    totalStudents: students.length,
-                    totalFee: students.reduce((s, st) => s + st.totalFee, 0),
-                    totalCollected: students.reduce((s, st) => s + st.totalPaid, 0),
-                    totalPending: students.reduce((s, st) => s + st.pendingAmount, 0),
-                    paidCount: students.filter(s => s.paymentStatus === 'paid').length,
-                    partialCount: students.filter(s => s.paymentStatus === 'partial').length,
-                    unpaidCount: students.filter(s => s.paymentStatus === 'unpaid').length
-                });
-            }
-        }
+        const report = await Student.aggregate([
+            { $match: { isActive: true } },
+            {
+                $addFields: {
+                    paidNow: { $sum: "$feePayments.amount" }
+                }
+            },
+            {
+                $group: {
+                    _id: "$class",
+                    totalStudents: { $sum: 1 },
+                    totalFee: { $sum: "$totalFee" },
+                    totalCollected: { $sum: "$paidNow" },
+                    paidCount: {
+                        $sum: { $cond: [{ $gte: ["$paidNow", "$totalFee"] }, 1, 0] }
+                    },
+                    partialCount: {
+                        $sum: { $cond: [{ $and: [{ $gt: ["$paidNow", 0] }, { $lt: ["$paidNow", "$totalFee"] }] }, 1, 0] }
+                    },
+                    unpaidCount: {
+                        $sum: { $cond: [{ $eq: ["$paidNow", 0] }, 1, 0] }
+                    }
+                }
+            },
+            {
+                $project: {
+                    class: "$_id",
+                    totalStudents: 1,
+                    totalFee: 1,
+                    totalCollected: 1,
+                    totalPending: { $subtract: ["$totalFee", "$totalCollected"] },
+                    paidCount: 1,
+                    partialCount: 1,
+                    unpaidCount: 1
+                }
+            },
+            { $sort: { class: 1 } }
+        ]);
 
         res.json({ success: true, report });
     } catch (err) {
@@ -198,34 +313,52 @@ exports.getSalaryReport = async (req, res) => {
 // @access  Admin
 exports.getMonthlyReport = async (req, res) => {
     try {
-        const students = await Student.find({ isActive: true });
-        const staff = await Staff.find({ isActive: true });
+        const [incomeData, expenseData] = await Promise.all([
+            Student.aggregate([
+                { $unwind: "$feePayments" },
+                {
+                    $group: {
+                        _id: {
+                            month: { $month: "$feePayments.paymentDate" },
+                            year: { $year: "$feePayments.paymentDate" }
+                        },
+                        income: { $sum: "$feePayments.amount" }
+                    }
+                }
+            ]),
+            Staff.aggregate([
+                { $unwind: "$salaryPayments" },
+                {
+                    $group: {
+                        _id: {
+                            month: { $month: "$salaryPayments.paymentDate" },
+                            year: { $year: "$salaryPayments.paymentDate" }
+                        },
+                        expense: { $sum: "$salaryPayments.amount" }
+                    }
+                }
+            ])
+        ]);
 
-        const monthlyIncome = {};
-        const monthlyExpense = {};
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const monthlyStats = {};
 
-        students.forEach(st => {
-            st.feePayments.forEach(p => {
-                const key = new Date(p.paymentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                monthlyIncome[key] = (monthlyIncome[key] || 0) + p.amount;
-            });
+        incomeData.forEach(item => {
+            const key = `${months[item._id.month - 1]} ${item._id.year}`;
+            if (!monthlyStats[key]) monthlyStats[key] = { month: key, income: 0, expense: 0 };
+            monthlyStats[key].income = item.income;
         });
 
-        staff.forEach(st => {
-            st.salaryPayments.forEach(p => {
-                const key = new Date(p.paymentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                monthlyExpense[key] = (monthlyExpense[key] || 0) + p.amount;
-            });
+        expenseData.forEach(item => {
+            const key = `${months[item._id.month - 1]} ${item._id.year}`;
+            if (!monthlyStats[key]) monthlyStats[key] = { month: key, income: 0, expense: 0 };
+            monthlyStats[key].expense = item.expense;
         });
 
-        const allMonths = [...new Set([...Object.keys(monthlyIncome), ...Object.keys(monthlyExpense)])];
-
-        const report = allMonths.map(month => ({
-            month,
-            income: monthlyIncome[month] || 0,
-            expense: monthlyExpense[month] || 0,
-            net: (monthlyIncome[month] || 0) - (monthlyExpense[month] || 0)
-        }));
+        const report = Object.values(monthlyStats).map(item => ({
+            ...item,
+            net: item.income - item.expense
+        })).sort((a, b) => new Date(b.month) - new Date(a.month));
 
         res.json({ success: true, report });
     } catch (err) {

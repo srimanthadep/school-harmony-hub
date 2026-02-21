@@ -298,21 +298,41 @@ exports.promoteStudents = async (req, res) => {
 // @access  Admin
 exports.getStudentStats = async (req, res) => {
     try {
-        const students = await Student.find({ isActive: true });
-        const totalStudents = students.length;
-        const totalFees = students.reduce((s, st) => s + st.totalFee, 0);
-        const totalCollected = students.reduce((s, st) => s + st.totalPaid, 0);
-        const totalPending = students.reduce((s, st) => s + st.pendingAmount, 0);
+        const stats = await Student.aggregate([
+            { $match: { isActive: true } },
+            {
+                $addFields: {
+                    paidNow: { $sum: "$feePayments.amount" }
+                }
+            },
+            {
+                $group: {
+                    _id: "$class",
+                    count: { $sum: 1 },
+                    total: { $sum: "$totalFee" },
+                    collected: { $sum: "$paidNow" }
+                }
+            },
+            {
+                $project: {
+                    class: "$_id",
+                    count: 1,
+                    total: 1,
+                    collected: 1,
+                    pending: { $subtract: ["$total", "$collected"] }
+                }
+            }
+        ]);
 
         const classwiseStats = {};
-        students.forEach(s => {
-            if (!classwiseStats[s.class]) {
-                classwiseStats[s.class] = { count: 0, collected: 0, pending: 0, total: 0 };
-            }
-            classwiseStats[s.class].count++;
-            classwiseStats[s.class].collected += s.totalPaid;
-            classwiseStats[s.class].pending += s.pendingAmount;
-            classwiseStats[s.class].total += s.totalFee;
+        let totalStudents = 0, totalFees = 0, totalCollected = 0, totalPending = 0;
+
+        stats.forEach(s => {
+            classwiseStats[s.class] = { count: s.count, total: s.total, collected: s.collected, pending: s.pending };
+            totalStudents += s.count;
+            totalFees += s.total;
+            totalCollected += s.collected;
+            totalPending += s.pending;
         });
 
         res.json({

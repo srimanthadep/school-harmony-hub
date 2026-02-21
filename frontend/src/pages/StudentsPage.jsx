@@ -30,8 +30,20 @@ export default function StudentsPage() {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [classFilter, setClassFilter] = useState('');
     const [yearFilter, setYearFilter] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, classFilter, yearFilter]);
 
     const [sortField, setSortField] = useState('name');
     const [sortDir, setSortDir] = useState(1);
@@ -67,21 +79,27 @@ export default function StudentsPage() {
     const [promoteLoading, setPromoteLoading] = useState(false);
     const [promoteResult, setPromoteResult] = useState(null);
 
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalStudents, setTotalStudents] = useState(0);
+
     const fetchStudents = useCallback(async () => {
         setLoading(true);
         try {
-            const params = { limit: 10000 };
+            const params = { page, limit: 50 };
             if (classFilter) params.class = classFilter;
             if (yearFilter) params.academicYear = yearFilter;
-            if (search) params.search = search;
+            if (debouncedSearch) params.search = debouncedSearch;
             const res = await API.get('/students', { params });
             setStudents(res.data.students);
+            setTotalPages(res.data.pages || 1);
+            setTotalStudents(res.data.total || 0);
         } catch (err) {
             toast.error('Failed to load students');
         } finally {
             setLoading(false);
         }
-    }, [classFilter, yearFilter, search]);
+    }, [classFilter, yearFilter, debouncedSearch, page]);
 
     useEffect(() => { fetchStudents(); }, [fetchStudents]);
     useEffect(() => {
@@ -333,7 +351,7 @@ export default function StudentsPage() {
                     </div>
                 </div>
                 <div style={{ padding: '8px 24px', fontSize: 13, color: '#6b7280' }}>
-                    Showing {sortedStudents.length} students
+                    Showing <strong>{(page - 1) * 50 + 1} - {(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong> students
                 </div>
             </div>
 
@@ -435,6 +453,29 @@ export default function StudentsPage() {
                                 ))}
                             </tbody>
                         </table>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="pagination">
+                                <button
+                                    className="pagination-btn"
+                                    disabled={page === 1}
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                >
+                                    Previous
+                                </button>
+                                <span className="pagination-info">
+                                    Showing <strong>{(page - 1) * 50 + 1} - {(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong>
+                                </span>
+                                <button
+                                    className="pagination-btn"
+                                    disabled={page === totalPages}
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

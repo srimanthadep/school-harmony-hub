@@ -109,6 +109,8 @@ staffSchema.pre('save', async function (next) {
     next();
 });
 
+staffSchema.index({ isActive: 1 });
+staffSchema.index({ role: 1 });
 staffSchema.index({ name: 'text' });
 
 module.exports = mongoose.model('Staff', staffSchema);
