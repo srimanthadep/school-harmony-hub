@@ -16,6 +16,11 @@ const feePaymentSchema = new mongoose.Schema({
         enum: ['cash', 'online', 'cheque', 'dd'],
         default: 'cash'
     },
+    feeType: {
+        type: String,
+        enum: ['tuition', 'book'],
+        default: 'tuition'
+    },
     receiptNo: {
         type: String,
         unique: true,
@@ -72,6 +77,11 @@ const studentSchema = new mongoose.Schema({
         required: [true, 'Total fee is required'],
         min: 0
     },
+    totalBookFee: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
     feePayments: [feePaymentSchema],
     // Linked user account
     userId: {
@@ -97,20 +107,31 @@ const studentSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
-// Virtual: Total paid amount
+// Virtual: Total paid amount (Tuition)
 studentSchema.virtual('totalPaid').get(function () {
-    return this.feePayments.reduce((sum, p) => sum + p.amount, 0);
+    return this.feePayments.filter(p => !p.feeType || p.feeType === 'tuition').reduce((sum, p) => sum + p.amount, 0);
 });
 
-// Virtual: Pending amount
+// Virtual: Pending amount (Tuition)
 studentSchema.virtual('pendingAmount').get(function () {
     return this.totalFee - this.totalPaid;
 });
 
+// Virtual: Total book fee paid
+studentSchema.virtual('totalBookPaid').get(function () {
+    return this.feePayments.filter(p => p.feeType === 'book').reduce((sum, p) => sum + p.amount, 0);
+});
+
+// Virtual: Pending book fee amount
+studentSchema.virtual('pendingBookAmount').get(function () {
+    return (this.totalBookFee || 0) - this.totalBookPaid;
+});
+
 // Virtual: Payment status
 studentSchema.virtual('paymentStatus').get(function () {
-    const paid = this.totalPaid;
-    if (paid >= this.totalFee) return 'paid';
+    const paid = this.totalPaid + this.totalBookPaid;
+    const total = this.totalFee + (this.totalBookFee || 0);
+    if (paid >= total) return 'paid';
     if (paid > 0) return 'partial';
     return 'unpaid';
 });

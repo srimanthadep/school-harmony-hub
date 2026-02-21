@@ -107,15 +107,21 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
     doc.text(`Parent: ${student.parentName}`, pageW / 2, 84);
     doc.text(`Phone: ${student.parentPhone}`, pageW / 2, 90);
 
+    const isBook = payment.feeType === 'book';
+    const totalAmountStr = isBook ? 'Total Library Fee' : 'Total Tuition Fee';
+    const totalFeeAmt = isBook ? (student.totalBookFee || 0) : student.totalFee;
+    const totalPaidAmt = isBook ? (student.totalBookPaid || 0) : student.totalPaid;
+    const pendingAmt = isBook ? (student.pendingBookAmount || 0) : student.pendingAmount;
+
     // Fee details table — properly formatted amounts
     doc.autoTable({
         startY: 104,
         head: [['Description', 'Amount (Rs.)']],
         body: [
-            ['Total Annual Fee', pdfRs(student.totalFee)],
+            [totalAmountStr, pdfRs(totalFeeAmt)],
             ['Amount Paid (This Receipt)', pdfRs(payment.amount)],
-            ['Total Paid Till Date', pdfRs(student.totalPaid)],
-            ['Balance Remaining', pdfRs(student.pendingAmount)],
+            ['Total Paid Till Date', pdfRs(totalPaidAmt)],
+            ['Balance Remaining', pdfRs(pendingAmt)],
         ],
         headStyles: {
             fillColor: [26, 35, 126],
@@ -136,7 +142,7 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
             // Highlight Balance row
             if (data.row.index === 3) {
                 data.cell.styles.textColor = data.column.index === 1
-                    ? (student.pendingAmount <= 0 ? [67, 160, 71] : [229, 57, 53])
+                    ? (pendingAmt <= 0 ? [67, 160, 71] : [229, 57, 53])
                     : [50, 50, 50];
                 data.cell.styles.fontStyle = 'bold';
             }
@@ -151,8 +157,8 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
     if (payment.remarks) doc.text(`Remarks: ${payment.remarks}`, 8, finalY + 11);
 
     // Status badge
-    const status = student.pendingAmount <= 0 ? 'FULLY PAID' : 'PARTIAL PAYMENT';
-    const statusColor = student.pendingAmount <= 0 ? [67, 160, 71] : [251, 140, 0];
+    const status = pendingAmt <= 0 ? 'FULLY PAID' : 'PARTIAL PAYMENT';
+    const statusColor = pendingAmt <= 0 ? [67, 160, 71] : [251, 140, 0];
     doc.setFillColor(...statusColor);
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8);

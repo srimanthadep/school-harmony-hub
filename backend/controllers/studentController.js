@@ -145,6 +145,7 @@ exports.recordPayment = async (req, res) => {
             amount: Math.round(Number(req.body.amount || 0)),  // always store as integer rupees
             paymentDate: req.body.paymentDate || new Date(),
             paymentMode: req.body.paymentMode || 'cash',
+            feeType: req.body.feeType || 'tuition',
             receiptNo,
             remarks: req.body.remarks,
             recordedBy: req.user.id
@@ -183,6 +184,8 @@ exports.getPaymentHistory = async (req, res) => {
             payments: student.feePayments,
             totalPaid: student.totalPaid,
             pendingAmount: student.pendingAmount,
+            totalBookPaid: student.totalBookPaid,
+            pendingBookAmount: student.pendingBookAmount,
             paymentStatus: student.paymentStatus
         });
     } catch (err) {
@@ -200,10 +203,11 @@ exports.editPayment = async (req, res) => {
         const payment = student.feePayments.id(req.params.paymentId);
         if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
 
-        const { amount, paymentDate, paymentMode, remarks } = req.body;
+        const { amount, paymentDate, paymentMode, remarks, feeType } = req.body;
         if (amount !== undefined && amount !== null && amount !== '') payment.amount = Math.round(Number(amount));
         if (paymentDate !== undefined) payment.paymentDate = paymentDate;
         if (paymentMode !== undefined) payment.paymentMode = paymentMode;
+        if (feeType !== undefined) payment.feeType = feeType;
         if (remarks !== undefined) payment.remarks = remarks;
 
         await student.save();

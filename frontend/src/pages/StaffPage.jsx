@@ -31,7 +31,8 @@ const emptyStaff = {
     name: '', phone: '', role: 'teacher', subject: '',
     department: '', qualification: '', experience: '', gender: 'male',
     address: '', monthlySalary: '', joiningDate: '',
-    bankAccount: '', bankName: '', ifscCode: '', academicYear: '2025-26'
+    bankAccount: '', bankName: '', ifscCode: '', academicYear: '2025-26',
+    isActive: true
 };
 
 const ROLE_DISPLAY = (r) => r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -60,6 +61,9 @@ export default function StaffPage() {
     useEffect(() => {
         setPage(1);
     }, [debouncedSearch, roleFilter, yearFilter]);
+
+    const [sortField, setSortField] = useState('name');
+    const [sortDir, setSortDir] = useState(1);
 
     const [showForm, setShowForm] = useState(false);
     const [editStaff, setEditStaff] = useState(null);
@@ -141,6 +145,7 @@ export default function StaffPage() {
             monthlySalary: s.monthlySalary, bankAccount: s.bankAccount || '',
             bankName: s.bankName || '', ifscCode: s.ifscCode || '',
             academicYear: s.academicYear || '2025-26',
+            isActive: s.isActive !== false,
             joiningDate: s.joiningDate ? s.joiningDate.split('T')[0] : ''
         });
         setShowForm(true);
@@ -239,6 +244,31 @@ export default function StaffPage() {
         }
     };
 
+    const getStatus = (s) => s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'paid' : 'unpaid';
+
+    const sortedStaff = [...staff].sort((a, b) => {
+        if (sortField === 'status') {
+            const av = getStatus(a) === 'paid' ? 1 : 0;
+            const bv = getStatus(b) === 'paid' ? 1 : 0;
+            return (av - bv) * sortDir;
+        }
+        const av = sortField === 'monthlySalary' ? a.monthlySalary
+            : sortField === 'totalSalaryPaid' ? a.totalSalaryPaid
+                : (a[sortField] || '');
+        const bv = sortField === 'monthlySalary' ? b.monthlySalary
+            : sortField === 'totalSalaryPaid' ? b.totalSalaryPaid
+                : (b[sortField] || '');
+        if (typeof av === 'number') return (av - bv) * sortDir;
+        return String(av).localeCompare(String(bv)) * sortDir;
+    });
+
+    const toggleSort = (field) => {
+        if (sortField === field) setSortDir(d => -d);
+        else { setSortField(field); setSortDir(1); }
+    };
+
+    const SortArrow = ({ field }) => sortField === field ? (sortDir === 1 ? ' ↑' : ' ↓') : ' ⇅';
+
     return (
         <div>
             {/* Controls */}
@@ -278,21 +308,22 @@ export default function StaffPage() {
                     </div>
                 ) : (
                     <div className="table-container">
-                        <table>
+                        <table className="students-table">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Role</th>
-                                    <th>Monthly Salary</th>
-                                    <th>Total Paid</th>
-                                    <th>Session</th>
-                                    <th>Joining Date</th>
+                                    <th onClick={() => toggleSort('staffId')}>ID <SortArrow field="staffId" /></th>
+                                    <th onClick={() => toggleSort('name')}>Name <SortArrow field="name" /></th>
+                                    <th onClick={() => toggleSort('role')}>Role <SortArrow field="role" /></th>
+                                    <th onClick={() => toggleSort('monthlySalary')}>Monthly Salary <SortArrow field="monthlySalary" /></th>
+                                    <th onClick={() => toggleSort('totalSalaryPaid')}>Total Paid <SortArrow field="totalSalaryPaid" /></th>
+                                    <th onClick={() => toggleSort('academicYear')}>Session <SortArrow field="academicYear" /></th>
+                                    <th onClick={() => toggleSort('joiningDate')}>Joining Date <SortArrow field="joiningDate" /></th>
+                                    <th onClick={() => toggleSort('status')}>Status <SortArrow field="status" /></th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {staff.map(s => (
+                                {sortedStaff.map(s => (
                                     <tr key={s._id}>
                                         <td><code style={{ fontSize: 11, color: '#1a237e' }}>{s.staffId}</code></td>
                                         <td>
@@ -318,6 +349,11 @@ export default function StaffPage() {
                                             </span>
                                         </td>
                                         <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(s.joiningDate)}</td>
+                                        <td>
+                                            <span className={`badge ${s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'badge-paid' : 'badge-unpaid'}`}>
+                                                {s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'Paid' : 'Not Paid'}
+                                            </span>
+                                        </td>
                                         <td>
                                             <div style={{
                                                 display: 'grid',

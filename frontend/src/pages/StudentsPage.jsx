@@ -23,7 +23,7 @@ const STATUS_BADGE = {
 const emptyStudent = {
     name: '', class: 'Nursery', rollNo: '',
     gender: 'male', parentName: '', parentPhone: '', parentEmail: '',
-    dateOfBirth: '', address: '', totalFee: '', academicYear: '2025-26'
+    dateOfBirth: '', address: '', totalFee: '', totalBookFee: '', academicYear: '2025-26'
 };
 
 export default function StudentsPage() {
@@ -60,7 +60,7 @@ export default function StudentsPage() {
     const [showPayment, setShowPayment] = useState(null);
     const [showHistory, setShowHistory] = useState(null);
 
-    const [paymentForm, setPaymentForm] = useState({ amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'cash', remarks: '' });
+    const [paymentForm, setPaymentForm] = useState({ amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'cash', feeType: 'tuition', remarks: '' });
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [historyData, setHistoryData] = useState(null);
 
@@ -114,6 +114,7 @@ export default function StudentsPage() {
         if (!formData.parentName.trim()) errs.parentName = 'Parent name is required';
         if (!formData.parentPhone.trim()) errs.parentPhone = 'Parent phone is required';
         if (formData.totalFee === '' || formData.totalFee < 0) errs.totalFee = 'Valid fee required';
+        if (formData.totalBookFee === '' || formData.totalBookFee < 0) errs.totalBookFee = "Valid book's fee required";
         setFormErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -148,7 +149,8 @@ export default function StudentsPage() {
             rollNo: student.rollNo, gender: student.gender || 'male',
             parentName: student.parentName, parentPhone: student.parentPhone,
             parentEmail: student.parentEmail || '', address: student.address || '',
-            totalFee: student.totalFee, academicYear: student.academicYear || '2024-25',
+            totalFee: student.totalFee, totalBookFee: student.totalBookFee || '',
+            academicYear: student.academicYear || '2025-26',
             dateOfBirth: student.dateOfBirth ? student.dateOfBirth.split('T')[0] : ''
         });
         setShowForm(true);
@@ -244,9 +246,10 @@ export default function StudentsPage() {
             toast.error('Please enter a valid amount');
             return;
         }
-        const pending = showPayment.pendingAmount;
+        const isTuition = paymentForm.feeType === 'tuition';
+        const pending = isTuition ? showPayment.pendingAmount : (showPayment.pendingBookAmount || 0);
         if (Number(paymentForm.amount) > pending) {
-            toast.error(`Amount cannot exceed pending: ${formatCurrency(pending)}`);
+            toast.error(`Amount cannot exceed pending ${isTuition ? 'tuition' : 'book\'s'} fee: ${formatCurrency(pending)}`);
             return;
         }
         setPaymentLoading(true);
@@ -254,7 +257,7 @@ export default function StudentsPage() {
             const res = await API.post(`/students/${showPayment._id}/payments`, paymentForm);
             toast.success('Payment recorded!');
             setShowPayment(null);
-            setPaymentForm({ amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'cash', remarks: '' });
+            setPaymentForm({ amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'cash', feeType: 'tuition', remarks: '' });
             fetchStudents();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Payment failed');
@@ -295,7 +298,23 @@ export default function StudentsPage() {
         window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
     };
 
-    const STATUS_ORDER = { unpaid: 0, partial: 1, paid: 2 };
+    const getTuitionStatus = (s) => {
+        if (!s.totalFee) return 'na';
+        if (s.totalPaid >= s.totalFee) return 'paid';
+        if (s.totalPaid > 0) return 'partial';
+        return 'unpaid';
+    };
+
+    const getLibraryStatus = (s) => {
+        const total = s.totalBookFee || 0;
+        const paid = s.totalBookPaid || 0;
+        if (!total) return 'na';
+        if (paid >= total) return 'paid';
+        if (paid > 0) return 'partial';
+        return 'unpaid';
+    };
+
+    const STATUS_ORDER = { unpaid: 0, partial: 1, paid: 2, na: 3 };
     const sortedStudents = [...students].sort((a, b) => {
         // If class filter is active, primary sort = roll number numerically
         if (classFilter && sortField === 'name') {
@@ -303,19 +322,28 @@ export default function StudentsPage() {
             const rB = parseInt(b.rollNo) || 0;
             return rA - rB;
         }
-        if (sortField === 'paymentStatus') {
-            const av = STATUS_ORDER[a.paymentStatus] ?? 0;
-            const bv = STATUS_ORDER[b.paymentStatus] ?? 0;
+        if (sortField === 'tuitionStatus') {
+            const av = STATUS_ORDER[getTuitionStatus(a)] ?? 0;
+            const bv = STATUS_ORDER[getTuitionStatus(b)] ?? 0;
+            return (av - bv) * sortDir;
+        }
+        if (sortField === 'libraryStatus') {
+            const av = STATUS_ORDER[getLibraryStatus(a)] ?? 0;
+            const bv = STATUS_ORDER[getLibraryStatus(b)] ?? 0;
             return (av - bv) * sortDir;
         }
         const av = sortField === 'totalFee' ? a.totalFee
             : sortField === 'pendingAmount' ? a.pendingAmount
-                : sortField === 'rollNo' ? (parseInt(a.rollNo) || 0)
-                    : (a[sortField] || '');
+                : sortField === 'totalBookFee' ? (a.totalBookFee || 0)
+                    : sortField === 'pendingBookAmount' ? (a.pendingBookAmount || 0)
+                        : sortField === 'rollNo' ? (parseInt(a.rollNo) || 0)
+                            : (a[sortField] || '');
         const bv = sortField === 'totalFee' ? b.totalFee
             : sortField === 'pendingAmount' ? b.pendingAmount
-                : sortField === 'rollNo' ? (parseInt(b.rollNo) || 0)
-                    : (b[sortField] || '');
+                : sortField === 'totalBookFee' ? (b.totalBookFee || 0)
+                    : sortField === 'pendingBookAmount' ? (b.pendingBookAmount || 0)
+                        : sortField === 'rollNo' ? (parseInt(b.rollNo) || 0)
+                            : (b[sortField] || '');
         if (typeof av === 'number') return (av - bv) * sortDir;
         return String(av).localeCompare(String(bv)) * sortDir;
     });
@@ -383,7 +411,7 @@ export default function StudentsPage() {
                     </div>
                 ) : (
                     <div className="table-container">
-                        <table>
+                        <table className="students-table">
                             <thead>
                                 <tr>
                                     <th onClick={() => toggleSort('studentId')}>ID <SortArrow field="studentId" /></th>
@@ -392,9 +420,10 @@ export default function StudentsPage() {
 
                                     <th>Roll No</th>
                                     <th>Parent</th>
-                                    <th onClick={() => toggleSort('totalFee')}>Total Fee <SortArrow field="totalFee" /></th>
-                                    <th onClick={() => toggleSort('pendingAmount')}>Pending <SortArrow field="pendingAmount" /></th>
-                                    <th onClick={() => toggleSort('paymentStatus')} style={{ cursor: 'pointer' }}>Status <SortArrow field="paymentStatus" /></th>
+                                    <th onClick={() => toggleSort('totalFee')}>Tuition Fee <SortArrow field="totalFee" /></th>
+                                    <th onClick={() => toggleSort('tuitionStatus')} style={{ cursor: 'pointer', textAlign: 'center' }}>Tuition Status <SortArrow field="tuitionStatus" /></th>
+                                    <th onClick={() => toggleSort('totalBookFee')}>Book's Fee <SortArrow field="totalBookFee" /></th>
+                                    <th onClick={() => toggleSort('libraryStatus')} style={{ cursor: 'pointer', textAlign: 'center' }}>Book's Status <SortArrow field="libraryStatus" /></th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -412,14 +441,43 @@ export default function StudentsPage() {
                                             <div style={{ fontSize: 13 }}>{s.parentName}</div>
                                             <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.parentPhone}</div>
                                         </td>
-                                        <td style={{ fontWeight: 600 }}>{formatCurrency(s.totalFee)}</td>
-                                        <td style={{ fontWeight: 600, color: s.pendingAmount > 0 ? '#e53935' : '#43a047' }}>
-                                            {formatCurrency(s.pendingAmount)}
+                                        <td style={{ minWidth: 90 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
+                                                <span style={{ color: '#6b7280' }}>Tot:</span>
+                                                <span style={{ fontWeight: 600 }}>{formatCurrency(s.totalFee)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                                <span style={{ color: '#6b7280' }}>Pend:</span>
+                                                <span style={{ fontWeight: 600, color: s.pendingAmount > 0 ? '#e53935' : '#43a047' }}>
+                                                    {formatCurrency(s.pendingAmount)}
+                                                </span>
+                                            </div>
                                         </td>
-                                        <td>
-                                            <span className={`badge ${STATUS_BADGE[s.paymentStatus] || 'badge-unpaid'}`}>
-                                                {s.paymentStatus}
-                                            </span>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {getTuitionStatus(s) === 'na' ? <span style={{ color: '#9ca3af', fontSize: 12 }}>N/A</span> : (
+                                                <span className={`badge ${STATUS_BADGE[getTuitionStatus(s)] || 'badge-unpaid'}`}>
+                                                    {getTuitionStatus(s)}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td style={{ minWidth: 90 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
+                                                <span style={{ color: '#6b7280' }}>Tot:</span>
+                                                <span style={{ fontWeight: 600 }}>{formatCurrency(s.totalBookFee || 0)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                                <span style={{ color: '#6b7280' }}>Pend:</span>
+                                                <span style={{ fontWeight: 600, color: (s.pendingBookAmount || 0) > 0 ? '#e53935' : '#43a047' }}>
+                                                    {formatCurrency(s.pendingBookAmount || 0)}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {getLibraryStatus(s) === 'na' ? <span style={{ color: '#9ca3af', fontSize: 12 }}>N/A</span> : (
+                                                <span className={`badge ${STATUS_BADGE[getLibraryStatus(s)] || 'badge-unpaid'}`}>
+                                                    {getLibraryStatus(s)}
+                                                </span>
+                                            )}
                                         </td>
                                         <td>
                                             {/* 2x2 action grid - same style as Staff page */}
@@ -433,15 +491,15 @@ export default function StudentsPage() {
                                                 <button
                                                     className="btn btn-success btn-sm btn-icon"
                                                     title="Record Payment"
-                                                    style={{ opacity: s.pendingAmount > 0 ? 1 : 0.3, cursor: s.pendingAmount > 0 ? 'pointer' : 'default' }}
-                                                    onClick={() => s.pendingAmount > 0 && setShowPayment(s)}>
+                                                    style={{ opacity: (s.pendingAmount > 0 || (s.pendingBookAmount || 0) > 0) ? 1 : 0.3, cursor: (s.pendingAmount > 0 || (s.pendingBookAmount || 0) > 0) ? 'pointer' : 'default' }}
+                                                    onClick={() => (s.pendingAmount > 0 || (s.pendingBookAmount || 0) > 0) && setShowPayment(s)}>
                                                     <MdPayment />
                                                 </button>
                                                 <button
                                                     className="btn btn-primary btn-sm btn-icon"
                                                     title="Download Latest Receipt"
-                                                    style={{ opacity: s.totalPaid > 0 ? 1 : 0.3, cursor: s.totalPaid > 0 ? 'pointer' : 'default' }}
-                                                    onClick={() => s.totalPaid > 0 && downloadLatestReceipt(s)}>
+                                                    style={{ opacity: (s.totalPaid > 0 || (s.totalBookPaid || 0) > 0) ? 1 : 0.3, cursor: (s.totalPaid > 0 || (s.totalBookPaid || 0) > 0) ? 'pointer' : 'default' }}
+                                                    onClick={() => (s.totalPaid > 0 || (s.totalBookPaid || 0) > 0) && downloadLatestReceipt(s)}>
                                                     <MdReceiptLong />
                                                 </button>
                                                 {/* Row 2: History + Edit */}
@@ -455,8 +513,8 @@ export default function StudentsPage() {
                                                 </button>
                                                 {/* Row 3: WhatsApp + Delete */}
                                                 <button className="btn btn-sm btn-icon" title="WhatsApp Reminder"
-                                                    style={{ background: '#25D366', color: 'white', opacity: s.pendingAmount > 0 ? 1 : 0.3, cursor: s.pendingAmount > 0 ? 'pointer' : 'default', border: 'none' }}
-                                                    onClick={() => s.pendingAmount > 0 && handleWhatsApp(s)}>
+                                                    style={{ background: '#25D366', color: 'white', opacity: (s.pendingAmount > 0 || (s.pendingBookAmount || 0) > 0) ? 1 : 0.3, cursor: (s.pendingAmount > 0 || (s.pendingBookAmount || 0) > 0) ? 'pointer' : 'default', border: 'none' }}
+                                                    onClick={() => (s.pendingAmount > 0 || (s.pendingBookAmount || 0) > 0) && handleWhatsApp(s)}>
                                                     <FaWhatsapp />
                                                 </button>
                                                 <button className="btn btn-danger btn-sm btn-icon" title="Delete"
@@ -585,13 +643,23 @@ export default function StudentsPage() {
                                 </div>
 
                                 <div className="form-section-title">Fee Details</div>
-                                <div className="form-group">
-                                    <label className="form-label">Total Annual Fee <span className="required">*</span></label>
-                                    <input type="number" className={`form-control ${formErrors.totalFee ? 'error' : ''}`}
-                                        value={formData.totalFee} onChange={e => setFormData({ ...formData, totalFee: e.target.value })}
-                                        onWheel={(e) => e.target.blur()}
-                                        placeholder="Annual fee amount" min="0" />
-                                    {formErrors.totalFee && <p className="form-error">{formErrors.totalFee}</p>}
+                                <div className="form-grid">
+                                    <div className="form-group">
+                                        <label className="form-label">Total Tuition Fee <span className="required">*</span></label>
+                                        <input type="number" className={`form-control ${formErrors.totalFee ? 'error' : ''}`}
+                                            value={formData.totalFee} onChange={e => setFormData({ ...formData, totalFee: e.target.value })}
+                                            onWheel={(e) => e.target.blur()}
+                                            placeholder="Annual tuition fee" min="0" />
+                                        {formErrors.totalFee && <p className="form-error">{formErrors.totalFee}</p>}
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Total Book's Fee <span className="required">*</span></label>
+                                        <input type="number" className={`form-control ${formErrors.totalBookFee ? 'error' : ''}`}
+                                            value={formData.totalBookFee} onChange={e => setFormData({ ...formData, totalBookFee: e.target.value })}
+                                            onWheel={(e) => e.target.blur()}
+                                            placeholder="Annual book's fee" min="0" />
+                                        {formErrors.totalBookFee && <p className="form-error">{formErrors.totalBookFee}</p>}
+                                    </div>
                                 </div>
                             </div>
                             <div className="modal-footer">
@@ -666,14 +734,38 @@ export default function StudentsPage() {
                         <div className="modal-body">
                             <div className="highlight-box" style={{ marginBottom: 16 }}>
                                 <strong>{showPayment.name}</strong> - {showPayment.class}
-                                <div style={{ marginTop: 8, display: 'flex', gap: 20 }}>
-                                    <span style={{ fontSize: 13 }}>Total: <strong>{formatCurrency(showPayment.totalFee)}</strong></span>
-                                    <span style={{ fontSize: 13 }}>Paid: <strong style={{ color: '#43a047' }}>{formatCurrency(showPayment.totalPaid)}</strong></span>
-                                    <span style={{ fontSize: 13 }}>Pending: <strong style={{ color: '#e53935' }}>{formatCurrency(showPayment.pendingAmount)}</strong></span>
+                                <div style={{ marginTop: 12, borderTop: '1px solid #ddd', paddingTop: 8 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Tuition Fee:</div>
+                                    <div style={{ display: 'flex', gap: 20 }}>
+                                        <span style={{ fontSize: 13 }}>Total: <strong>{formatCurrency(showPayment.totalFee)}</strong></span>
+                                        <span style={{ fontSize: 13 }}>Paid: <strong style={{ color: '#43a047' }}>{formatCurrency(showPayment.totalPaid)}</strong></span>
+                                        <span style={{ fontSize: 13 }}>Pending: <strong style={{ color: '#e53935' }}>{formatCurrency(showPayment.pendingAmount)}</strong></span>
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: 8, borderTop: '1px solid #ddd', paddingTop: 8 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Book's Fee:</div>
+                                    <div style={{ display: 'flex', gap: 20 }}>
+                                        <span style={{ fontSize: 13 }}>Total: <strong>{formatCurrency(showPayment.totalBookFee || 0)}</strong></span>
+                                        <span style={{ fontSize: 13 }}>Paid: <strong style={{ color: '#43a047' }}>{formatCurrency(showPayment.totalBookPaid || 0)}</strong></span>
+                                        <span style={{ fontSize: 13 }}>Pending: <strong style={{ color: '#e53935' }}>{formatCurrency(showPayment.pendingBookAmount || 0)}</strong></span>
+                                    </div>
                                 </div>
                             </div>
                             <form id="payment-form" onSubmit={handlePayment}>
                                 <div className="form-grid">
+                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                        <label className="form-label">Payment For <span className="required">*</span></label>
+                                        <div style={{ display: 'flex', gap: 20, marginTop: 4 }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                                <input type="radio" name="feeType" value="tuition" checked={paymentForm.feeType === 'tuition'} onChange={e => setPaymentForm({ ...paymentForm, feeType: e.target.value })} />
+                                                Tuition Fee
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                                <input type="radio" name="feeType" value="book" checked={paymentForm.feeType === 'book'} onChange={e => setPaymentForm({ ...paymentForm, feeType: e.target.value })} />
+                                                Book's Fee
+                                            </label>
+                                        </div>
+                                    </div>
                                     <div className="form-group">
                                         <label className="form-label">Amount (₹) <span className="required">*</span></label>
                                         <input type="number" className="form-control"
@@ -726,17 +818,17 @@ export default function StudentsPage() {
                             {historyData ? (
                                 <>
                                     <div className="mobile-stack" style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-                                        <div className="highlight-box" style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 12, color: '#6b7280' }}>Total Fee</div>
-                                            <div style={{ fontSize: 20, fontWeight: 800, color: '#1a237e' }}>{formatCurrency(showHistory.totalFee)}</div>
+                                        <div className="highlight-box" style={{ flex: 1, borderLeft: '4px solid #3b82f6' }}>
+                                            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Tuition Total / Paid / Pending</div>
+                                            <div style={{ fontSize: 16, fontWeight: 700 }}>
+                                                {formatCurrency(showHistory.totalFee)} / <span style={{ color: '#43a047' }}>{formatCurrency(historyData.totalPaid)}</span> / <span style={{ color: '#e53935' }}>{formatCurrency(historyData.pendingAmount)}</span>
+                                            </div>
                                         </div>
-                                        <div className="highlight-box" style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 12, color: '#6b7280' }}>Total Paid</div>
-                                            <div style={{ fontSize: 20, fontWeight: 800, color: '#43a047' }}>{formatCurrency(historyData.totalPaid)}</div>
-                                        </div>
-                                        <div className="highlight-box" style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 12, color: '#6b7280' }}>Pending</div>
-                                            <div style={{ fontSize: 20, fontWeight: 800, color: '#e53935' }}>{formatCurrency(historyData.pendingAmount)}</div>
+                                        <div className="highlight-box" style={{ flex: 1, borderLeft: '4px solid #8b5cf6' }}>
+                                            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Book's Total / Paid / Pending</div>
+                                            <div style={{ fontSize: 16, fontWeight: 700 }}>
+                                                {formatCurrency(showHistory.totalBookFee || 0)} / <span style={{ color: '#43a047' }}>{formatCurrency(historyData.totalBookPaid || 0)}</span> / <span style={{ color: '#e53935' }}>{formatCurrency(historyData.pendingBookAmount || 0)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     {historyData.payments.length === 0 ? (
@@ -750,6 +842,7 @@ export default function StudentsPage() {
                                                     <tr>
                                                         <th>Receipt No</th>
                                                         <th>Amount</th>
+                                                        <th>Type</th>
                                                         <th>Date</th>
                                                         <th>Mode</th>
                                                         <th>Remarks</th>
@@ -767,6 +860,7 @@ export default function StudentsPage() {
                                                         <tr key={i}>
                                                             <td><code style={{ fontSize: 12, color: '#1a237e' }}>{p.receiptNo || '-'}</code></td>
                                                             <td style={{ fontWeight: 700, color: '#43a047' }}>{formatCurrency(p.amount)}</td>
+                                                            <td style={{ textTransform: 'capitalize', fontSize: 12, fontWeight: 600 }}>{p.feeType || 'tuition'}</td>
                                                             <td style={{ fontSize: 13 }}>{formatDate(p.paymentDate)}</td>
                                                             <td style={{ textTransform: 'capitalize', fontSize: 12 }}>{p.paymentMode}</td>
                                                             <td style={{ fontSize: 12, color: '#6b7280' }}>{p.remarks || '-'}</td>

@@ -26,10 +26,12 @@ exports.getDashboard = async (req, res) => {
                     $group: {
                         _id: null,
                         totalStudents: { $sum: 1 },
-                        totalFeesExpected: { $sum: "$totalFee" },
+                        totalFeesExpected: {
+                            $sum: { $add: ["$totalFee", { $ifNull: ["$totalBookFee", 0] }] }
+                        },
                         totalFeesCollected: { $sum: "$currentTotalPaid" },
                         studentsFullyPaid: {
-                            $sum: { $cond: [{ $gte: ["$currentTotalPaid", "$totalFee"] }, 1, 0] }
+                            $sum: { $cond: [{ $gte: ["$currentTotalPaid", { $add: ["$totalFee", { $ifNull: ["$totalBookFee", 0] }] }] }, 1, 0] }
                         }
                     }
                 },
@@ -52,7 +54,9 @@ exports.getDashboard = async (req, res) => {
                     $group: {
                         _id: "$class",
                         students: { $sum: 1 },
-                        totalFee: { $sum: "$totalFee" },
+                        totalFee: {
+                            $sum: { $add: ["$totalFee", { $ifNull: ["$totalBookFee", 0] }] }
+                        },
                         collected: { $sum: { $sum: "$feePayments.amount" } }
                     }
                 },

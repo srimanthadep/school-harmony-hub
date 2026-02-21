@@ -483,6 +483,16 @@ tbody td {
   overflow-wrap: break-word;
 }
 
+.students-table th {
+  padding: 8px 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.students-table td {
+  padding: 8px 4px;
+}
+
 /* ===== BADGES ===== */
 .badge {
   display: inline-flex;
@@ -493,6 +503,7 @@ tbody td {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .badge-paid {
