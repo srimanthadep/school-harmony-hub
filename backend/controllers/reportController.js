@@ -19,7 +19,16 @@ exports.getDashboard = async (req, res) => {
                 { $match: { isActive: true } },
                 {
                     $addFields: {
-                        currentTotalPaid: { $sum: "$feePayments.amount" }
+                        currentTotalPaid: { $sum: "$feePayments.amount" },
+                        libraryPaidAmount: {
+                            $sum: {
+                                $map: {
+                                    input: { $filter: { input: "$feePayments", as: "p", cond: { $eq: ["$$p.feeType", "book"] } } },
+                                    as: "b",
+                                    in: "$$b.amount"
+                                }
+                            }
+                        }
                     }
                 },
                 {
@@ -30,6 +39,8 @@ exports.getDashboard = async (req, res) => {
                             $sum: { $add: ["$totalFee", { $ifNull: ["$totalBookFee", 0] }] }
                         },
                         totalFeesCollected: { $sum: "$currentTotalPaid" },
+                        libraryExpected: { $sum: { $ifNull: ["$totalBookFee", 0] } },
+                        libraryCollected: { $sum: "$libraryPaidAmount" },
                         studentsFullyPaid: {
                             $sum: { $cond: [{ $gte: ["$currentTotalPaid", { $add: ["$totalFee", { $ifNull: ["$totalBookFee", 0] }] }] }, 1, 0] }
                         }
@@ -42,7 +53,9 @@ exports.getDashboard = async (req, res) => {
                         totalFeesExpected: 1,
                         totalFeesCollected: 1,
                         studentsFullyPaid: 1,
-                        totalFeesPending: { $subtract: ["$totalFeesExpected", "$totalFeesCollected"] }
+                        totalFeesPending: { $subtract: ["$totalFeesExpected", "$totalFeesCollected"] },
+                        libraryCollected: 1,
+                        libraryPending: { $subtract: ["$libraryExpected", "$libraryCollected"] }
                     }
                 }
             ]),
@@ -136,7 +149,7 @@ exports.getDashboard = async (req, res) => {
         ]);
 
         // Post-process to match frontend structure
-        const s = studentStats[0] || { totalStudents: 0, totalFeesExpected: 0, totalFeesCollected: 0, totalFeesPending: 0, studentsFullyPaid: 0 };
+        const s = studentStats[0] || { totalStudents: 0, totalFeesExpected: 0, totalFeesCollected: 0, totalFeesPending: 0, studentsFullyPaid: 0, libraryCollected: 0, libraryPending: 0 };
         const st = staffStats[0] || { totalStaff: 0, totalMonthlySalary: 0, totalSalaryPaid: 0 };
 
         const classWise = {};
@@ -168,6 +181,8 @@ exports.getDashboard = async (req, res) => {
                 totalFeesCollected: s.totalFeesCollected,
                 totalFeesPending: s.totalFeesPending,
                 studentsFullyPaid: s.studentsFullyPaid,
+                libraryCollected: s.libraryCollected,
+                libraryPending: s.libraryPending,
                 totalSalaryPaid: st.totalSalaryPaid,
                 totalMonthlySalary: st.totalMonthlySalary,
                 collectionRate,

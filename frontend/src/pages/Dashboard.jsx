@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
     MdPeople, MdSchool, MdAccountBalance, MdWarning,
-    MdPayments, MdTrendingUp, MdReceipt, MdCheckCircle, MdRefresh
+    MdPayments, MdTrendingUp, MdReceipt, MdCheckCircle, MdRefresh, MdMenuBook
 } from 'react-icons/md';
 
 const COLORS = ['#1a237e', '#f9a825', '#00897b', '#e53935', '#7b1fa2'];
@@ -70,30 +70,27 @@ export default function Dashboard() {
                 <div className="stat-card green">
                     <div className="stat-icon"><MdAccountBalance /></div>
                     <div className="stat-value">{formatCurrency(data.totalFeesCollected)}</div>
-                    <div className="stat-label">Fees Collected</div>
+                    <div className="stat-label">Tuition Fee Collected</div>
                 </div>
                 <div className="stat-card red">
                     <div className="stat-icon"><MdWarning /></div>
                     <div className="stat-value">{formatCurrency(data.totalFeesPending)}</div>
-                    <div className="stat-label">Pending Fees</div>
+                    <div className="stat-label">Pending Tuition Fee</div>
                 </div>
                 <div className="stat-card purple">
                     <div className="stat-icon"><MdPayments /></div>
                     <div className="stat-value">{formatCurrency(data.totalSalaryPaid)}</div>
                     <div className="stat-label">Salary Paid</div>
                 </div>
-                <div className="stat-card green" style={{ background: 'linear-gradient(135deg,#e8f5e9,#f1f8e9)' }}>
-                    <div className="stat-icon" style={{ background: 'rgba(67,160,71,0.12)', color: '#2e7d32' }}><MdCheckCircle /></div>
-                    <div className="stat-value" style={{ color: '#2e7d32' }}>{data.studentsFullyPaid ?? 0}</div>
-                    <div className="stat-label">Fully Paid Students</div>
+                <div className="stat-card green">
+                    <div className="stat-icon"><MdMenuBook /></div>
+                    <div className="stat-value">{formatCurrency(data.libraryCollected || 0)}</div>
+                    <div className="stat-label">Book's Fee Collected</div>
                 </div>
-                <div className="stat-card" style={{ background: 'linear-gradient(135deg,#e0f7fa,#e0f2f1)' }}>
-                    <div className="stat-icon" style={{ background: 'rgba(0,137,123,0.12)', color: '#00796b' }}><MdTrendingUp /></div>
-                    <div className="stat-value" style={{ color: '#00796b' }}>{data.collectionRate ?? 0}%</div>
-                    <div className="stat-label">Collection Rate</div>
-                    <div style={{ marginTop: 8, background: '#b2dfdb', borderRadius: 99, height: 5, overflow: 'hidden' }}>
-                        <div style={{ width: `${data.collectionRate ?? 0}%`, background: '#00897b', height: '100%', borderRadius: 99, transition: 'width 0.8s ease' }} />
-                    </div>
+                <div className="stat-card red">
+                    <div className="stat-icon"><MdMenuBook /></div>
+                    <div className="stat-value">{formatCurrency(data.libraryPending || 0)}</div>
+                    <div className="stat-label">Pending Book's Fee</div>
                 </div>
             </div>
 

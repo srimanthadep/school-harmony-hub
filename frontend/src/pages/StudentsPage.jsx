@@ -434,7 +434,9 @@ export default function StudentsPage() {
                                         <td>
                                             <div style={{ fontWeight: 600 }}>{s.name}</div>
                                         </td>
-                                        <td>{s.class}</td>
+                                        <td>
+                                            <span className="badge badge-admin" style={{ fontSize: 11 }}>{s.class}</span>
+                                        </td>
 
                                         <td>{s.rollNo}</td>
                                         <td>

@@ -5,7 +5,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, LineChart, Line, Legend
 } from 'recharts';
-import { MdBarChart, MdPeople, MdSchool, MdWarning, MdTrendingUp } from 'react-icons/md';
+import { MdBarChart, MdPeople, MdSchool, MdWarning, MdTrendingUp, MdCheckCircle } from 'react-icons/md';
 
 const TABS = [
     { key: 'classwise', label: '📊 Class-wise Fees', icon: MdSchool },
@@ -19,6 +19,7 @@ export default function ReportsPage() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [classFilter, setClassFilter] = useState('');
+    const [dashboardStats, setDashboardStats] = useState(null);
 
     const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
@@ -37,6 +38,9 @@ export default function ReportsPage() {
     };
 
     useEffect(() => { fetchReport(); }, [activeTab, classFilter]);
+    useEffect(() => {
+        API.get('/reports/dashboard').then(res => setDashboardStats(res.data.dashboard)).catch(() => { });
+    }, []);
 
     const renderClasswise = () => {
         if (!data?.report) return null;
@@ -295,6 +299,24 @@ export default function ReportsPage() {
 
     return (
         <div>
+            {dashboardStats && (
+                <div className="stats-grid" style={{ marginBottom: 20 }}>
+                    <div className="stat-card green" style={{ background: 'linear-gradient(135deg,#e8f5e9,#f1f8e9)' }}>
+                        <div className="stat-icon" style={{ background: 'rgba(67,160,71,0.12)', color: '#2e7d32' }}><MdCheckCircle /></div>
+                        <div className="stat-value" style={{ color: '#2e7d32' }}>{dashboardStats.studentsFullyPaid ?? 0}</div>
+                        <div className="stat-label">Fully Paid Students</div>
+                    </div>
+                    <div className="stat-card" style={{ background: 'linear-gradient(135deg,#e0f7fa,#e0f2f1)' }}>
+                        <div className="stat-icon" style={{ background: 'rgba(0,137,123,0.12)', color: '#00796b' }}><MdTrendingUp /></div>
+                        <div className="stat-value" style={{ color: '#00796b' }}>{dashboardStats.collectionRate ?? 0}%</div>
+                        <div className="stat-label">Collection Rate</div>
+                        <div style={{ marginTop: 8, background: '#b2dfdb', borderRadius: 99, height: 5, overflow: 'hidden' }}>
+                            <div style={{ width: `${dashboardStats.collectionRate ?? 0}%`, background: '#00897b', height: '100%', borderRadius: 99, transition: 'width 0.8s ease' }} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Tab Navigation */}
             <div className="card" style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', gap: 4, padding: '16px 20px', borderBottom: '1px solid var(--border-light)', flexWrap: 'wrap' }}>
