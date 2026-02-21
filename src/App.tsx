@@ -12,6 +12,7 @@ import FeesPage from "./pages/FeesPage";
 import SalariesPage from "./pages/SalariesPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
+import FeeStructuresPage from "./pages/FeeStructuresPage";
 import MyFeesPage from "./pages/MyFeesPage";
 import MySalaryPage from "./pages/MySalaryPage";
 import NotFound from "./pages/NotFound";
@@ -42,6 +43,7 @@ function AppRoutes() {
         <Route path="/staff" element={<StaffPage />} />
         <Route path="/fees" element={<FeesPage />} />
         <Route path="/salaries" element={<SalariesPage />} />
+        <Route path="/fee-structures" element={<FeeStructuresPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" />} />
