@@ -358,12 +358,14 @@ export default function StudentsPage() {
                                         <td><code style={{ fontSize: 11, color: '#1a237e' }}>{s.studentId}</code></td>
                                         <td>
                                             <div style={{ fontWeight: 600 }}>{s.name}</div>
-                                            <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.parentPhone}</div>
                                         </td>
                                         <td>{s.class}</td>
 
                                         <td>{s.rollNo}</td>
-                                        <td style={{ fontSize: 13 }}>{s.parentName}</td>
+                                        <td>
+                                            <div style={{ fontSize: 13 }}>{s.parentName}</div>
+                                            <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.parentPhone}</div>
+                                        </td>
                                         <td style={{ fontWeight: 600 }}>{formatCurrency(s.totalFee)}</td>
                                         <td style={{ fontWeight: 600, color: s.pendingAmount > 0 ? '#e53935' : '#43a047' }}>
                                             {formatCurrency(s.pendingAmount)}
