@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { formatCurrency, formatDate, generateSalarySlipPDF } from '../utils/pdfUtils';
 import {
     MdAdd, MdEdit, MdDelete, MdSearch, MdClose,
-    MdPayment, MdHistory, MdDownload, MdPerson
+    MdPayment, MdHistory, MdDownload, MdPerson, MdReceiptLong
 } from 'react-icons/md';
 
 const ROLES = ['teacher', 'principal', 'vice_principal', 'admin_staff', 'librarian', 'peon', 'guard', 'accountant', 'other'];
@@ -135,6 +135,15 @@ export default function StaffPage() {
         finally { setSalaryLoading(false); }
     };
 
+    const downloadLatestPayslip = (s) => {
+        if (!s.salaryPayments || s.salaryPayments.length === 0) {
+            toast.error('No salary history to download');
+            return;
+        }
+        const latestInfo = [...s.salaryPayments].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))[0];
+        generateSalarySlipPDF(s, latestInfo, settings);
+    };
+
     return (
         <div>
             {/* Controls */}
@@ -201,10 +210,22 @@ export default function StaffPage() {
                                         <td style={{ fontWeight: 600, color: '#43a047' }}>{formatCurrency(s.totalSalaryPaid)}</td>
                                         <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(s.joiningDate)}</td>
                                         <td>
-                                            <div className="btn-group">
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: '1fr 1fr',
+                                                gap: 5,
+                                                minWidth: 90
+                                            }}>
                                                 <button className="btn btn-success btn-sm btn-icon" title="Pay Salary"
                                                     onClick={() => { setShowSalary(s); setSalaryForm(f => ({ ...f, amount: s.monthlySalary })); }}>
                                                     <MdPayment />
+                                                </button>
+                                                <button
+                                                    className="btn btn-primary btn-sm btn-icon"
+                                                    title="Download Latest Payslip"
+                                                    style={{ opacity: s.totalSalaryPaid > 0 ? 1 : 0.3, cursor: s.totalSalaryPaid > 0 ? 'pointer' : 'default' }}
+                                                    onClick={() => s.totalSalaryPaid > 0 && downloadLatestPayslip(s)}>
+                                                    <MdReceiptLong />
                                                 </button>
                                                 <button className="btn btn-secondary btn-sm btn-icon" title="Salary History"
                                                     onClick={() => openHistory(s)}>
@@ -214,6 +235,7 @@ export default function StaffPage() {
                                                     <MdEdit />
                                                 </button>
                                                 <button className="btn btn-danger btn-sm btn-icon" title="Delete"
+                                                    style={{ gridColumn: 'span 2' }}
                                                     onClick={() => setShowDeleteConfirm(s)}>
                                                     <MdDelete />
                                                 </button>
