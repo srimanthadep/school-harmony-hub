@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate, generateSalarySlipPDF } from '../utils/pdfUtils';
 import {
     MdAdd, MdEdit, MdDelete, MdSearch, MdClose,
@@ -36,6 +37,7 @@ const emptyStaff = {
 const ROLE_DISPLAY = (r) => r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 export default function StaffPage() {
+    const { user } = useAuth();
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -95,7 +97,7 @@ export default function StaffPage() {
             setTotalPages(Math.ceil((res.data.total || 0) / 50));
         } catch { toast.error('Failed to load staff'); }
         finally { setLoading(false); }
-    }, [roleFilter, debouncedSearch, page]);
+    }, [roleFilter, debouncedSearch, page, yearFilter]);
 
     useEffect(() => { fetchStaff(); }, [fetchStaff]);
     useEffect(() => { API.get('/settings').then(r => setSettings(r.data.settings)).catch(() => { }); }, []);
@@ -619,7 +621,7 @@ export default function StaffPage() {
                                                             <td style={{ textTransform: 'capitalize', fontSize: 12 }}>{(p.paymentMode || '').replace('_', ' ')}</td>
                                                             <td>
                                                                 <div style={{ display: 'flex', gap: 6 }}>
-                                                                    {user.role === 'owner' && (
+                                                                    {user?.role === 'owner' && (
                                                                         <button className="btn btn-secondary btn-sm" title="Edit Payment"
                                                                             onClick={() => openEditSalary(p)}>
                                                                             <MdEdit />
