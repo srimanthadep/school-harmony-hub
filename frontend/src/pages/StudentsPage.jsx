@@ -8,6 +8,7 @@ import {
     MdDownload, MdPayment, MdHistory, MdClose, MdPerson,
     MdFileDownload, MdPictureAsPdf, MdTableChart, MdReceiptLong
 } from 'react-icons/md';
+import { FaWhatsapp } from 'react-icons/fa';
 
 const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 const PAYMENT_MODES = ['cash', 'online', 'cheque', 'dd'];
@@ -249,6 +250,17 @@ export default function StudentsPage() {
         }
     };
 
+    const handleWhatsApp = (s) => {
+        if (!s.parentPhone || s.parentPhone.trim() === '') {
+            toast.error('No phone number found for this parent');
+            return;
+        }
+        const cleanPhone = s.parentPhone.replace(/\D/g, '');
+        const fullPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+        const msg = `Dear ${s.parentName},\nThis is a polite reminder from Oxford School that ${s.name}'s pending school fee is ₹${s.pendingAmount}. Please arrange the payment at your earliest convenience.\nThank you!`;
+        window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    };
+
     const STATUS_ORDER = { unpaid: 0, partial: 1, paid: 2 };
     const sortedStudents = [...students].sort((a, b) => {
         // If class filter is active, primary sort = roll number numerically
@@ -407,9 +419,13 @@ export default function StudentsPage() {
                                                     onClick={() => openEdit(s)}>
                                                     <MdEdit />
                                                 </button>
-                                                {/* Row 3: Delete (full width) */}
+                                                {/* Row 3: WhatsApp + Delete */}
+                                                <button className="btn btn-sm btn-icon" title="WhatsApp Reminder"
+                                                    style={{ background: '#25D366', color: 'white', opacity: s.pendingAmount > 0 ? 1 : 0.3, cursor: s.pendingAmount > 0 ? 'pointer' : 'default', border: 'none' }}
+                                                    onClick={() => s.pendingAmount > 0 && handleWhatsApp(s)}>
+                                                    <FaWhatsapp />
+                                                </button>
                                                 <button className="btn btn-danger btn-sm btn-icon" title="Delete"
-                                                    style={{ gridColumn: 'span 2' }}
                                                     onClick={() => setShowDeleteConfirm(s)}>
                                                     <MdDelete />
                                                 </button>

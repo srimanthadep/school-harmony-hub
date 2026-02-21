@@ -133,7 +133,7 @@ exports.recordSalaryPayment = async (req, res) => {
 
         const payment = {
             month: req.body.month,
-            amount: req.body.amount,
+            amount: Math.round(Number(req.body.amount || 0)),
             paymentDate: req.body.paymentDate || new Date(),
             paymentMode: req.body.paymentMode || 'bank_transfer',
             slipNo,

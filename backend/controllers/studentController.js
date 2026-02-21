@@ -142,7 +142,7 @@ exports.recordPayment = async (req, res) => {
         if (settings) await settings.save();
 
         const payment = {
-            amount: Math.round(Number(req.body.amount)),  // always store as integer rupees
+            amount: Math.round(Number(req.body.amount || 0)),  // always store as integer rupees
             paymentDate: req.body.paymentDate || new Date(),
             paymentMode: req.body.paymentMode || 'cash',
             receiptNo,
@@ -212,7 +212,7 @@ exports.editPayment = async (req, res) => {
 
         // Update allowed fields (allow 0 as a valid amount for corrections)
         const { amount, paymentDate, paymentMode, remarks } = req.body;
-        if (amount !== undefined && amount !== null && amount !== '') payment.amount = Number(amount);
+        if (amount !== undefined && amount !== null && amount !== '') payment.amount = Math.round(Number(amount));
         if (paymentDate !== undefined) payment.paymentDate = paymentDate;
         if (paymentMode !== undefined) payment.paymentMode = paymentMode;
         if (remarks !== undefined) payment.remarks = remarks;
