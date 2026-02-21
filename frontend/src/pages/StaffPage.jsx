@@ -69,6 +69,12 @@ export default function StaffPage() {
     const [showHistory, setShowHistory] = useState(null);
     const [historyData, setHistoryData] = useState(null);
 
+    const [editSalaryTarget, setEditSalaryTarget] = useState(null); // { staffId, payment }
+    const [editSalaryForm, setEditSalaryForm] = useState({
+        amount: '', paymentDate: '', paymentMode: 'bank_transfer', remarks: '', month: ''
+    });
+    const [editSalaryLoading, setEditSalaryLoading] = useState(false);
+
     const [salaryForm, setSalaryForm] = useState({
         month: CURRENT_MONTH, amount: '', paymentDate: new Date().toISOString().split('T')[0],
         paymentMode: 'bank_transfer', remarks: ''
@@ -168,12 +174,46 @@ export default function StaffPage() {
     };
 
     const downloadLatestPayslip = (s) => {
-        if (!s.salaryPayments || s.salaryPayments.length === 0) {
-            toast.error('No salary history to download');
+        if (!s.salaryPayments?.length) return;
+        const last = s.salaryPayments[s.salaryPayments.length - 1];
+        generateSalarySlipPDF(s, last, settings);
+    };
+
+    const openEditSalary = (payment) => {
+        setEditSalaryTarget({ staffId: showHistory._id, payment });
+        setEditSalaryForm({
+            amount: payment.amount,
+            paymentDate: payment.paymentDate ? payment.paymentDate.split('T')[0] : '',
+            paymentMode: payment.paymentMode || 'bank_transfer',
+            remarks: payment.remarks || '',
+            month: payment.month || CURRENT_MONTH
+        });
+    };
+
+    const handleEditSalary = async (e) => {
+        e.preventDefault();
+        if (editSalaryForm.amount === '' || editSalaryForm.amount < 0) {
+            toast.error('Valid amount required');
             return;
         }
-        const latestInfo = [...s.salaryPayments].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))[0];
-        generateSalarySlipPDF(s, latestInfo, settings);
+        setEditSalaryLoading(true);
+        try {
+            await API.put(
+                `/staff/${editSalaryTarget.staffId}/salaries/${editSalaryTarget.payment._id}`,
+                editSalaryForm
+            );
+            toast.success('Salary payment updated!');
+            const staffId = editSalaryTarget.staffId;
+            setEditSalaryTarget(null);
+            // Refresh history
+            const res = await API.get(`/staff/${staffId}/salaries`);
+            setHistoryData(res.data);
+            fetchStaff();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Update failed');
+        } finally {
+            setEditSalaryLoading(false);
+        }
     };
 
     return (
@@ -566,7 +606,7 @@ export default function StaffPage() {
                                                         <th>Amount</th>
                                                         <th>Date</th>
                                                         <th>Mode</th>
-                                                        <th>Download</th>
+                                                        <th>Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -578,10 +618,18 @@ export default function StaffPage() {
                                                             <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(p.paymentDate)}</td>
                                                             <td style={{ textTransform: 'capitalize', fontSize: 12 }}>{(p.paymentMode || '').replace('_', ' ')}</td>
                                                             <td>
-                                                                <button className="btn btn-secondary btn-sm"
-                                                                    onClick={() => generateSalarySlipPDF(showHistory, p, settings)}>
-                                                                    <MdDownload />
-                                                                </button>
+                                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                                    {user.role === 'owner' && (
+                                                                        <button className="btn btn-secondary btn-sm" title="Edit Payment"
+                                                                            onClick={() => openEditSalary(p)}>
+                                                                            <MdEdit />
+                                                                        </button>
+                                                                    )}
+                                                                    <button className="btn btn-secondary btn-sm" title="Download Slip"
+                                                                        onClick={() => generateSalarySlipPDF(showHistory, p, settings)}>
+                                                                        <MdDownload />
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -595,6 +643,67 @@ export default function StaffPage() {
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => { setShowHistory(null); setHistoryData(null); }}>Close</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Salary Modal (Owner Only) */}
+            {editSalaryTarget && (
+                <div className="modal-overlay" style={{ zIndex: 1100 }}>
+                    <div className="modal" style={{ maxWidth: 500 }}>
+                        <div className="modal-header">
+                            <h3><MdEdit /> Edit Salary Payment</h3>
+                            <button className="btn-close" onClick={() => setEditSalaryTarget(null)}><MdClose /></button>
+                        </div>
+                        <form onSubmit={handleEditSalary}>
+                            <div className="modal-body">
+                                <div className="form-grid">
+                                    <div className="form-group">
+                                        <label className="form-label">Month <span className="required">*</span></label>
+                                        <select className="form-control" value={editSalaryForm.month}
+                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, month: e.target.value })}>
+                                            {MONTHS.map(m => <option key={m}>{m}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Amount (₹) <span className="required">*</span></label>
+                                        <input type="number" className="form-control"
+                                            value={editSalaryForm.amount}
+                                            onWheel={(e) => e.target.blur()}
+                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, amount: e.target.value })} min={0} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Payment Date</label>
+                                        <input type="date" className="form-control"
+                                            value={editSalaryForm.paymentDate}
+                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, paymentDate: e.target.value })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Payment Mode</label>
+                                        <select className="form-control"
+                                            value={editSalaryForm.paymentMode}
+                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, paymentMode: e.target.value })}>
+                                            <option value="cash">Cash</option>
+                                            <option value="bank_transfer">Bank Transfer</option>
+                                            <option value="cheque">Cheque</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                        <label className="form-label">Remarks</label>
+                                        <textarea className="form-control" rows="2"
+                                            value={editSalaryForm.remarks}
+                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, remarks: e.target.value })}
+                                            placeholder="Update remarks..." />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={() => setEditSalaryTarget(null)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={editSalaryLoading}>
+                                    {editSalaryLoading ? 'Saving...' : 'Update Payment'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

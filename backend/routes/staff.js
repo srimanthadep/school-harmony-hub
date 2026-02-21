@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
     getStaff, getStaffMember, createStaff, updateStaff, deleteStaff,
-    recordSalaryPayment, getSalaryHistory, getStaffStats
+    recordSalaryPayment, getSalaryHistory, getStaffStats, editSalaryPayment
 } = require('../controllers/staffController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -22,5 +22,8 @@ router.route('/:id')
 router.route('/:id/salaries')
     .get(authorize('admin', 'owner', 'staff'), getSalaryHistory)
     .post(authorize('admin', 'owner'), recordSalaryPayment);
+
+router.route('/:id/salaries/:paymentId')
+    .put(authorize('owner'), editSalaryPayment);
 
 module.exports = router;
