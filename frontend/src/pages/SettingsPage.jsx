@@ -187,6 +187,7 @@ export default function SettingsPage() {
                                                     <label className="form-label">{field.replace('Fee', ' Fee').replace(/\b\w/g, c => c.toUpperCase())} (₹)</label>
                                                     <input type="number" className="form-control" min="0"
                                                         value={feeForm[field] || 0}
+                                                        onWheel={(e) => e.target.blur()}
                                                         onChange={e => setFeeForm({ ...feeForm, [field]: e.target.value })} />
                                                 </div>
                                             ))}

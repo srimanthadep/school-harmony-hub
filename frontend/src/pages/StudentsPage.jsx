@@ -23,7 +23,7 @@ const STATUS_BADGE = {
 const emptyStudent = {
     name: '', class: 'Nursery', rollNo: '',
     gender: 'male', parentName: '', parentPhone: '', parentEmail: '',
-    dateOfBirth: '', address: '', totalFee: '', academicYear: '2024-25'
+    dateOfBirth: '', address: '', totalFee: '', academicYear: '2025-26'
 };
 
 export default function StudentsPage() {
@@ -75,7 +75,7 @@ export default function StudentsPage() {
 
     // Promote students
     const [showPromote, setShowPromote] = useState(false);
-    const [promoteForm, setPromoteForm] = useState({ fromYear: '2024-25', toYear: '2025-26' });
+    const [promoteForm, setPromoteForm] = useState({ fromYear: '2025-26', toYear: '2026-27' });
     const [promoteLoading, setPromoteLoading] = useState(false);
     const [promoteResult, setPromoteResult] = useState(null);
 
@@ -573,6 +573,7 @@ export default function StudentsPage() {
                                     <label className="form-label">Total Annual Fee <span className="required">*</span></label>
                                     <input type="number" className={`form-control ${formErrors.totalFee ? 'error' : ''}`}
                                         value={formData.totalFee} onChange={e => setFormData({ ...formData, totalFee: e.target.value })}
+                                        onWheel={(e) => e.target.blur()}
                                         placeholder="Annual fee amount" min="0" />
                                     {formErrors.totalFee && <p className="form-error">{formErrors.totalFee}</p>}
                                 </div>
@@ -637,6 +638,7 @@ export default function StudentsPage() {
                                         <input type="number" className="form-control"
                                             value={paymentForm.amount}
                                             onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                                            onWheel={(e) => e.target.blur()}
                                             min={1} step={1} placeholder="Enter amount" />
                                     </div>
                                     <div className="form-group">
@@ -784,6 +786,7 @@ export default function StudentsPage() {
                                         <input type="number" className="form-control"
                                             value={editPaymentForm.amount}
                                             onChange={e => setEditPaymentForm({ ...editPaymentForm, amount: e.target.value })}
+                                            onWheel={(e) => e.target.blur()}
                                             min={0} />
                                     </div>
                                     <div className="form-group">

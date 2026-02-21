@@ -1482,3 +1482,15 @@ tbody td {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Hide number input arrows and disable scroll-to-change behavior */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}

@@ -89,7 +89,7 @@ const studentSchema = new mongoose.Schema({
     photo: String,
     academicYear: {
         type: String,
-        default: '2024-25'
+        default: '2025-26'
     }
 }, {
     timestamps: true,

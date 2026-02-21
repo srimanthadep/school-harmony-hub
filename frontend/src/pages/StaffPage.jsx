@@ -359,6 +359,7 @@ export default function StaffPage() {
                                     <div className="form-group">
                                         <label className="form-label">Experience (years)</label>
                                         <input type="number" className="form-control" value={formData.experience}
+                                            onWheel={(e) => e.target.blur()}
                                             onChange={e => setFormData({ ...formData, experience: e.target.value })} min="0" />
                                     </div>
                                     <div className="form-group">
@@ -376,6 +377,7 @@ export default function StaffPage() {
                                         <label className="form-label">Monthly Salary (₹) <span className="required">*</span></label>
                                         <input type="number" className={`form-control ${formErrors.monthlySalary ? 'error' : ''}`}
                                             value={formData.monthlySalary}
+                                            onWheel={(e) => e.target.blur()}
                                             onChange={e => setFormData({ ...formData, monthlySalary: e.target.value })} min="0" />
                                         {formErrors.monthlySalary && <p className="form-error">{formErrors.monthlySalary}</p>}
                                     </div>
@@ -458,6 +460,7 @@ export default function StaffPage() {
                                     <div className="form-group">
                                         <label className="form-label">Amount (₹) <span className="required">*</span></label>
                                         <input type="number" className="form-control" value={salaryForm.amount}
+                                            onWheel={(e) => e.target.blur()}
                                             onChange={e => setSalaryForm({ ...salaryForm, amount: e.target.value })} min={1} />
                                     </div>
                                     <div className="form-group">
