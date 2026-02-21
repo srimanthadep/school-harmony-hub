@@ -246,7 +246,17 @@ export default function StaffPage() {
                                         <td style={{ fontSize: 13 }}>{s.subject || '-'}</td>
                                         <td style={{ fontWeight: 600 }}>{formatCurrency(s.monthlySalary)}</td>
                                         <td style={{ fontWeight: 600, color: '#43a047' }}>{formatCurrency(s.totalSalaryPaid)}</td>
-                                        <td style={{ fontSize: 12 }}><span className="badge" style={{ background: '#f0f2f8', color: '#1a237e' }}>{s.academicYear || '-'}</span></td>
+                                        <td>
+                                            <span className="badge" style={{
+                                                background: '#f0f2f8',
+                                                color: '#1a237e',
+                                                fontSize: '10px',
+                                                whiteSpace: 'nowrap',
+                                                padding: '2px 8px'
+                                            }}>
+                                                {s.academicYear || '-'}
+                                            </span>
+                                        </td>
                                         <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(s.joiningDate)}</td>
                                         <td>
                                             <div style={{
