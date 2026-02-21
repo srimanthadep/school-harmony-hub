@@ -27,7 +27,7 @@ const MONTHS = generateMonths();
 const CURRENT_MONTH = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
 const emptyStaff = {
-    name: '', email: '', phone: '', role: 'teacher', subject: '',
+    name: '', phone: '', role: 'teacher', subject: '',
     department: '', qualification: '', experience: '', gender: 'male',
     address: '', monthlySalary: '', joiningDate: '',
     bankAccount: '', bankName: '', ifscCode: '', academicYear: '2025-26'
@@ -97,7 +97,6 @@ export default function StaffPage() {
     const validateForm = () => {
         const errs = {};
         if (!formData.name.trim()) errs.name = 'Name is required';
-        if (!formData.email.trim()) errs.email = 'Email is required';
         if (!formData.phone.trim()) errs.phone = 'Phone is required';
         if (!formData.monthlySalary || formData.monthlySalary <= 0) errs.monthlySalary = 'Valid salary required';
         if (!formData.joiningDate) errs.joiningDate = 'Joining date is required';
@@ -126,7 +125,7 @@ export default function StaffPage() {
     const openEdit = (s) => {
         setEditStaff(s);
         setFormData({
-            name: s.name, email: s.email, phone: s.phone, role: s.role,
+            name: s.name, phone: s.phone, role: s.role,
             subject: s.subject || '', department: s.department || '',
             qualification: s.qualification || '', experience: s.experience || '',
             gender: s.gender || 'male', address: s.address || '',
@@ -236,7 +235,6 @@ export default function StaffPage() {
                                         <td><code style={{ fontSize: 11, color: '#1a237e' }}>{s.staffId}</code></td>
                                         <td>
                                             <div style={{ fontWeight: 600 }}>{s.name}</div>
-                                            <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.email}</div>
                                         </td>
                                         <td>
                                             <span className="badge badge-admin" style={{ textTransform: 'capitalize' }}>
@@ -346,12 +344,6 @@ export default function StaffPage() {
                                         <input className={`form-control ${formErrors.name ? 'error' : ''}`}
                                             value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                                         {formErrors.name && <p className="form-error">{formErrors.name}</p>}
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Email <span className="required">*</span></label>
-                                        <input type="email" className={`form-control ${formErrors.email ? 'error' : ''}`}
-                                            value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
-                                        {formErrors.email && <p className="form-error">{formErrors.email}</p>}
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Phone <span className="required">*</span></label>
