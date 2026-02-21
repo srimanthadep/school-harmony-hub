@@ -53,14 +53,6 @@ function Sidebar({ isOpen, onClose }) {
                     ))}
                 </nav>
                 <div className="sidebar-footer">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '0 4px' }}>
-                        <img src="/logo.png" alt="logo"
-                            style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', mixBlendMode: 'screen', flexShrink: 0 }} />
-                        <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{user?.name || 'Oxford School'}</div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{user?.role === 'owner' ? '👑 Owner' : 'Administrator'}</div>
-                        </div>
-                    </div>
                     <button className="nav-item" onClick={logout} style={{ color: 'rgba(229,57,53,0.8)' }}>
                         <span className="nav-icon"><MdLogout /></span>
                         Sign Out
