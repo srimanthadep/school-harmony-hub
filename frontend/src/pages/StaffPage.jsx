@@ -98,7 +98,7 @@ export default function StaffPage() {
         const errs = {};
         if (!formData.name.trim()) errs.name = 'Name is required';
         if (!formData.phone.trim()) errs.phone = 'Phone is required';
-        if (!formData.monthlySalary || formData.monthlySalary <= 0) errs.monthlySalary = 'Valid salary required';
+        if (formData.monthlySalary === '' || formData.monthlySalary < 0) errs.monthlySalary = 'Valid salary required';
         if (!formData.joiningDate) errs.joiningDate = 'Joining date is required';
         setFormErrors(errs);
         return Object.keys(errs).length === 0;
@@ -155,7 +155,7 @@ export default function StaffPage() {
 
     const handleSalaryPayment = async (e) => {
         e.preventDefault();
-        if (!salaryForm.amount || salaryForm.amount <= 0) { toast.error('Enter a valid amount'); return; }
+        if (salaryForm.amount === '' || salaryForm.amount < 0) { toast.error('Enter a valid amount'); return; }
         setSalaryLoading(true);
         try {
             await API.post(`/staff/${showSalary._id}/salaries`, { ...salaryForm, amount: Number(salaryForm.amount) });
@@ -496,7 +496,7 @@ export default function StaffPage() {
                                         <label className="form-label">Amount (₹) <span className="required">*</span></label>
                                         <input type="number" className="form-control" value={salaryForm.amount}
                                             onWheel={(e) => e.target.blur()}
-                                            onChange={e => setSalaryForm({ ...salaryForm, amount: e.target.value })} min={1} />
+                                            onChange={e => setSalaryForm({ ...salaryForm, amount: e.target.value })} min={0} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Payment Date</label>

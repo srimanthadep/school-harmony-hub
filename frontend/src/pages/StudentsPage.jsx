@@ -112,7 +112,7 @@ export default function StudentsPage() {
         if (!formData.rollNo.trim()) errs.rollNo = 'Roll no is required';
         if (!formData.parentName.trim()) errs.parentName = 'Parent name is required';
         if (!formData.parentPhone.trim()) errs.parentPhone = 'Parent phone is required';
-        if (!formData.totalFee || formData.totalFee <= 0) errs.totalFee = 'Valid fee required';
+        if (formData.totalFee === '' || formData.totalFee < 0) errs.totalFee = 'Valid fee required';
         setFormErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -224,7 +224,7 @@ export default function StudentsPage() {
 
     const handlePayment = async (e) => {
         e.preventDefault();
-        if (!paymentForm.amount || paymentForm.amount <= 0) {
+        if (paymentForm.amount === '' || paymentForm.amount < 0) {
             toast.error('Please enter a valid amount');
             return;
         }
@@ -639,7 +639,7 @@ export default function StudentsPage() {
                                             value={paymentForm.amount}
                                             onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                                             onWheel={(e) => e.target.blur()}
-                                            min={1} step={1} placeholder="Enter amount" />
+                                            min={0} step={1} placeholder="Enter amount" />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Payment Date</label>
