@@ -623,7 +623,7 @@ export default function StudentsPage() {
                         <div className="modal-body">
                             {historyData ? (
                                 <>
-                                    <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+                                    <div className="mobile-stack" style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
                                         <div className="highlight-box" style={{ flex: 1 }}>
                                             <div style={{ fontSize: 12, color: '#6b7280' }}>Total Fee</div>
                                             <div style={{ fontSize: 20, fontWeight: 800, color: '#1a237e' }}>{formatCurrency(showHistory.totalFee)}</div>
@@ -779,7 +779,7 @@ export default function StudentsPage() {
                                         <div style={{ fontWeight: 700, fontSize: 16, color: '#15803d' }}>Promotion Complete!</div>
                                         <div style={{ fontSize: 13, color: '#6b7280', marginTop: 8 }}>{promoteResult.message}</div>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                                    <div className="promote-result-grid" style={{ gap: 10 }}>
                                         <div style={{ textAlign: 'center', padding: 12, background: '#eff6ff', borderRadius: 8 }}>
                                             <div style={{ fontSize: 24, fontWeight: 800, color: '#1d4ed8' }}>{promoteResult.promoted}</div>
                                             <div style={{ fontSize: 12, color: '#6b7280' }}>Promoted</div>

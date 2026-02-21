@@ -96,7 +96,7 @@ export default function StudentPortal() {
                                 transition: 'width 0.8s ease'
                             }} />
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
+                        <div className="portal-info-grid" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
                             <div className="highlight-box" style={{ padding: '10px 16px' }}>
                                 <div style={{ fontSize: 12, color: '#6b7280' }}>Parent Name</div>
                                 <div style={{ fontWeight: 600 }}>{student.parentName}</div>

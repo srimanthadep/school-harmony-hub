@@ -84,7 +84,7 @@ export default function Dashboard() {
             </div>
 
             {/* Charts Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+            <div className="charts-grid" style={{ gap: 20, marginBottom: 24 }}>
                 {/* Monthly income vs expense */}
                 <div className="card">
                     <div className="card-header">

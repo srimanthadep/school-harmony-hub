@@ -191,7 +191,7 @@ export default function ReportsPage() {
 
         return (
             <div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+                <div className="reports-stats-grid" style={{ gap: 16, marginBottom: 24 }}>
                     <div className="stat-card green">
                         <div className="stat-icon">📥</div>
                         <div className="stat-value">{formatCurrency(data.report.reduce((s, r) => s + r.income, 0))}</div>
@@ -256,7 +256,7 @@ export default function ReportsPage() {
         if (!data) return null;
         return (
             <div>
-                <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+                <div className="mobile-stack" style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
                     <div className="highlight-box" style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, color: '#6b7280' }}>Total Monthly Salary Commitment</div>
                         <div style={{ fontSize: 22, fontWeight: 800, color: '#1a237e' }}>{formatCurrency(data.totalMonthlySalary)}</div>
