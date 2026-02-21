@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
     MdPeople, MdSchool, MdAccountBalance, MdWarning,
-    MdPayments, MdTrendingUp, MdReceipt, MdCheckCircle
+    MdPayments, MdTrendingUp, MdReceipt, MdCheckCircle, MdRefresh
 } from 'react-icons/md';
 
 const COLORS = ['#1a237e', '#f9a825', '#00897b', '#e53935', '#7b1fa2'];
@@ -16,11 +16,18 @@ export default function Dashboard() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+    const fetchDashboard = (showLoading = true) => {
+        if (showLoading) setLoading(true);
         API.get('/reports/dashboard')
             .then(res => setData(res.data.dashboard))
             .catch(console.error)
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        fetchDashboard();
+        const interval = setInterval(() => fetchDashboard(false), 30000); // Auto refresh every 30s
+        return () => clearInterval(interval);
     }, []);
 
     if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
@@ -41,6 +48,13 @@ export default function Dashboard() {
 
     return (
         <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>School Dashboard</h1>
+                <button className="btn btn-secondary" onClick={() => fetchDashboard()} style={{ gap: 8 }}>
+                    <MdRefresh className={loading ? 'spin' : ''} /> Refresh Data
+                </button>
+            </div>
+
             {/* Stats Grid */}
             <div className="stats-grid">
                 <div className="stat-card blue">

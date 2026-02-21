@@ -115,7 +115,7 @@ exports.getDashboard = async (req, res) => {
             Student.aggregate([
                 { $match: { isActive: true } },
                 { $unwind: "$feePayments" },
-                { $sort: { "feePayments.paymentDate": -1 } },
+                { $sort: { "feePayments.paymentDate": -1, "feePayments._id": -1 } },
                 { $limit: 10 },
                 {
                     $project: {
