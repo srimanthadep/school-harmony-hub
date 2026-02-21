@@ -18,11 +18,19 @@ exports.getDashboard = async (req, res) => {
             Student.aggregate([
                 { $match: { isActive: true } },
                 {
+                    $addFields: {
+                        currentTotalPaid: { $sum: "$feePayments.amount" }
+                    }
+                },
+                {
                     $group: {
                         _id: null,
                         totalStudents: { $sum: 1 },
                         totalFeesExpected: { $sum: "$totalFee" },
-                        totalFeesCollected: { $sum: { $sum: "$feePayments.amount" } }
+                        totalFeesCollected: { $sum: "$currentTotalPaid" },
+                        studentsFullyPaid: {
+                            $sum: { $cond: [{ $gte: ["$currentTotalPaid", "$totalFee"] }, 1, 0] }
+                        }
                     }
                 },
                 {
@@ -31,6 +39,7 @@ exports.getDashboard = async (req, res) => {
                         totalStudents: 1,
                         totalFeesExpected: 1,
                         totalFeesCollected: 1,
+                        studentsFullyPaid: 1,
                         totalFeesPending: { $subtract: ["$totalFeesExpected", "$totalFeesCollected"] }
                     }
                 }
@@ -123,7 +132,7 @@ exports.getDashboard = async (req, res) => {
         ]);
 
         // Post-process to match frontend structure
-        const s = studentStats[0] || { totalStudents: 0, totalFeesExpected: 0, totalFeesCollected: 0, totalFeesPending: 0 };
+        const s = studentStats[0] || { totalStudents: 0, totalFeesExpected: 0, totalFeesCollected: 0, totalFeesPending: 0, studentsFullyPaid: 0 };
         const st = staffStats[0] || { totalStaff: 0, totalMonthlySalary: 0, totalSalaryPaid: 0 };
 
         const classWise = {};
@@ -154,6 +163,7 @@ exports.getDashboard = async (req, res) => {
                 totalStaff: st.totalStaff,
                 totalFeesCollected: s.totalFeesCollected,
                 totalFeesPending: s.totalFeesPending,
+                studentsFullyPaid: s.studentsFullyPaid,
                 totalSalaryPaid: st.totalSalaryPaid,
                 totalMonthlySalary: st.totalMonthlySalary,
                 collectionRate,
