@@ -234,7 +234,7 @@ export default function StaffPage() {
                                         <td><code style={{ fontSize: 11, color: '#1a237e' }}>{s.staffId}</code></td>
                                         <td>
                                             <div style={{ fontWeight: 600 }}>{s.name}</div>
-                                            {s.subject && <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.subject}</div>}
+                                            {s.subject && <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>{s.subject}</div>}
                                         </td>
                                         <td>
                                             <span className="badge badge-admin" style={{ textTransform: 'capitalize' }}>
