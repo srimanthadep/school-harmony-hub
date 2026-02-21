@@ -608,7 +608,8 @@ export default function StaffPage() {
                                                         <th>Amount</th>
                                                         <th>Date</th>
                                                         <th>Mode</th>
-                                                        <th>Actions</th>
+                                                        <th>Download</th>
+                                                        {user?.role === 'owner' && <th>Edit</th>}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -620,19 +621,28 @@ export default function StaffPage() {
                                                             <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(p.paymentDate)}</td>
                                                             <td style={{ textTransform: 'capitalize', fontSize: 12 }}>{(p.paymentMode || '').replace('_', ' ')}</td>
                                                             <td>
-                                                                <div style={{ display: 'flex', gap: 6 }}>
-                                                                    {user?.role === 'owner' && (
-                                                                        <button className="btn btn-secondary btn-sm" title="Edit Payment"
-                                                                            onClick={() => openEditSalary(p)}>
-                                                                            <MdEdit />
-                                                                        </button>
-                                                                    )}
-                                                                    <button className="btn btn-secondary btn-sm" title="Download Slip"
-                                                                        onClick={() => generateSalarySlipPDF(showHistory, p, settings)}>
-                                                                        <MdDownload />
-                                                                    </button>
-                                                                </div>
+                                                                <button className="btn btn-secondary btn-sm" title="Download Slip"
+                                                                    onClick={() => generateSalarySlipPDF(showHistory, p, settings)}>
+                                                                    <MdDownload />
+                                                                </button>
                                                             </td>
+                                                            {user?.role === 'owner' && (
+                                                                <td>
+                                                                    <button
+                                                                        className="btn btn-sm"
+                                                                        title="Edit Payment"
+                                                                        style={{
+                                                                            background: 'linear-gradient(135deg,#7c3aed,#4f46e5)',
+                                                                            color: '#fff', border: 'none', borderRadius: 6,
+                                                                            padding: '4px 10px', cursor: 'pointer',
+                                                                            display: 'flex', alignItems: 'center', gap: 4
+                                                                        }}
+                                                                        onClick={() => openEditSalary(p)}
+                                                                    >
+                                                                        <MdEdit style={{ fontSize: 14 }} /> Edit
+                                                                    </button>
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     ))}
                                                 </tbody>
