@@ -7,9 +7,10 @@ const Settings = require('../models/Settings');
 // @access  Admin
 exports.getStaff = async (req, res) => {
     try {
-        const { role, search, page = 1, limit = 50 } = req.query;
+        const { role, academicYear, search, page = 1, limit = 50 } = req.query;
         const query = { isActive: true };
         if (role) query.role = role;
+        if (academicYear) query.academicYear = academicYear;
         if (search) query.name = { $regex: search, $options: 'i' };
 
         const staff = await Staff.find(query)

@@ -88,7 +88,11 @@ const staffSchema = new mongoose.Schema({
     photo: String,
     bankAccount: String,
     bankName: String,
-    ifscCode: String
+    ifscCode: String,
+    academicYear: {
+        type: String,
+        default: '2025-26'
+    }
 }, {
     timestamps: true,
     toJSON: { virtuals: true },
@@ -110,6 +114,7 @@ staffSchema.pre('save', async function (next) {
 });
 
 staffSchema.index({ isActive: 1 });
+staffSchema.index({ academicYear: 1 });
 staffSchema.index({ role: 1 });
 staffSchema.index({ name: 'text' });
 

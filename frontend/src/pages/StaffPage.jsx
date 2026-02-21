@@ -8,17 +8,29 @@ import {
 } from 'react-icons/md';
 
 const ROLES = ['teacher', 'principal', 'vice_principal', 'admin_staff', 'librarian', 'peon', 'guard', 'accountant', 'other'];
-const MONTHS = [
-    'January 2024', 'February 2024', 'March 2024', 'April 2024', 'May 2024', 'June 2024',
-    'July 2024', 'August 2024', 'September 2024', 'October 2024', 'November 2024', 'December 2024',
-    'January 2025', 'February 2025', 'March 2025'
-];
+
+const ACADEMIC_YEARS = ['2023-24', '2024-25', '2025-26', '2026-27'];
+
+const generateMonths = () => {
+    const months = [];
+    const date = new Date();
+    // Show 12 months back and 3 months forward
+    const start = new Date(date.getFullYear(), date.getMonth() - 12, 1);
+    for (let i = 0; i < 16; i++) {
+        months.push(start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+        start.setMonth(start.getMonth() + 1);
+    }
+    return months;
+};
+
+const MONTHS = generateMonths();
+const CURRENT_MONTH = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
 const emptyStaff = {
     name: '', email: '', phone: '', role: 'teacher', subject: '',
     department: '', qualification: '', experience: '', gender: 'male',
     address: '', monthlySalary: '', joiningDate: '',
-    bankAccount: '', bankName: '', ifscCode: ''
+    bankAccount: '', bankName: '', ifscCode: '', academicYear: '2025-26'
 };
 
 const ROLE_DISPLAY = (r) => r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -29,6 +41,7 @@ export default function StaffPage() {
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
+    const [yearFilter, setYearFilter] = useState('');
 
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -43,7 +56,7 @@ export default function StaffPage() {
 
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch, roleFilter]);
+    }, [debouncedSearch, roleFilter, yearFilter]);
 
     const [showForm, setShowForm] = useState(false);
     const [editStaff, setEditStaff] = useState(null);
@@ -57,7 +70,7 @@ export default function StaffPage() {
     const [historyData, setHistoryData] = useState(null);
 
     const [salaryForm, setSalaryForm] = useState({
-        month: MONTHS[MONTHS.length - 1], amount: '', paymentDate: new Date().toISOString().split('T')[0],
+        month: CURRENT_MONTH, amount: '', paymentDate: new Date().toISOString().split('T')[0],
         paymentMode: 'bank_transfer', remarks: ''
     });
     const [salaryLoading, setSalaryLoading] = useState(false);
@@ -68,6 +81,7 @@ export default function StaffPage() {
         try {
             const params = { page, limit: 50 };
             if (roleFilter) params.role = roleFilter;
+            if (yearFilter) params.academicYear = yearFilter;
             if (debouncedSearch) params.search = debouncedSearch;
             const res = await API.get('/staff', { params });
             setStaff(res.data.staff);
@@ -118,6 +132,7 @@ export default function StaffPage() {
             gender: s.gender || 'male', address: s.address || '',
             monthlySalary: s.monthlySalary, bankAccount: s.bankAccount || '',
             bankName: s.bankName || '', ifscCode: s.ifscCode || '',
+            academicYear: s.academicYear || '2025-26',
             joiningDate: s.joiningDate ? s.joiningDate.split('T')[0] : ''
         });
         setShowForm(true);
@@ -147,7 +162,7 @@ export default function StaffPage() {
             await API.post(`/staff/${showSalary._id}/salaries`, { ...salaryForm, amount: Number(salaryForm.amount) });
             toast.success('Salary payment recorded!');
             setShowSalary(null);
-            setSalaryForm({ month: MONTHS[MONTHS.length - 1], amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'bank_transfer', remarks: '' });
+            setSalaryForm({ month: CURRENT_MONTH, amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'bank_transfer', remarks: '' });
             fetchStaff();
         } catch (err) { toast.error(err.response?.data?.message || 'Payment failed'); }
         finally { setSalaryLoading(false); }
@@ -172,9 +187,13 @@ export default function StaffPage() {
                             <MdSearch className="search-icon" />
                             <input placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
-                        <select className="form-control" style={{ width: 170 }} value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+                        <select className="form-control" style={{ width: 140 }} value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
                             <option value="">All Roles</option>
                             {ROLES.map(r => <option key={r} value={r}>{ROLE_DISPLAY(r)}</option>)}
+                        </select>
+                        <select className="form-control" style={{ width: 130 }} value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+                            <option value="">All Sessions</option>
+                            {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
                     <button className="btn btn-primary" onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}>
@@ -206,6 +225,7 @@ export default function StaffPage() {
                                     <th>Subject</th>
                                     <th>Monthly Salary</th>
                                     <th>Total Paid</th>
+                                    <th>Session</th>
                                     <th>Joining Date</th>
                                     <th>Actions</th>
                                 </tr>
@@ -226,6 +246,7 @@ export default function StaffPage() {
                                         <td style={{ fontSize: 13 }}>{s.subject || '-'}</td>
                                         <td style={{ fontWeight: 600 }}>{formatCurrency(s.monthlySalary)}</td>
                                         <td style={{ fontWeight: 600, color: '#43a047' }}>{formatCurrency(s.totalSalaryPaid)}</td>
+                                        <td style={{ fontSize: 12 }}><span className="badge" style={{ background: '#f0f2f8', color: '#1a237e' }}>{s.academicYear || '-'}</span></td>
                                         <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(s.joiningDate)}</td>
                                         <td>
                                             <div style={{
@@ -235,7 +256,15 @@ export default function StaffPage() {
                                                 minWidth: 90
                                             }}>
                                                 <button className="btn btn-success btn-sm btn-icon" title="Pay Salary"
-                                                    onClick={() => { setShowSalary(s); setSalaryForm(f => ({ ...f, amount: s.monthlySalary })); }}>
+                                                    onClick={() => {
+                                                        setShowSalary(s);
+                                                        setSalaryForm(f => ({
+                                                            ...f,
+                                                            amount: s.monthlySalary,
+                                                            month: CURRENT_MONTH,
+                                                            paymentDate: new Date().toISOString().split('T')[0]
+                                                        }));
+                                                    }}>
                                                     <MdPayment />
                                                 </button>
                                                 <button
@@ -368,6 +397,11 @@ export default function StaffPage() {
                                             value={formData.joiningDate}
                                             onChange={e => setFormData({ ...formData, joiningDate: e.target.value })} />
                                         {formErrors.joiningDate && <p className="form-error">{formErrors.joiningDate}</p>}
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Academic Year</label>
+                                        <input className="form-control" value={formData.academicYear}
+                                            onChange={e => setFormData({ ...formData, academicYear: e.target.value })} />
                                     </div>
                                 </div>
 
