@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Search, Edit2, Trash2, CreditCard, Download } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, CreditCard, Download, GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { CLASS_ORDER, ACADEMIC_YEARS } from "@/lib/constants";
 
-const CLASSES = ["Nursery", "LKG", "UKG", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"];
+const CLASSES = CLASS_ORDER;
 const SECTIONS = ["A", "B", "C", "D"];
 
 interface Student {
@@ -25,6 +26,9 @@ interface Student {
   parent_email: string | null;
   address: string | null;
   total_fee: number;
+  total_book_fee: number;
+  academic_year: string;
+  status: string;
   admission_date: string | null;
 }
 
@@ -40,7 +44,7 @@ interface FeePayment {
 const emptyForm = {
   student_id: "", full_name: "", class: "1st", section: "A",
   roll_no: 1, parent_name: "", parent_phone: "", parent_email: "",
-  address: "", total_fee: 0,
+  address: "", total_fee: 0, total_book_fee: 0, academic_year: "2024-25",
 };
 
 const emptyFeeForm = {
@@ -52,6 +56,7 @@ export default function StudentsPage() {
   const [filtered, setFiltered] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Student | null>(null);
@@ -61,7 +66,13 @@ export default function StudentsPage() {
   const [feeForm, setFeeForm] = useState(emptyFeeForm);
   const [payments, setPayments] = useState<FeePayment[]>([]);
   const [saving, setSaving] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [promoteFrom, setPromoteFrom] = useState("2024-25");
+  const [promoteTo, setPromoteTo] = useState("2025-26");
+  const [promoting, setPromoting] = useState(false);
   const { toast } = useToast();
+
+  const YEARS = ACADEMIC_YEARS;
 
   const fetchStudents = async () => {
     const { data } = await supabase.from("students").select("*").order("full_name");
@@ -75,8 +86,9 @@ export default function StudentsPage() {
     let list = students;
     if (search) list = list.filter(s => s.full_name.toLowerCase().includes(search.toLowerCase()) || s.student_id.toLowerCase().includes(search.toLowerCase()));
     if (classFilter !== "all") list = list.filter(s => s.class === classFilter);
+    if (statusFilter !== "all") list = list.filter(s => s.status === statusFilter);
     setFiltered(list);
-  }, [students, search, classFilter]);
+  }, [students, search, classFilter, statusFilter]);
 
   const openAdd = () => {
     setEditing(null);
@@ -86,7 +98,7 @@ export default function StudentsPage() {
 
   const openEdit = (s: Student) => {
     setEditing(s);
-    setForm({ student_id: s.student_id, full_name: s.full_name, class: s.class, section: s.section, roll_no: s.roll_no, parent_name: s.parent_name, parent_phone: s.parent_phone, parent_email: s.parent_email ?? "", address: s.address ?? "", total_fee: s.total_fee });
+    setForm({ student_id: s.student_id, full_name: s.full_name, class: s.class, section: s.section, roll_no: s.roll_no, parent_name: s.parent_name, parent_phone: s.parent_phone, parent_email: s.parent_email ?? "", address: s.address ?? "", total_fee: s.total_fee, total_book_fee: s.total_book_fee ?? 0, academic_year: s.academic_year ?? "2024-25" });
     setFormOpen(true);
   };
 
@@ -96,7 +108,7 @@ export default function StudentsPage() {
       return;
     }
     setSaving(true);
-    const payload = { ...form, total_fee: Number(form.total_fee), roll_no: Number(form.roll_no) };
+    const payload = { ...form, total_fee: Number(form.total_fee), total_book_fee: Number(form.total_book_fee), roll_no: Number(form.roll_no) };
     const { error } = editing
       ? await supabase.from("students").update(payload).eq("id", editing.id)
       : await supabase.from("students").insert(payload);
@@ -153,6 +165,21 @@ export default function StudentsPage() {
     setSaving(false);
   };
 
+  const promoteStudents = async () => {
+    setPromoting(true);
+    const { data, error } = await supabase.rpc("promote_students", {
+      _from_year: promoteFrom, _to_year: promoteTo,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Promotion complete", description: `${data} student(s) promoted to ${promoteTo}.` });
+      setPromoteOpen(false);
+      fetchStudents();
+    }
+    setPromoting(false);
+  };
+
   const exportCSV = () => {
     const rows = [["Student ID","Name","Class","Section","Roll No","Parent","Phone","Total Fee"].join(","),
       ...filtered.map(s => [s.student_id, s.full_name, s.class, s.section, s.roll_no, s.parent_name, s.parent_phone, s.total_fee].join(","))];
@@ -171,6 +198,7 @@ export default function StudentsPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={exportCSV}><Download className="w-4 h-4 mr-1" />Export CSV</Button>
+          <Button variant="outline" size="sm" onClick={() => setPromoteOpen(true)}><GraduationCap className="w-4 h-4 mr-1" />Promote</Button>
           <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" />Add Student</Button>
         </div>
       </div>
@@ -186,6 +214,14 @@ export default function StudentsPage() {
           <SelectContent>
             <SelectItem value="all">All Classes</SelectItem>
             {CLASSES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -226,7 +262,7 @@ export default function StudentsPage() {
                     <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{s.parent_phone}</div>
                   </td>
                   <td className="font-semibold">₹{Number(s.total_fee).toLocaleString("en-IN")}</td>
-                  <td><span className="badge-success">Active</span></td>
+                  <td><span className={s.status === "active" ? "badge-success" : "badge-primary"}>{s.status ?? "active"}</span></td>
                   <td>
                     <div className="flex gap-1">
                       <button onClick={() => openFeeDialog(s)} className="p-1.5 rounded hover:bg-success/10 text-success transition-colors" title="Manage Fees"><CreditCard className="w-4 h-4" /></button>
@@ -266,6 +302,14 @@ export default function StudentsPage() {
             </div>
             <div><Label>Roll No *</Label><Input type="number" value={form.roll_no} onChange={e => setForm(f => ({...f, roll_no: Number(e.target.value)}))} className="mt-1" /></div>
             <div><Label>Total Annual Fee *</Label><Input type="number" value={form.total_fee} onChange={e => setForm(f => ({...f, total_fee: Number(e.target.value)}))} className="mt-1" /></div>
+            <div><Label>Total Book Fee</Label><Input type="number" value={form.total_book_fee} onChange={e => setForm(f => ({...f, total_book_fee: Number(e.target.value)}))} className="mt-1" /></div>
+            <div>
+              <Label>Academic Year</Label>
+              <Select value={form.academic_year} onValueChange={v => setForm(f => ({...f, academic_year: v}))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{YEARS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div><Label>Parent Name *</Label><Input value={form.parent_name} onChange={e => setForm(f => ({...f, parent_name: e.target.value}))} className="mt-1" /></div>
             <div><Label>Parent Phone *</Label><Input value={form.parent_phone} onChange={e => setForm(f => ({...f, parent_phone: e.target.value}))} className="mt-1" /></div>
             <div><Label>Parent Email</Label><Input type="email" value={form.parent_email} onChange={e => setForm(f => ({...f, parent_email: e.target.value}))} className="mt-1" /></div>
@@ -356,6 +400,40 @@ export default function StudentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Promote Students Dialog */}
+      <Dialog open={promoteOpen} onOpenChange={setPromoteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Promote Students</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
+              Promote all active students from the selected academic year to the next year. Students in the final class (10th) will be marked inactive.
+            </p>
+            <div>
+              <Label>From Academic Year</Label>
+              <Select value={promoteFrom} onValueChange={setPromoteFrom}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{YEARS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>To Academic Year</Label>
+              <Select value={promoteTo} onValueChange={setPromoteTo}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{YEARS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPromoteOpen(false)}>Cancel</Button>
+            <Button onClick={promoteStudents} disabled={promoting || promoteFrom === promoteTo}>
+              {promoting ? "Promoting..." : "Promote"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

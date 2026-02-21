@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, UserCheck, CreditCard, DollarSign,
-  BarChart3, Settings, GraduationCap, LogOut, ChevronLeft, ChevronRight, Menu
+  BarChart3, Settings, GraduationCap, LogOut, ChevronLeft, ChevronRight, BookOpen
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
@@ -13,6 +13,7 @@ const adminNavItems = [
   { to: "/staff", label: "Staff", icon: UserCheck },
   { to: "/fees", label: "Fees", icon: CreditCard },
   { to: "/salaries", label: "Salaries", icon: DollarSign },
+  { to: "/fee-structures", label: "Fee Structures", icon: BookOpen },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
