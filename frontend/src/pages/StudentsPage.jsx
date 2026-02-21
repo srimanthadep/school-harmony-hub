@@ -184,27 +184,36 @@ export default function StudentsPage() {
 
     const handleEditPayment = async (e) => {
         e.preventDefault();
-        // Allow 0 — only reject empty string / undefined
-        if (editPaymentForm.amount === '' || editPaymentForm.amount === undefined || editPaymentForm.amount === null) {
-            toast.error('Please enter an amount (0 is allowed for corrections)');
+        if (editPaymentForm.amount === '' || editPaymentForm.amount === undefined) {
+            toast.error('Valid amount required');
             return;
         }
         setEditPaymentLoading(true);
         try {
-            await API.put(
-                `/students/${editPaymentTarget.studentId}/payments/${editPaymentTarget.payment._id}`,
-                editPaymentForm
-            );
-            toast.success('Payment updated successfully!');
-            const studentId = editPaymentTarget.studentId;
+            await API.put(`/students/${editPaymentTarget.studentId}/payments/${editPaymentTarget.payment._id}`, editPaymentForm);
+            toast.success('Payment updated!');
             setEditPaymentTarget(null);
-            const res = await API.get(`/students/${studentId}/payments`);
+            const res = await API.get(`/students/${showHistory._id}/payments`);
             setHistoryData(res.data);
             fetchStudents();
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to update payment');
+            toast.error(err.response?.data?.message || 'Update failed');
         } finally {
             setEditPaymentLoading(false);
+        }
+    };
+
+    const handleDeletePayment = async (paymentId) => {
+        if (!window.confirm('Are you sure you want to delete this payment record? This action cannot be undone.')) return;
+        try {
+            await API.delete(`/students/${showHistory._id}/payments/${paymentId}`);
+            toast.success('Payment deleted successfully');
+            // Refresh history
+            const res = await API.get(`/students/${showHistory._id}/payments`);
+            setHistoryData(res.data);
+            fetchStudents();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to delete payment');
         }
     };
 
@@ -713,7 +722,12 @@ export default function StudentsPage() {
                                                         <th>Mode</th>
                                                         <th>Remarks</th>
                                                         <th>Download</th>
-                                                        {isOwner && <th>Edit</th>}
+                                                        {isOwner && (
+                                                            <>
+                                                                <th>Edit</th>
+                                                                <th>Delete</th>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -734,16 +748,28 @@ export default function StudentsPage() {
                                                                 </button>
                                                             </td>
                                                             {isOwner && (
-                                                                <td>
-                                                                    <button
-                                                                        className="btn btn-sm"
-                                                                        title="Edit Payment"
-                                                                        style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                                                                        onClick={() => openEditPayment(p)}
-                                                                    >
-                                                                        <MdEdit style={{ fontSize: 14 }} /> Edit
-                                                                    </button>
-                                                                </td>
+                                                                <>
+                                                                    <td>
+                                                                        <button
+                                                                            className="btn btn-sm"
+                                                                            title="Edit Payment"
+                                                                            style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                                                                            onClick={() => openEditPayment(p)}
+                                                                        >
+                                                                            <MdEdit style={{ fontSize: 14 }} /> Edit
+                                                                        </button>
+                                                                    </td>
+                                                                    <td>
+                                                                        <button
+                                                                            className="btn btn-sm"
+                                                                            title="Delete Payment"
+                                                                            style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                                                                            onClick={() => handleDeletePayment(p._id)}
+                                                                        >
+                                                                            <MdDelete style={{ fontSize: 14 }} /> Delete
+                                                                        </button>
+                                                                    </td>
+                                                                </>
                                                             )}
                                                         </tr>
                                                     ))}

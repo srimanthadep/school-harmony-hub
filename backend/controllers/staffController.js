@@ -181,14 +181,37 @@ exports.getSalaryHistory = async (req, res) => {
     }
 };
 
-// @desc    Edit an existing salary payment (OWNER ONLY)
-// @route   PUT /api/staff/:id/salaries/:paymentId
-// @access  Owner only
 exports.editSalaryPayment = async (req, res) => {
     try {
-        // Extra guard: admins must never access this
         if (req.user.role === 'admin') {
             return res.status(403).json({ success: false, message: 'Admins are not authorized to edit salary payments.' });
+        }
+        const staff = await Staff.findById(req.params.id);
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
+        const payment = staff.salaryPayments.id(req.params.paymentId);
+        if (!payment) return res.status(404).json({ success: false, message: 'Salary payment not found' });
+
+        const { amount, paymentDate, paymentMode, remarks, month } = req.body;
+        if (amount !== undefined && amount !== null && amount !== '') payment.amount = Math.round(Number(amount));
+        if (paymentDate !== undefined) payment.paymentDate = paymentDate;
+        if (paymentMode !== undefined) payment.paymentMode = paymentMode;
+        if (remarks !== undefined) payment.remarks = remarks;
+        if (month !== undefined) payment.month = month;
+
+        await staff.save();
+        res.json({ success: true, message: 'Salary payment updated successfully', payment, staff });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Delete a salary payment (OWNER ONLY)
+// @route   DELETE /api/staff/:id/salaries/:paymentId
+// @access  Owner only
+exports.deleteSalaryPayment = async (req, res) => {
+    try {
+        if (req.user.role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Admins are not authorized to delete salary payments.' });
         }
 
         const staff = await Staff.findById(req.params.id);
@@ -201,22 +224,10 @@ exports.editSalaryPayment = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Salary payment not found' });
         }
 
-        // Update allowed fields
-        const { amount, paymentDate, paymentMode, remarks, month } = req.body;
-        if (amount !== undefined && amount !== null && amount !== '') payment.amount = Math.round(Number(amount));
-        if (paymentDate !== undefined) payment.paymentDate = paymentDate;
-        if (paymentMode !== undefined) payment.paymentMode = paymentMode;
-        if (remarks !== undefined) payment.remarks = remarks;
-        if (month !== undefined) payment.month = month;
-
+        staff.salaryPayments.pull(req.params.paymentId);
         await staff.save();
 
-        res.json({
-            success: true,
-            message: 'Salary payment updated successfully',
-            payment,
-            staff
-        });
+        res.json({ success: true, message: 'Salary payment deleted successfully' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

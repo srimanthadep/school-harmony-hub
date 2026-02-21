@@ -190,14 +190,36 @@ exports.getPaymentHistory = async (req, res) => {
     }
 };
 
-// @desc    Edit an existing payment (OWNER ONLY)
-// @route   PUT /api/students/:id/payments/:paymentId
-// @access  Owner only
 exports.editPayment = async (req, res) => {
     try {
-        // Extra guard: admins must never access this
         if (req.user.role === 'admin') {
             return res.status(403).json({ success: false, message: 'Admins are not authorized to edit payments.' });
+        }
+        const student = await Student.findById(req.params.id);
+        if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+        const payment = student.feePayments.id(req.params.paymentId);
+        if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+
+        const { amount, paymentDate, paymentMode, remarks } = req.body;
+        if (amount !== undefined && amount !== null && amount !== '') payment.amount = Math.round(Number(amount));
+        if (paymentDate !== undefined) payment.paymentDate = paymentDate;
+        if (paymentMode !== undefined) payment.paymentMode = paymentMode;
+        if (remarks !== undefined) payment.remarks = remarks;
+
+        await student.save();
+        res.json({ success: true, message: 'Payment updated successfully', payment, student });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Delete a payment (OWNER ONLY)
+// @route   DELETE /api/students/:id/payments/:paymentId
+// @access  Owner only
+exports.deletePayment = async (req, res) => {
+    try {
+        if (req.user.role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Admins are not authorized to delete payments.' });
         }
 
         const student = await Student.findById(req.params.id);
@@ -210,21 +232,10 @@ exports.editPayment = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Payment not found' });
         }
 
-        // Update allowed fields (allow 0 as a valid amount for corrections)
-        const { amount, paymentDate, paymentMode, remarks } = req.body;
-        if (amount !== undefined && amount !== null && amount !== '') payment.amount = Math.round(Number(amount));
-        if (paymentDate !== undefined) payment.paymentDate = paymentDate;
-        if (paymentMode !== undefined) payment.paymentMode = paymentMode;
-        if (remarks !== undefined) payment.remarks = remarks;
-
+        student.feePayments.pull(req.params.paymentId);
         await student.save();
 
-        res.json({
-            success: true,
-            message: 'Payment updated successfully',
-            payment,
-            student
-        });
+        res.json({ success: true, message: 'Payment deleted successfully' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

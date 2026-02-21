@@ -48,6 +48,7 @@ export default function StaffPage() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalStaffCount, setTotalStaffCount] = useState(0);
+    const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState(null);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -215,6 +216,26 @@ export default function StaffPage() {
             toast.error(err.response?.data?.message || 'Update failed');
         } finally {
             setEditSalaryLoading(false);
+        }
+    };
+
+    const handleDeleteSalaryPayment = (paymentId) => {
+        setShowDeletePaymentConfirm(paymentId);
+    };
+
+    const confirmDeleteSalaryPayment = async () => {
+        if (!showDeletePaymentConfirm) return;
+        try {
+            await API.delete(`/staff/${showHistory._id}/salaries/${showDeletePaymentConfirm}`);
+            toast.success('Salary payment deleted');
+            // Refresh history
+            const res = await API.get(`/staff/${showHistory._id}/salaries`);
+            setHistoryData(res.data);
+            fetchStaff();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Delete failed');
+        } finally {
+            setShowDeletePaymentConfirm(null);
         }
     };
 
@@ -498,12 +519,39 @@ export default function StaffPage() {
                             <div className="confirm-dialog">
                                 <div className="confirm-icon">🗑️</div>
                                 <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Delete {showDeleteConfirm.name}?</p>
-                                <p style={{ fontSize: 13, color: '#6b7280' }}>Staff record will be deactivated.</p>
+                                <p style={{ fontSize: 13, color: '#6b7280' }}>
+                                    This action cannot be undone. The staff record will be permanently deleted.
+                                </p>
                             </div>
                         </div>
                         <div className="modal-footer">
                             <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(null)}>Cancel</button>
-                            <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
+                            <button className="btn btn-danger" onClick={handleDelete}>Delete Staff</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Payment Confirm */}
+            {showDeletePaymentConfirm && (
+                <div className="modal-overlay" style={{ zIndex: 1200 }}>
+                    <div className="modal" style={{ maxWidth: 400 }}>
+                        <div className="modal-header">
+                            <h3>Confirm Delete</h3>
+                            <button className="btn-close" onClick={() => setShowDeletePaymentConfirm(null)}><MdClose /></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="confirm-dialog">
+                                <div className="confirm-icon">🗑️</div>
+                                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Delete Salary Record?</p>
+                                <p style={{ fontSize: 13, color: '#6b7280' }}>
+                                    This action cannot be undone. The salary payment will be permanently deleted.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowDeletePaymentConfirm(null)}>Cancel</button>
+                            <button className="btn btn-danger" onClick={confirmDeleteSalaryPayment}>Delete Record</button>
                         </div>
                     </div>
                 </div>
@@ -609,7 +657,12 @@ export default function StaffPage() {
                                                         <th>Date</th>
                                                         <th>Mode</th>
                                                         <th>Download</th>
-                                                        {user?.role === 'owner' && <th>Edit</th>}
+                                                        {user?.role === 'owner' && (
+                                                            <>
+                                                                <th>Edit</th>
+                                                                <th>Delete</th>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -627,21 +680,38 @@ export default function StaffPage() {
                                                                 </button>
                                                             </td>
                                                             {user?.role === 'owner' && (
-                                                                <td>
-                                                                    <button
-                                                                        className="btn btn-sm"
-                                                                        title="Edit Payment"
-                                                                        style={{
-                                                                            background: 'linear-gradient(135deg,#7c3aed,#4f46e5)',
-                                                                            color: '#fff', border: 'none', borderRadius: 6,
-                                                                            padding: '4px 10px', cursor: 'pointer',
-                                                                            display: 'flex', alignItems: 'center', gap: 4
-                                                                        }}
-                                                                        onClick={() => openEditSalary(p)}
-                                                                    >
-                                                                        <MdEdit style={{ fontSize: 14 }} /> Edit
-                                                                    </button>
-                                                                </td>
+                                                                <>
+                                                                    <td>
+                                                                        <button
+                                                                            className="btn btn-sm"
+                                                                            title="Edit Payment"
+                                                                            style={{
+                                                                                background: 'linear-gradient(135deg,#7c3aed,#4f46e5)',
+                                                                                color: '#fff', border: 'none', borderRadius: 6,
+                                                                                padding: '4px 10px', cursor: 'pointer',
+                                                                                display: 'flex', alignItems: 'center', gap: 4
+                                                                            }}
+                                                                            onClick={() => openEditSalary(p)}
+                                                                        >
+                                                                            <MdEdit style={{ fontSize: 14 }} /> Edit
+                                                                        </button>
+                                                                    </td>
+                                                                    <td>
+                                                                        <button
+                                                                            className="btn btn-sm"
+                                                                            title="Delete Payment"
+                                                                            style={{
+                                                                                background: '#ef4444',
+                                                                                color: '#fff', border: 'none', borderRadius: 6,
+                                                                                padding: '4px 10px', cursor: 'pointer',
+                                                                                display: 'flex', alignItems: 'center', gap: 4
+                                                                            }}
+                                                                            onClick={() => handleDeleteSalaryPayment(p._id)}
+                                                                        >
+                                                                            <MdDelete style={{ fontSize: 14 }} /> Delete
+                                                                        </button>
+                                                                    </td>
+                                                                </>
                                                             )}
                                                         </tr>
                                                     ))}

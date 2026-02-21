@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
     getStudents, getStudent, createStudent, updateStudent, deleteStudent,
-    recordPayment, getPaymentHistory, getStudentStats, editPayment, promoteStudents
+    recordPayment, getPaymentHistory, getStudentStats, editPayment, deletePayment, promoteStudents
 } = require('../controllers/studentController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -30,7 +30,9 @@ router.route('/:id/payments')
     .get(authorize('admin', 'owner', 'student'), getPaymentHistory)
     .post(authorize('admin', 'owner'), recordPayment);
 
-// Edit a specific payment — OWNER ONLY (admin explicitly blocked in controller)
-router.put('/:id/payments/:paymentId', authorize('owner'), editPayment);
+// Edit or Delete a specific payment — OWNER ONLY (admin explicitly blocked in controller)
+router.route('/:id/payments/:paymentId')
+    .put(authorize('owner'), editPayment)
+    .delete(authorize('owner'), deletePayment);
 
 module.exports = router;
