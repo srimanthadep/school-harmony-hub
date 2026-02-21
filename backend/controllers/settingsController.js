@@ -1,5 +1,6 @@
 const Settings = require('../models/Settings');
 const FeeStructure = require('../models/FeeStructure');
+const BookFeeStructure = require('../models/BookFeeStructure');
 const Student = require('../models/Student');
 
 // @desc    Get settings
@@ -73,6 +74,52 @@ exports.upsertFeeStructure = async (req, res) => {
         res.json({
             success: true,
             message: `Fee structure saved. Updated totalFee for ${updateResult.modifiedCount} student(s) in ${data.class}.`,
+            fee,
+            studentsUpdated: updateResult.modifiedCount
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Get book fee structures
+// @route   GET /api/settings/book-fee-structures
+// @access  Admin
+exports.getBookFeeStructures = async (req, res) => {
+    try {
+        const structures = await BookFeeStructure.find().sort({ class: 1 });
+        res.json({ success: true, structures });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Update/Create book fee structure for a class
+// @route   POST /api/settings/book-fee-structures
+// @access  Admin
+exports.upsertBookFeeStructure = async (req, res) => {
+    try {
+        const data = { ...req.body };
+
+        // Manually compute totalFee since findOneAndUpdate bypasses pre-save hooks
+        data.totalFee = ['readingBookFee', 'textBooksFee', 'practiceWorkBookFee', 'funWithDotBookFee', 'dairyFee', 'idCardFee', 'coversFee', 'noteBooksFee', 'miscFee']
+            .reduce((sum, key) => sum + Number(data[key] || 0), 0);
+
+        let fee = await BookFeeStructure.findOneAndUpdate(
+            { class: data.class },
+            data,
+            { new: true, upsert: true, runValidators: true }
+        );
+
+        // Update totalBookFee in all existing students of this class
+        const updateResult = await Student.updateMany(
+            { class: data.class, isActive: true },
+            { $set: { totalBookFee: data.totalFee } }
+        );
+
+        res.json({
+            success: true,
+            message: `Book's Fee structure saved. Updated totalBookFee for ${updateResult.modifiedCount} student(s) in ${data.class}.`,
             fee,
             studentsUpdated: updateResult.modifiedCount
         });
