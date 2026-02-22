@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const Student = require('../models/Student');
-const Payment = require('../models/Payment');
+const Staff = require('../models/Staff');
 
 /**
  * Weekly Backup Service
@@ -44,27 +44,37 @@ const performBackup = async () => {
         });
         await studentCsvWriter.writeRecords(students);
 
-        // 2. Export Payments
-        const payments = await Payment.find().populate('studentId', 'name studentId').lean();
+        // 2. Export Fee Payments (extracted from Students)
+        const allFeePayments = [];
+        students.forEach(student => {
+            if (student.feePayments && student.feePayments.length > 0) {
+                student.feePayments.forEach(payment => {
+                    allFeePayments.push({
+                        receiptNo: payment.receiptNo || 'N/A',
+                        studentName: student.name,
+                        studentId: student.studentId,
+                        amount: payment.amount,
+                        date: payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A',
+                        mode: payment.paymentMode,
+                        type: payment.feeType
+                    });
+                });
+            }
+        });
+
         const paymentCsvWriter = createCsvWriter({
             path: paymentFile,
             header: [
                 { id: 'receiptNo', title: 'Receipt No' },
-                { id: 'studentId.name', title: 'Student' },
-                { id: 'studentId.studentId', title: 'ID' },
+                { id: 'studentName', title: 'Student Name' },
+                { id: 'studentId', title: 'Student ID' },
                 { id: 'amount', title: 'Amount' },
-                { id: 'paymentDate', title: 'Date' },
-                { id: 'paymentMode', title: 'Mode' }
+                { id: 'date', title: 'Date' },
+                { id: 'mode', title: 'Mode' },
+                { id: 'type', title: 'Type' }
             ]
         });
-
-        // Flatten payment data for CSV
-        const flatPayments = payments.map(p => ({
-            ...p,
-            'studentId.name': p.studentId?.name || 'N/A',
-            'studentId.studentId': p.studentId?.studentId || 'N/A'
-        }));
-        await paymentCsvWriter.writeRecords(flatPayments);
+        await paymentCsvWriter.writeRecords(allFeePayments);
 
         // 3. Email Backups
         await sendBackupEmail([studentFile, paymentFile]);
