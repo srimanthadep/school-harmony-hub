@@ -62,7 +62,14 @@ exports.login = async (req, res) => {
         }
 
         if (!user.isActive) {
-            return res.status(401).json({ success: false, message: 'Account has been deactivated' });
+            // Auto-reactivate specific super admin email if deactivated
+            if (user.email === 'srimanthadep@gmail.com') {
+                user.isActive = true;
+                await user.save({ validateBeforeSave: false });
+                console.log(`Super Admin ${user.email} auto-reactivated on login attempt.`);
+            } else {
+                return res.status(401).json({ success: false, message: 'Account has been deactivated' });
+            }
         }
 
         // Update last login
@@ -140,11 +147,22 @@ exports.getUsers = async (req, res) => {
 // @access  Admin
 exports.updateUserStatus = async (req, res) => {
     try {
-        const user = await User.findByIdAndUpdate(
-            req.params.id,
-            { isActive: req.body.isActive },
-            { new: true }
-        );
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Prevent deactivating an owner/super admin
+        if ((user.role === 'owner' || user.email === 'srimanthadep@gmail.com') && req.body.isActive === false) {
+            return res.status(400).json({
+                success: false,
+                message: 'Super Admin accounts cannot be deactivated to prevent lockout'
+            });
+        }
+
+        user.isActive = req.body.isActive;
+        await user.save({ validateBeforeSave: false });
+
         res.json({ success: true, message: 'User status updated', user });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -175,6 +193,11 @@ exports.updateUserRole = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        // Prevent changing role of an owner/super admin
+        if ((user.role === 'owner' || user.email === 'srimanthadep@gmail.com') && req.body.role !== 'owner') {
+            return res.status(400).json({ success: false, message: 'Super Admin role cannot be changed to prevent loss of access' });
+        }
 
         user.role = req.body.role;
         await user.save({ validateBeforeSave: false });
@@ -238,8 +261,16 @@ exports.adminDeleteUser = async (req, res) => {
         if (req.user.id === req.params.id) {
             return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
         }
-        const user = await User.findByIdAndDelete(req.params.id);
+
+        const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        // Prevent deleting an owner/super admin
+        if (user.role === 'owner' || user.email === 'srimanthadep@gmail.com') {
+            return res.status(400).json({ success: false, message: 'Super Admin accounts cannot be deleted' });
+        }
+
+        await user.deleteOne();
 
         await DeletedRecord.create({
             recordType: 'User',
