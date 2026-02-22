@@ -50,7 +50,103 @@ app.get('/api/health', (req, res) => {
 
 // Root route
 app.get('/', (req, res) => {
-  res.send('School Fee Management API is running. Access endpoints via /api/...');
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Oxford School API Gateway</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+            body { 
+                font-family: 'Inter', sans-serif; 
+                background: linear-gradient(135deg, #f0fdf4 0%, #e0e7ff 100%);
+                color: #1e293b; 
+                display: flex; 
+                flex-direction: column;
+                align-items: center; 
+                justify-content: center; 
+                min-height: 100vh; 
+                margin: 0; 
+            }
+            .container { 
+                text-align: center; 
+                background: white; 
+                padding: 3rem 4rem; 
+                border-radius: 16px; 
+                box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); 
+                max-width: 500px;
+                width: 90%;
+            }
+            .logo {
+                width: 72px;
+                height: 72px;
+                background: #4f46e5;
+                color: white;
+                border-radius: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 32px;
+                margin: 0 auto 1.5rem auto;
+                box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
+            }
+            h1 { 
+                color: #0f172a; 
+                margin-bottom: 0.5rem; 
+                font-size: 1.5rem;
+                letter-spacing: -0.025em;
+            }
+            p { 
+                color: #64748b; 
+                margin-top: 0; 
+                font-size: 0.95rem;
+                line-height: 1.5;
+            }
+            .status { 
+                display: inline-flex; 
+                align-items: center; 
+                gap: 8px; 
+                background: #dcfce7; 
+                color: #166534; 
+                padding: 6px 16px; 
+                border-radius: 9999px; 
+                font-size: 0.875rem; 
+                font-weight: 600; 
+                margin-top: 1.5rem; 
+            }
+            .status::before { 
+                content: ''; 
+                width: 8px; 
+                height: 8px; 
+                background: #22c55e; 
+                border-radius: 50%; 
+                display: inline-block; 
+                box-shadow: 0 0 8px #22c55e;
+            }
+            .footer {
+                margin-top: 3rem;
+                color: #94a3b8;
+                font-size: 0.8rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo">🏫</div>
+            <h1>Oxford School API</h1>
+            <p>System Core & Database Gateway.</p>
+            <p>This server strictly handles authenticated API requests from the main application panels.</p>
+            <div class="status">All Systems Operational</div>
+        </div>
+        <div class="footer">
+            &copy; ${new Date().getFullYear()} Oxford School Systems
+        </div>
+    </body>
+    </html>
+  `;
+  res.send(html);
 });
 
 // Error handler
