@@ -233,6 +233,92 @@ exports.deleteSalaryPayment = async (req, res) => {
     }
 };
 
+// @desc    Record leave
+// @route   POST /api/staff/:id/leaves
+// @access  Admin
+exports.recordLeave = async (req, res) => {
+    try {
+        const leave = {
+            date: req.body.date || new Date(),
+            reason: req.body.reason || 'Not specified',
+            status: 'approved' // default status
+        };
+
+        const staff = await Staff.findByIdAndUpdate(
+            req.params.id,
+            { $push: { leaves: leave } },
+            { new: true, runValidators: false } // Avoid validating old fields
+        );
+
+        if (!staff) {
+            return res.status(404).json({ success: false, message: 'Staff not found' });
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Leave recorded successfully',
+            staff
+        });
+    } catch (err) {
+        console.error('Record Leave Error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Delete a leave
+// @route   DELETE /api/staff/:id/leaves/:leaveId
+// @access  Owner only
+exports.deleteLeave = async (req, res) => {
+    try {
+        if (req.user.role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Admins are not authorized to delete leaves.' });
+        }
+
+        const staff = await Staff.findByIdAndUpdate(
+            req.params.id,
+            { $pull: { leaves: { _id: req.params.leaveId } } },
+            { new: true }
+        );
+
+        if (!staff) {
+            return res.status(404).json({ success: false, message: 'Staff not found' });
+        }
+
+        res.json({ success: true, message: 'Leave deleted successfully' });
+    } catch (err) {
+        console.error('Delete Leave Error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// @desc    Edit a leave
+// @route   PUT /api/staff/:id/leaves/:leaveId
+// @access  Owner only
+exports.editLeave = async (req, res) => {
+    try {
+        if (req.user.role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Admins are not authorized to edit leaves.' });
+        }
+
+        const staff = await Staff.findById(req.params.id);
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
+
+        const leave = staff.leaves.id(req.params.leaveId);
+        if (!leave) return res.status(404).json({ success: false, message: 'Leave not found' });
+
+        if (req.body.date !== undefined && req.body.date !== '') leave.date = req.body.date;
+        if (req.body.reason !== undefined) leave.reason = req.body.reason;
+        if (req.body.status !== undefined) leave.status = req.body.status;
+
+        await staff.save({ validateModifiedOnly: true });
+
+        res.json({ success: true, message: 'Leave updated successfully', staff });
+    } catch (err) {
+        console.error('Edit Leave Error:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
 // @desc    Staff overview stats
 // @route   GET /api/staff/stats/overview
 // @access  Admin

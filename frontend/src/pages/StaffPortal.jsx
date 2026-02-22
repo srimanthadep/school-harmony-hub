@@ -129,6 +129,36 @@ export default function StaffPortal() {
                         </div>
                     )}
                 </div>
+
+                {/* Leave History */}
+                <div className="card" style={{ marginTop: 24 }}>
+                    <div className="card-header"><h2>📅 Leave History</h2></div>
+                    {!staff.leaves?.length ? (
+                        <div className="empty-state" style={{ padding: 40 }}>
+                            <div className="empty-state-icon">✅</div>
+                            <h3>No leaves present</h3>
+                        </div>
+                    ) : (
+                        <div className="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th><th>Reason</th><th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {staff.leaves.map((leave, i) => (
+                                        <tr key={i}>
+                                            <td style={{ fontWeight: 600 }}>{formatDate(leave.date)}</td>
+                                            <td>{leave.reason || '-'}</td>
+                                            <td><span className="badge badge-paid" style={{ textTransform: 'capitalize' }}>{leave.status}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

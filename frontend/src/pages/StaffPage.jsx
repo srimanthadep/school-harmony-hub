@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatDate, generateSalarySlipPDF } from '../utils/pdfUtils';
 import {
     MdAdd, MdEdit, MdDelete, MdSearch, MdClose,
-    MdPayment, MdHistory, MdDownload, MdPerson, MdReceiptLong
+    MdPayment, MdHistory, MdDownload, MdPerson, MdReceiptLong, MdDateRange
 } from 'react-icons/md';
 
 const ROLES = ['teacher', 'principal', 'vice_principal', 'admin_staff', 'librarian', 'peon', 'guard', 'accountant', 'other'];
@@ -88,6 +88,14 @@ export default function StaffPage() {
     });
     const [salaryLoading, setSalaryLoading] = useState(false);
     const [settings, setSettings] = useState({});
+
+    const [showLeaves, setShowLeaves] = useState(null); // Staff object
+    const [leaveForm, setLeaveForm] = useState({ date: new Date().toISOString().split('T')[0], reason: '' });
+    const [leaveLoading, setLeaveLoading] = useState(false);
+
+    const [editLeaveTarget, setEditLeaveTarget] = useState(null); // { staffId, leave }
+    const [editLeaveForm, setEditLeaveForm] = useState({ date: '', reason: '', status: 'approved' });
+    const [editLeaveLoading, setEditLeaveLoading] = useState(false);
 
     const fetchStaff = useCallback(async () => {
         setLoading(true);
@@ -244,12 +252,88 @@ export default function StaffPage() {
         }
     };
 
+    const handleRecordLeave = async (e) => {
+        e.preventDefault();
+        if (!leaveForm.date) { toast.error('Date is required'); return; }
+        setLeaveLoading(true);
+        try {
+            await API.post(`/staff/${showLeaves._id}/leaves`, leaveForm);
+            toast.success('Leave recorded!');
+            setLeaveForm({ date: new Date().toISOString().split('T')[0], reason: '' });
+
+            // Refresh staff to get the new leave inserted
+            const res = await API.get('/staff', { params: { page, limit: 50, role: roleFilter, academicYear: yearFilter, search: debouncedSearch } });
+            setStaff(res.data.staff);
+
+            // update local selected staff to show new leaves
+            const updatedStaff = res.data.staff.find(s => s._id === showLeaves._id);
+            if (updatedStaff) setShowLeaves(updatedStaff);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to record leave');
+        } finally {
+            setLeaveLoading(false);
+        }
+    };
+
+    const handleDeleteLeave = async (leaveId) => {
+        try {
+            await API.delete(`/staff/${showLeaves._id}/leaves/${leaveId}`);
+            toast.success('Leave deleted');
+            // Refresh staff data
+            const res = await API.get('/staff', { params: { page, limit: 50, role: roleFilter, academicYear: yearFilter, search: debouncedSearch } });
+            setStaff(res.data.staff);
+
+            const updatedStaff = res.data.staff.find(s => s._id === showLeaves._id);
+            if (updatedStaff) setShowLeaves(updatedStaff);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to delete leave');
+        }
+    };
+
+    const openEditLeave = (leave) => {
+        setEditLeaveTarget({ staffId: showLeaves._id, leave });
+        setEditLeaveForm({
+            date: leave.date ? leave.date.split('T')[0] : '',
+            reason: leave.reason || '',
+            status: leave.status || 'approved'
+        });
+    };
+
+    const handleEditLeave = async (e) => {
+        e.preventDefault();
+        setEditLeaveLoading(true);
+        try {
+            await API.put(
+                `/staff/${editLeaveTarget.staffId}/leaves/${editLeaveTarget.leave._id}`,
+                editLeaveForm
+            );
+            toast.success('Leave updated!');
+            setEditLeaveTarget(null);
+
+            // Refresh staff
+            const res = await API.get('/staff', { params: { page, limit: 50, role: roleFilter, academicYear: yearFilter, search: debouncedSearch } });
+            setStaff(res.data.staff);
+
+            const updatedStaff = res.data.staff.find(s => s._id === editLeaveTarget.staffId);
+            if (updatedStaff) setShowLeaves(updatedStaff);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Update failed');
+        } finally {
+            setEditLeaveLoading(false);
+        }
+    };
+
     const getStatus = (s) => s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'paid' : 'unpaid';
 
     const sortedStaff = [...staff].sort((a, b) => {
         if (sortField === 'status') {
             const av = getStatus(a) === 'paid' ? 1 : 0;
             const bv = getStatus(b) === 'paid' ? 1 : 0;
+            return (av - bv) * sortDir;
+        }
+        if (sortField === 'leaves') {
+            const av = a.leaves?.length || 0;
+            const bv = b.leaves?.length || 0;
             return (av - bv) * sortDir;
         }
         const av = sortField === 'monthlySalary' ? a.monthlySalary
@@ -318,6 +402,7 @@ export default function StaffPage() {
                                     <th onClick={() => toggleSort('totalSalaryPaid')}>Total Paid <SortArrow field="totalSalaryPaid" /></th>
                                     <th onClick={() => toggleSort('academicYear')}>Session <SortArrow field="academicYear" /></th>
                                     <th onClick={() => toggleSort('joiningDate')}>Joining Date <SortArrow field="joiningDate" /></th>
+                                    <th onClick={() => toggleSort('leaves')}>Leaves <SortArrow field="leaves" /></th>
                                     <th onClick={() => toggleSort('status')}>Status <SortArrow field="status" /></th>
                                     <th>Actions</th>
                                 </tr>
@@ -349,6 +434,11 @@ export default function StaffPage() {
                                             </span>
                                         </td>
                                         <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(s.joiningDate)}</td>
+                                        <td>
+                                            <span className="badge" style={{ background: '#fef3c7', color: '#b45309', padding: '2px 8px' }}>
+                                                {s.leaves?.length || 0}
+                                            </span>
+                                        </td>
                                         <td>
                                             <span className={`badge ${s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'badge-paid' : 'badge-unpaid'}`}>
                                                 {s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'Paid' : 'Not Paid'}
@@ -384,11 +474,14 @@ export default function StaffPage() {
                                                     onClick={() => openHistory(s)}>
                                                     <MdHistory />
                                                 </button>
+                                                <button className="btn btn-secondary btn-sm btn-icon" title="Leaves"
+                                                    onClick={() => setShowLeaves(s)}>
+                                                    <MdDateRange />
+                                                </button>
                                                 <button className="btn btn-secondary btn-sm btn-icon" title="Edit" onClick={() => openEdit(s)}>
                                                     <MdEdit />
                                                 </button>
                                                 <button className="btn btn-danger btn-sm btn-icon" title="Delete"
-                                                    style={{ gridColumn: 'span 2' }}
                                                     onClick={() => setShowDeleteConfirm(s)}>
                                                     <MdDelete />
                                                 </button>
@@ -819,6 +912,146 @@ export default function StaffPage() {
                                 <button type="button" className="btn btn-secondary" onClick={() => setEditSalaryTarget(null)}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" disabled={editSalaryLoading}>
                                     {editSalaryLoading ? 'Saving...' : 'Update Payment'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Leaves Modal */}
+            {showLeaves && (
+                <div className="modal-overlay">
+                    <div className="modal modal-lg">
+                        <div className="modal-header">
+                            <h3><MdDateRange /> Leaves - {showLeaves.name}</h3>
+                            <button className="btn-close" onClick={() => setShowLeaves(null)}><MdClose /></button>
+                        </div>
+                        <div className="modal-body">
+                            <form onSubmit={handleRecordLeave} style={{ marginBottom: 20, padding: 16, background: '#f8fafc', borderRadius: 8 }}>
+                                <h4>Record New Leave</h4>
+                                <div className="form-grid" style={{ alignItems: 'end' }}>
+                                    <div className="form-group">
+                                        <label className="form-label">Date <span className="required">*</span></label>
+                                        <input type="date" className="form-control" value={leaveForm.date}
+                                            onChange={e => setLeaveForm({ ...leaveForm, date: e.target.value })} />
+                                    </div>
+                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                        <label className="form-label">Reason</label>
+                                        <input className="form-control" value={leaveForm.reason}
+                                            placeholder="e.g. Sick Leave, Vacation"
+                                            onChange={e => setLeaveForm({ ...leaveForm, reason: e.target.value })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <button type="submit" className="btn btn-primary" disabled={leaveLoading}>
+                                            {leaveLoading ? 'Saving...' : 'Record Leave'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <h4>Leave History</h4>
+                            {!showLeaves.leaves || showLeaves.leaves.length === 0 ? (
+                                <div className="empty-state" style={{ padding: 20 }}>
+                                    <p style={{ color: '#9ca3af' }}>No leaves recorded</p>
+                                </div>
+                            ) : (
+                                <div className="table-container">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Reason</th>
+                                                <th>Status</th>
+                                                {user?.role === 'owner' && <th>Actions</th>}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {showLeaves.leaves.map((leave, i) => (
+                                                <tr key={i}>
+                                                    <td style={{ fontWeight: 600 }}>{formatDate(leave.date)}</td>
+                                                    <td>{leave.reason || '-'}</td>
+                                                    <td><span className={`badge ${leave.status === 'approved' ? 'badge-paid' : leave.status === 'rejected' ? 'badge-unpaid' : ''}`} style={{ textTransform: 'capitalize' }}>{leave.status}</span></td>
+                                                    {user?.role === 'owner' && (
+                                                        <td>
+                                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                                <button
+                                                                    className="btn btn-sm"
+                                                                    title="Edit Leave"
+                                                                    style={{
+                                                                        background: 'linear-gradient(135deg,#7c3aed,#4f46e5)',
+                                                                        color: '#fff', border: 'none', borderRadius: 6,
+                                                                        padding: '4px 10px', cursor: 'pointer',
+                                                                        display: 'flex', alignItems: 'center', gap: 4
+                                                                    }}
+                                                                    onClick={() => openEditLeave(leave)}
+                                                                >
+                                                                    <MdEdit style={{ fontSize: 13 }} /> Edit
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-sm btn-icon"
+                                                                    title="Delete Leave"
+                                                                    style={{ color: '#ef4444' }}
+                                                                    onClick={() => handleDeleteLeave(leave._id)}
+                                                                >
+                                                                    <MdDelete />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowLeaves(null)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Leave Modal (Owner Only) */}
+            {editLeaveTarget && (
+                <div className="modal-overlay" style={{ zIndex: 1100 }}>
+                    <div className="modal" style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <h3><MdEdit /> Edit Leave</h3>
+                            <button className="btn-close" onClick={() => setEditLeaveTarget(null)}><MdClose /></button>
+                        </div>
+                        <form onSubmit={handleEditLeave}>
+                            <div className="modal-body">
+                                <div className="form-grid">
+                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                        <label className="form-label">Date <span className="required">*</span></label>
+                                        <input type="date" className="form-control"
+                                            value={editLeaveForm.date}
+                                            onChange={e => setEditLeaveForm({ ...editLeaveForm, date: e.target.value })} />
+                                    </div>
+                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                        <label className="form-label">Status</label>
+                                        <select className="form-control"
+                                            value={editLeaveForm.status}
+                                            onChange={e => setEditLeaveForm({ ...editLeaveForm, status: e.target.value })}>
+                                            <option value="approved">Approved</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="rejected">Rejected</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                        <label className="form-label">Reason</label>
+                                        <textarea className="form-control" rows="2"
+                                            value={editLeaveForm.reason}
+                                            onChange={e => setEditLeaveForm({ ...editLeaveForm, reason: e.target.value })}
+                                            placeholder="Leave reason..." />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={() => setEditLeaveTarget(null)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={editLeaveLoading}>
+                                    {editLeaveLoading ? 'Saving...' : 'Update Leave'}
                                 </button>
                             </div>
                         </form>

@@ -32,6 +32,22 @@ const salaryPaymentSchema = new mongoose.Schema({
     }
 }, { _id: true });
 
+const leaveSchema = new mongoose.Schema({
+    date: {
+        type: Date,
+        required: true
+    },
+    reason: {
+        type: String,
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['approved', 'pending', 'rejected'],
+        default: 'approved'
+    }
+}, { _id: true });
+
 const staffSchema = new mongoose.Schema({
     staffId: {
         type: String,
@@ -71,6 +87,7 @@ const staffSchema = new mongoose.Schema({
         min: 0
     },
     salaryPayments: [salaryPaymentSchema],
+    leaves: [leaveSchema],
     // Linked user account
     userId: {
         type: mongoose.Schema.Types.ObjectId,
