@@ -1,6 +1,7 @@
 const Student = require('../models/Student');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
+const DeletedRecord = require('../models/DeletedRecord');
 
 // @desc    Get all students
 // @route   GET /api/students
@@ -117,6 +118,15 @@ exports.deleteStudent = async (req, res) => {
         if (!student) {
             return res.status(404).json({ success: false, message: 'Student not found' });
         }
+
+        await DeletedRecord.create({
+            recordType: 'Student',
+            originalId: student._id,
+            description: `Archived/Deleted Student: ${student.name} (${student.studentId || student._id})`,
+            data: student.toObject(),
+            deletedBy: req.user.id
+        });
+
         res.json({ success: true, message: 'Student deleted successfully' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -235,6 +245,15 @@ exports.deletePayment = async (req, res) => {
         if (!payment) {
             return res.status(404).json({ success: false, message: 'Payment not found' });
         }
+
+        await DeletedRecord.create({
+            recordType: 'Fee Payment',
+            originalId: payment._id,
+            parentId: student._id,
+            description: `Deleted fee payment of ₹${payment.amount} (Receipt: ${payment.receiptNo}) for student ${student.name}`,
+            data: payment.toObject(),
+            deletedBy: req.user.id
+        });
 
         student.feePayments.pull(req.params.paymentId);
         await student.save();

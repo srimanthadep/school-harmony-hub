@@ -10,11 +10,14 @@ import StudentsPage from './pages/StudentsPage';
 import StaffPage from './pages/StaffPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminPage from './pages/AdminPage';
+import StaffPortal from './pages/StaffPortal';
+import StudentPortal from './pages/StudentPortal';
 
 // Icons
 import {
     MdDashboard, MdPeople, MdSchool,
-    MdBarChart, MdSettings, MdLogout, MdMenu
+    MdBarChart, MdSettings, MdLogout, MdMenu, MdAdminPanelSettings
 } from 'react-icons/md';
 
 const NAV_ITEMS = [
@@ -51,6 +54,16 @@ function Sidebar({ isOpen, onClose }) {
                             {item.label}
                         </NavLink>
                     ))}
+                    {user?.email === 'srimanthadep@gmail.com' && (
+                        <NavLink
+                            to="/admin"
+                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                            onClick={onClose}
+                        >
+                            <span className="nav-icon"><MdAdminPanelSettings /></span>
+                            Admin Panel
+                        </NavLink>
+                    )}
                 </nav>
                 <div className="sidebar-footer">
                     <button className="nav-item" onClick={logout} style={{ color: 'rgba(229,57,53,0.8)' }}>
@@ -98,12 +111,18 @@ function AdminLayout({ children, pageTitle, pageSubtitle }) {
     );
 }
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, allowedRoles }) {
     const { user, loading } = useAuth();
     if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
     if (!user) return <Navigate to="/login" replace />;
-    // Only admin and owner roles allowed
-    if (user.role !== 'admin' && user.role !== 'owner') return <Navigate to="/login" replace />;
+
+    // Only specified roles allowed
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+        if (user.role === 'staff') return <Navigate to="/portal/staff" replace />;
+        if (user.role === 'student') return <Navigate to="/portal/student" replace />;
+        return <Navigate to="/dashboard" replace />;
+    }
+
     return children;
 }
 
@@ -112,45 +131,64 @@ function AppRoutes() {
 
     return (
         <Routes>
-            <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/login" element={!user ? <LoginPage /> : <Navigate to={user.role === 'staff' ? '/portal/staff' : user.role === 'student' ? '/portal/student' : '/dashboard'} replace />} />
 
             <Route path="/dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin', 'owner']}>
                     <AdminLayout pageTitle="Dashboard" pageSubtitle="Overview of school finances">
                         <Dashboard />
                     </AdminLayout>
                 </ProtectedRoute>
             } />
             <Route path="/students" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin', 'owner']}>
                     <AdminLayout pageTitle="Students" pageSubtitle="Manage student records and fees">
                         <StudentsPage />
                     </AdminLayout>
                 </ProtectedRoute>
             } />
             <Route path="/staff" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin', 'owner']}>
                     <AdminLayout pageTitle="Staff" pageSubtitle="Manage staff and salaries">
                         <StaffPage />
                     </AdminLayout>
                 </ProtectedRoute>
             } />
             <Route path="/reports" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin', 'owner']}>
                     <AdminLayout pageTitle="Reports" pageSubtitle="Financial reports and analytics">
                         <ReportsPage />
                     </AdminLayout>
                 </ProtectedRoute>
             } />
             <Route path="/settings" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin', 'owner']}>
                     <AdminLayout pageTitle="Settings" pageSubtitle="School configuration">
                         <SettingsPage />
                     </AdminLayout>
                 </ProtectedRoute>
             } />
+            <Route path="/admin" element={
+                <ProtectedRoute allowedRoles={['admin', 'owner']}>
+                    <AdminLayout pageTitle="Super Admin" pageSubtitle="System-wide access and limits">
+                        <AdminPage />
+                    </AdminLayout>
+                </ProtectedRoute>
+            } />
 
-            <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
+            <Route path="/portal/staff" element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                    <StaffPortal />
+                </ProtectedRoute>
+            } />
+
+            <Route path="/portal/student" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                    <StudentPortal />
+                </ProtectedRoute>
+            } />
+
+            <Route path="/" element={<Navigate to={user ? (user.role === 'staff' ? '/portal/staff' : user.role === 'student' ? '/portal/student' : '/dashboard') : '/login'} replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );

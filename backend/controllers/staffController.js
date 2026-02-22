@@ -1,5 +1,6 @@
 const Staff = require('../models/Staff');
 const User = require('../models/User');
+const DeletedRecord = require('../models/DeletedRecord');
 const Settings = require('../models/Settings');
 
 // @desc    Get all staff
@@ -109,6 +110,15 @@ exports.deleteStaff = async (req, res) => {
         if (!staff) {
             return res.status(404).json({ success: false, message: 'Staff not found' });
         }
+
+        await DeletedRecord.create({
+            recordType: 'Staff',
+            originalId: staff._id,
+            description: `Archived/Deleted Staff: ${staff.name} (${staff.staffId || staff._id})`,
+            data: staff.toObject(),
+            deletedBy: req.user.id
+        });
+
         res.json({ success: true, message: 'Staff deleted successfully' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -224,6 +234,15 @@ exports.deleteSalaryPayment = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Salary payment not found' });
         }
 
+        await DeletedRecord.create({
+            recordType: 'Salary Payment',
+            originalId: payment._id,
+            parentId: staff._id,
+            description: `Deleted salary payment of ₹${payment.amount} (Slip: ${payment.slipNo}) for staff ${staff.name}`,
+            data: payment.toObject(),
+            deletedBy: req.user.id
+        });
+
         staff.salaryPayments.pull(req.params.paymentId);
         await staff.save();
 
@@ -274,15 +293,23 @@ exports.deleteLeave = async (req, res) => {
             return res.status(403).json({ success: false, message: 'Admins are not authorized to delete leaves.' });
         }
 
-        const staff = await Staff.findByIdAndUpdate(
-            req.params.id,
-            { $pull: { leaves: { _id: req.params.leaveId } } },
-            { new: true }
-        );
+        const staff = await Staff.findById(req.params.id);
+        if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
 
-        if (!staff) {
-            return res.status(404).json({ success: false, message: 'Staff not found' });
-        }
+        const leave = staff.leaves.id(req.params.leaveId);
+        if (!leave) return res.status(404).json({ success: false, message: 'Leave not found' });
+
+        await DeletedRecord.create({
+            recordType: 'Leave',
+            originalId: leave._id,
+            parentId: staff._id,
+            description: `Deleted leave (Date: ${new Date(leave.date).toLocaleDateString()}) for staff ${staff.name}`,
+            data: leave.toObject(),
+            deletedBy: req.user.id
+        });
+
+        staff.leaves.pull(req.params.leaveId);
+        await staff.save({ validateModifiedOnly: true });
 
         res.json({ success: true, message: 'Leave deleted successfully' });
     } catch (err) {
