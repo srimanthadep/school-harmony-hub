@@ -128,6 +128,24 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 function AppRoutes() {
     const { user } = useAuth();
+    const isAdminDomain = window.location.hostname === 'admin.oxfordschool.cc';
+
+    if (isAdminDomain) {
+        return (
+            <Routes>
+                <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/admin" replace />} />
+                <Route path="/admin" element={
+                    <ProtectedRoute allowedRoles={['admin', 'owner']}>
+                        <AdminLayout pageTitle="Super Admin" pageSubtitle="System-wide access and limits">
+                            <AdminPage />
+                        </AdminLayout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/" element={<Navigate to={user ? '/admin' : '/login'} replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        );
+    }
 
     return (
         <Routes>
@@ -165,13 +183,6 @@ function AppRoutes() {
                 <ProtectedRoute allowedRoles={['admin', 'owner']}>
                     <AdminLayout pageTitle="Settings" pageSubtitle="School configuration">
                         <SettingsPage />
-                    </AdminLayout>
-                </ProtectedRoute>
-            } />
-            <Route path="/admin" element={
-                <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                    <AdminLayout pageTitle="Super Admin" pageSubtitle="System-wide access and limits">
-                        <AdminPage />
                     </AdminLayout>
                 </ProtectedRoute>
             } />
