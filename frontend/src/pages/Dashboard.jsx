@@ -65,7 +65,7 @@ export default function Dashboard() {
 
     return (
         <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ maxWidth: 1400, margin: '0 auto' }}>
-            <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                     <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.5px' }}>School Analytics</h1>
                     <p style={{ color: '#64748b', fontSize: 14 }}>Real-time overview of your institution's performance</p>
@@ -119,7 +119,7 @@ export default function Dashboard() {
             </div>
 
             {/* Charts Row */}
-            <div className="dashboard-charts-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginBottom: 24 }}>
                 {/* Monthly income vs expense */}
                 <motion.div variants={itemVariants} className="card glass">
                     <div className="card-header" style={{ borderBottom: 'none' }}>
