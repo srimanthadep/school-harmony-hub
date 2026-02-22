@@ -128,9 +128,11 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 function AppRoutes() {
     const { user } = useAuth();
-    const isAdminDomain = window.location.hostname === 'admin.oxfordschool.cc';
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isAdminDomain = hostname === 'admin.oxfordschool.cc';
 
-    if (isAdminDomain) {
+    if (isAdminDomain || (isLocal && window.location.pathname.startsWith('/admin'))) {
         return (
             <Routes>
                 <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/admin" replace />} />

@@ -8,18 +8,30 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@tanem/react-nprogress": "^5.0.53",
+        "apexcharts": "^4.3.0",
         "axios": "^1.13.5",
+        "bootstrap": "^5.3.3",
         "date-fns": "^3.6.0",
+        "feather-icons-react": "^0.7.0",
         "jspdf": "^2.5.2",
         "jspdf-autotable": "^3.8.4",
+        "lodash-es": "^4.17.21",
         "papaparse": "^5.5.3",
+        "prop-types": "^15.8.1",
         "react": "^18.2.0",
+        "react-apexcharts": "^1.7.0",
+        "react-bootstrap": "^2.10.4",
         "react-dom": "^18.2.0",
         "react-hot-toast": "^2.6.0",
         "react-icons": "^5.5.0",
         "react-router-dom": "^6.30.3",
         "recharts": "^2.15.4",
-        "xlsx": "^0.18.5"
+        "sass": "^1.97.3",
+        "simplebar-react": "^3.2.6",
+        "styled-components": "^6.1.13",
+        "xlsx": "^0.18.5",
+        "yup": "^1.4.0"
     },
     "devDependencies": {
         "@vitejs/plugin-react": "^4.2.1",
