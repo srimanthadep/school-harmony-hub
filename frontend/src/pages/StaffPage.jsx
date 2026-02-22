@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -7,9 +7,11 @@ import {
     MdAdd, MdEdit, MdDelete, MdSearch, MdClose,
     MdPayment, MdHistory, MdDownload, MdPerson, MdReceiptLong, MdDateRange
 } from 'react-icons/md';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Fuse from 'fuse.js';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ROLES = ['teacher', 'principal', 'vice_principal', 'admin_staff', 'librarian', 'peon', 'guard', 'accountant', 'other'];
-
 const ACADEMIC_YEARS = ['2023-24', '2024-25', '2025-26', '2026-27'];
 
 const generateMonths = () => {
@@ -38,29 +40,12 @@ const emptyStaff = {
 const ROLE_DISPLAY = (r) => r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 export default function StaffPage() {
+    const queryClient = useQueryClient();
     const { user } = useAuth();
-    const [staff, setStaff] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [yearFilter, setYearFilter] = useState('');
-
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalStaffCount, setTotalStaffCount] = useState(0);
-    const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState(null);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [search]);
-
-    useEffect(() => {
-        setPage(1);
-    }, [debouncedSearch, roleFilter, yearFilter]);
 
     const [sortField, setSortField] = useState('name');
     const [sortDir, setSortDir] = useState(1);
@@ -72,8 +57,9 @@ export default function StaffPage() {
     const [formLoading, setFormLoading] = useState(false);
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-    const [showSalary, setShowSalary] = useState(null);
-    const [showHistory, setShowHistory] = useState(null);
+    const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState(null);
+    const [showSalaryId, setShowSalaryId] = useState(null);
+    const [showHistoryId, setShowHistoryId] = useState(null);
     const [historyData, setHistoryData] = useState(null);
 
     const [editSalaryTarget, setEditSalaryTarget] = useState(null); // { staffId, payment }
@@ -89,7 +75,7 @@ export default function StaffPage() {
     const [salaryLoading, setSalaryLoading] = useState(false);
     const [settings, setSettings] = useState({});
 
-    const [showLeaves, setShowLeaves] = useState(null); // Staff object
+    const [showLeavesId, setShowLeavesId] = useState(null); // Staff ID
     const [leaveForm, setLeaveForm] = useState({ date: new Date().toISOString().split('T')[0], reason: '' });
     const [leaveLoading, setLeaveLoading] = useState(false);
 
@@ -97,22 +83,64 @@ export default function StaffPage() {
     const [editLeaveForm, setEditLeaveForm] = useState({ date: '', reason: '', status: 'approved' });
     const [editLeaveLoading, setEditLeaveLoading] = useState(false);
 
-    const fetchStaff = useCallback(async () => {
-        setLoading(true);
-        try {
+    // Fetch staff data with TanStack Query
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: ['staff', page, roleFilter, yearFilter],
+        queryFn: async () => {
             const params = { page, limit: 50 };
             if (roleFilter) params.role = roleFilter;
             if (yearFilter) params.academicYear = yearFilter;
-            if (debouncedSearch) params.search = debouncedSearch;
             const res = await API.get('/staff', { params });
-            setStaff(res.data.staff);
-            setTotalStaffCount(res.data.total || 0);
-            setTotalPages(Math.ceil((res.data.total || 0) / 50));
-        } catch { toast.error('Failed to load staff'); }
-        finally { setLoading(false); }
-    }, [roleFilter, debouncedSearch, page, yearFilter]);
+            return res.data;
+        }
+    });
 
-    useEffect(() => { fetchStaff(); }, [fetchStaff]);
+    const staff = data?.staff || [];
+    const totalPages = data?.pages || 1;
+    const totalStaffCount = data?.total || 0;
+
+    const getStatus = (s) => s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'paid' : 'unpaid';
+
+    const STATUS_ORDER = { paid: 2, unpaid: 0 };
+
+    const sortedStaff = useMemo(() => {
+        return [...staff].sort((a, b) => {
+            if (sortField === 'status') {
+                const av = STATUS_ORDER[getStatus(a)] ?? 0;
+                const bv = STATUS_ORDER[getStatus(b)] ?? 0;
+                return (av - bv) * sortDir;
+            }
+            if (sortField === 'leaves') {
+                const av = a.leaves?.length || 0;
+                const bv = b.leaves?.length || 0;
+                return (av - bv) * sortDir;
+            }
+            const av = sortField === 'monthlySalary' ? a.monthlySalary
+                : sortField === 'totalSalaryPaid' ? a.totalSalaryPaid
+                    : (a[sortField] || '');
+            const bv = sortField === 'monthlySalary' ? b.monthlySalary
+                : sortField === 'totalSalaryPaid' ? b.totalSalaryPaid
+                    : (b[sortField] || '');
+            if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir;
+            return String(av).localeCompare(String(bv)) * sortDir;
+        });
+    }, [staff, sortField, sortDir]);
+
+    // Fuzzy search logic locally for instant results
+    const fuse = useMemo(() => new Fuse(sortedStaff, {
+        keys: ['name', 'staffId', 'phone', 'role'],
+        threshold: 0.3
+    }), [sortedStaff]);
+
+    const filteredStaff = useMemo(() => {
+        if (!search) return sortedStaff;
+        return fuse.search(search).map(r => r.item);
+    }, [search, sortedStaff, fuse]);
+
+    // Derived states for modals to ensure they reactive-update when query invalidates
+    const showLeaves = useMemo(() => staff.find(s => s._id === showLeavesId), [staff, showLeavesId]);
+    const showSalary = useMemo(() => staff.find(s => s._id === showSalaryId), [staff, showSalaryId]);
+    const showHistory = useMemo(() => staff.find(s => s._id === showHistoryId), [staff, showHistoryId]);
     useEffect(() => { API.get('/settings').then(r => setSettings(r.data.settings)).catch(() => { }); }, []);
 
     const validateForm = () => {
@@ -138,7 +166,7 @@ export default function StaffPage() {
                 toast.success('Staff added!');
             }
             setShowForm(false); setEditStaff(null); setFormData(emptyStaff);
-            fetchStaff();
+            queryClient.invalidateQueries(['staff']);
         } catch (err) { toast.error(err.response?.data?.message || 'Operation failed'); }
         finally { setFormLoading(false); }
     };
@@ -163,12 +191,13 @@ export default function StaffPage() {
         try {
             await API.delete(`/staff/${showDeleteConfirm._id}`);
             toast.success('Staff deleted');
-            setShowDeleteConfirm(null); fetchStaff();
+            setShowDeleteConfirm(null);
+            queryClient.invalidateQueries(['staff']);
         } catch { toast.error('Delete failed'); }
     };
 
     const openHistory = async (s) => {
-        setShowHistory(s);
+        setShowHistoryId(s._id);
         try {
             const res = await API.get(`/staff/${s._id}/salaries`);
             setHistoryData(res.data);
@@ -180,11 +209,11 @@ export default function StaffPage() {
         if (salaryForm.amount === '' || salaryForm.amount < 0) { toast.error('Enter a valid amount'); return; }
         setSalaryLoading(true);
         try {
-            await API.post(`/staff/${showSalary._id}/salaries`, { ...salaryForm, amount: Number(salaryForm.amount) });
+            await API.post(`/staff/${showSalaryId}/salaries`, { ...salaryForm, amount: Number(salaryForm.amount) });
             toast.success('Salary payment recorded!');
-            setShowSalary(null);
+            setShowSalaryId(null);
             setSalaryForm({ month: CURRENT_MONTH, amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'bank_transfer', remarks: '' });
-            fetchStaff();
+            queryClient.invalidateQueries(['staff']);
         } catch (err) { toast.error(err.response?.data?.message || 'Payment failed'); }
         finally { setSalaryLoading(false); }
     };
@@ -224,7 +253,7 @@ export default function StaffPage() {
             // Refresh history
             const res = await API.get(`/staff/${staffId}/salaries`);
             setHistoryData(res.data);
-            fetchStaff();
+            queryClient.invalidateQueries(['staff']);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Update failed');
         } finally {
@@ -239,12 +268,10 @@ export default function StaffPage() {
     const confirmDeleteSalaryPayment = async () => {
         if (!showDeletePaymentConfirm) return;
         try {
-            await API.delete(`/staff/${showHistory._id}/salaries/${showDeletePaymentConfirm}`);
-            toast.success('Salary payment deleted');
             // Refresh history
-            const res = await API.get(`/staff/${showHistory._id}/salaries`);
+            const res = await API.get(`/staff/${showHistoryId}/salaries`);
             setHistoryData(res.data);
-            fetchStaff();
+            queryClient.invalidateQueries(['staff']);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Delete failed');
         } finally {
@@ -257,17 +284,10 @@ export default function StaffPage() {
         if (!leaveForm.date) { toast.error('Date is required'); return; }
         setLeaveLoading(true);
         try {
-            await API.post(`/staff/${showLeaves._id}/leaves`, leaveForm);
+            await API.post(`/staff/${showLeavesId}/leaves`, leaveForm);
             toast.success('Leave recorded!');
             setLeaveForm({ date: new Date().toISOString().split('T')[0], reason: '' });
-
-            // Refresh staff to get the new leave inserted
-            const res = await API.get('/staff', { params: { page, limit: 50, role: roleFilter, academicYear: yearFilter, search: debouncedSearch } });
-            setStaff(res.data.staff);
-
-            // update local selected staff to show new leaves
-            const updatedStaff = res.data.staff.find(s => s._id === showLeaves._id);
-            if (updatedStaff) setShowLeaves(updatedStaff);
+            queryClient.invalidateQueries(['staff']);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to record leave');
         } finally {
@@ -277,21 +297,16 @@ export default function StaffPage() {
 
     const handleDeleteLeave = async (leaveId) => {
         try {
-            await API.delete(`/staff/${showLeaves._id}/leaves/${leaveId}`);
+            await API.delete(`/staff/${showLeavesId}/leaves/${leaveId}`);
             toast.success('Leave deleted');
-            // Refresh staff data
-            const res = await API.get('/staff', { params: { page, limit: 50, role: roleFilter, academicYear: yearFilter, search: debouncedSearch } });
-            setStaff(res.data.staff);
-
-            const updatedStaff = res.data.staff.find(s => s._id === showLeaves._id);
-            if (updatedStaff) setShowLeaves(updatedStaff);
+            queryClient.invalidateQueries(['staff']);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to delete leave');
         }
     };
 
     const openEditLeave = (leave) => {
-        setEditLeaveTarget({ staffId: showLeaves._id, leave });
+        setEditLeaveTarget({ staffId: showLeavesId, leave });
         setEditLeaveForm({
             date: leave.date ? leave.date.split('T')[0] : '',
             reason: leave.reason || '',
@@ -309,42 +324,13 @@ export default function StaffPage() {
             );
             toast.success('Leave updated!');
             setEditLeaveTarget(null);
-
-            // Refresh staff
-            const res = await API.get('/staff', { params: { page, limit: 50, role: roleFilter, academicYear: yearFilter, search: debouncedSearch } });
-            setStaff(res.data.staff);
-
-            const updatedStaff = res.data.staff.find(s => s._id === editLeaveTarget.staffId);
-            if (updatedStaff) setShowLeaves(updatedStaff);
+            queryClient.invalidateQueries(['staff']);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Update failed');
         } finally {
             setEditLeaveLoading(false);
         }
     };
-
-    const getStatus = (s) => s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'paid' : 'unpaid';
-
-    const sortedStaff = [...staff].sort((a, b) => {
-        if (sortField === 'status') {
-            const av = getStatus(a) === 'paid' ? 1 : 0;
-            const bv = getStatus(b) === 'paid' ? 1 : 0;
-            return (av - bv) * sortDir;
-        }
-        if (sortField === 'leaves') {
-            const av = a.leaves?.length || 0;
-            const bv = b.leaves?.length || 0;
-            return (av - bv) * sortDir;
-        }
-        const av = sortField === 'monthlySalary' ? a.monthlySalary
-            : sortField === 'totalSalaryPaid' ? a.totalSalaryPaid
-                : (a[sortField] || '');
-        const bv = sortField === 'monthlySalary' ? b.monthlySalary
-            : sortField === 'totalSalaryPaid' ? b.totalSalaryPaid
-                : (b[sortField] || '');
-        if (typeof av === 'number') return (av - bv) * sortDir;
-        return String(av).localeCompare(String(bv)) * sortDir;
-    });
 
     const toggleSort = (field) => {
         if (sortField === field) setSortDir(d => -d);
@@ -356,34 +342,35 @@ export default function StaffPage() {
     return (
         <div>
             {/* Controls */}
-            <div className="card" style={{ marginBottom: 20 }}>
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="card glass" style={{ marginBottom: 20 }}>
                 <div className="card-header">
                     <div className="filters-bar">
-                        <div className="search-bar" style={{ minWidth: 220 }}>
+                        <div className="search-bar" style={{ minWidth: 260 }}>
                             <MdSearch className="search-icon" />
-                            <input placeholder="Search staff..." value={search} onChange={e => setSearch(e.target.value)} />
+                            <input placeholder="Search name, ID, phone..." value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
-                        <select className="form-control" style={{ width: 140 }} value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+                        <select className="form-control" style={{ width: 140 }} value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }}>
                             <option value="">All Roles</option>
                             {ROLES.map(r => <option key={r} value={r}>{ROLE_DISPLAY(r)}</option>)}
                         </select>
-                        <select className="form-control" style={{ width: 130 }} value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+                        <select className="form-control" style={{ width: 130 }} value={yearFilter} onChange={e => { setYearFilter(e.target.value); setPage(1); }}>
                             <option value="">All Sessions</option>
                             {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-                    <button className="btn btn-primary" onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}>
+                    <button className="btn btn-primary hover-lift" onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}>
                         <MdAdd /> Add Staff
                     </button>
                 </div>
-                <div style={{ padding: '8px 24px', fontSize: 13, color: '#6b7280' }}>
-                    Showing <strong>{(page - 1) * 50 + 1} - {(page - 1) * 50 + staff.length}</strong> of <strong>{totalStaffCount}</strong> staff members
+                <div style={{ padding: '8px 24px', fontSize: 13, color: '#64748b' }}>
+                    Found <strong>{totalStaffCount}</strong> staff members •
+                    Showing <strong>{staff.length}</strong> on this page
                 </div>
-            </div>
+            </motion.div>
 
             {/* Table */}
             <div className="card">
-                {loading ? (
+                {isLoading ? (
                     <div className="loading-spinner"><div className="spinner" /></div>
                 ) : staff.length === 0 ? (
                     <div className="empty-state">
@@ -408,94 +395,96 @@ export default function StaffPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedStaff.map(s => (
-                                    <tr key={s._id}>
-                                        <td><code style={{ fontSize: 11, color: '#1a237e' }}>{s.staffId}</code></td>
-                                        <td>
-                                            <div style={{ fontWeight: 600 }}>{s.name}</div>
-                                            {s.subject && <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>{s.subject}</div>}
-                                        </td>
-                                        <td>
-                                            <span className="badge badge-admin" style={{ textTransform: 'capitalize' }}>
-                                                {ROLE_DISPLAY(s.role)}
-                                            </span>
-                                        </td>
-                                        <td style={{ fontWeight: 600 }}>{formatCurrency(s.monthlySalary)}</td>
-                                        <td style={{ fontWeight: 600, color: '#43a047' }}>{formatCurrency(s.totalSalaryPaid)}</td>
-                                        <td>
-                                            <span className="badge" style={{
-                                                background: '#f0f2f8',
-                                                color: '#1a237e',
-                                                fontSize: '10px',
-                                                whiteSpace: 'nowrap',
-                                                padding: '2px 8px'
-                                            }}>
-                                                {s.academicYear || '-'}
-                                            </span>
-                                        </td>
-                                        <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(s.joiningDate)}</td>
-                                        <td>
-                                            <span className="badge" style={{ background: '#fef3c7', color: '#b45309', padding: '2px 8px' }}>
-                                                {s.leaves?.length || 0}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'badge-paid' : 'badge-unpaid'}`}>
-                                                {s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'Paid' : 'Not Paid'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div style={{
-                                                display: 'grid',
-                                                gridTemplateColumns: '1fr 1fr',
-                                                gap: 5,
-                                                minWidth: 90
-                                            }}>
-                                                <button className="btn btn-success btn-sm btn-icon" title="Pay Salary"
-                                                    onClick={() => {
-                                                        setShowSalary(s);
-                                                        setSalaryForm(f => ({
-                                                            ...f,
-                                                            amount: s.monthlySalary,
-                                                            month: CURRENT_MONTH,
-                                                            paymentDate: new Date().toISOString().split('T')[0]
-                                                        }));
-                                                    }}>
-                                                    <MdPayment />
-                                                </button>
-                                                <button
-                                                    className="btn btn-primary btn-sm btn-icon"
-                                                    title="Download Latest Payslip"
-                                                    style={{ opacity: s.totalSalaryPaid > 0 ? 1 : 0.3, cursor: s.totalSalaryPaid > 0 ? 'pointer' : 'default' }}
-                                                    onClick={() => s.totalSalaryPaid > 0 && downloadLatestPayslip(s)}>
-                                                    <MdReceiptLong />
-                                                </button>
-                                                <button className="btn btn-secondary btn-sm btn-icon" title="Salary History"
-                                                    onClick={() => openHistory(s)}>
-                                                    <MdHistory />
-                                                </button>
-                                                <button className="btn btn-secondary btn-sm btn-icon" title="Leaves"
-                                                    onClick={() => setShowLeaves(s)}>
-                                                    <MdDateRange />
-                                                </button>
-                                                <button className="btn btn-secondary btn-sm btn-icon" title="Edit" onClick={() => openEdit(s)}>
-                                                    <MdEdit />
-                                                </button>
-                                                <button className="btn btn-danger btn-sm btn-icon" title="Delete"
-                                                    onClick={() => setShowDeleteConfirm(s)}>
-                                                    <MdDelete />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                <AnimatePresence mode='popLayout'>
+                                    {filteredStaff.map((s, idx) => (
+                                        <motion.tr
+                                            key={s._id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.03 }}
+                                            className="hover-lift"
+                                        >
+                                            <td><code style={{ fontSize: 11, color: '#1a237e', fontWeight: 700 }}>{s.staffId}</code></td>
+                                            <td>
+                                                <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{s.name}</div>
+                                                {s.subject && <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>{s.subject}</div>}
+                                            </td>
+                                            <td>
+                                                <span className="badge badge-admin glass" style={{ textTransform: 'capitalize' }}>
+                                                    {ROLE_DISPLAY(s.role)}
+                                                </span>
+                                            </td>
+                                            <td style={{ fontWeight: 700 }}>{formatCurrency(s.monthlySalary)}</td>
+                                            <td style={{ fontWeight: 700, color: '#10b981' }}>{formatCurrency(s.totalSalaryPaid)}</td>
+                                            <td>
+                                                <span className="badge glass" style={{ background: '#f1f5f9', color: '#1e293b' }}>
+                                                    {s.academicYear || '-'}
+                                                </span>
+                                            </td>
+                                            <td style={{ fontSize: 12, color: '#64748b' }}>{formatDate(s.joiningDate)}</td>
+                                            <td>
+                                                <span className="badge" style={{ background: '#fff7ed', color: '#c2410c' }}>
+                                                    {s.leaves?.length || 0}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${getStatus(s) === 'paid' ? 'badge-paid' : 'badge-unpaid'}`}>
+                                                    {getStatus(s) === 'paid' ? 'Paid' : 'Due'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '1fr 1fr',
+                                                    gap: 5,
+                                                    minWidth: 90
+                                                }}>
+                                                    <button className="btn btn-success btn-sm btn-icon hover-lift" title="Pay Salary"
+                                                        onClick={() => {
+                                                            setShowSalaryId(s._id);
+                                                            setSalaryForm(f => ({
+                                                                ...f,
+                                                                amount: s.monthlySalary,
+                                                                month: CURRENT_MONTH,
+                                                                paymentDate: new Date().toISOString().split('T')[0]
+                                                            }));
+                                                        }}>
+                                                        <MdPayment />
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-primary btn-sm btn-icon hover-lift"
+                                                        title="Download Latest Payslip"
+                                                        style={{ opacity: s.totalSalaryPaid > 0 ? 1 : 0.3, cursor: s.totalSalaryPaid > 0 ? 'pointer' : 'default' }}
+                                                        onClick={() => s.totalSalaryPaid > 0 && downloadLatestPayslip(s)}>
+                                                        <MdReceiptLong />
+                                                    </button>
+                                                    <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Salary History"
+                                                        onClick={() => openHistory(s)}>
+                                                        <MdHistory />
+                                                    </button>
+                                                    <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Leaves"
+                                                        onClick={() => setShowLeavesId(s._id)}>
+                                                        <MdDateRange />
+                                                    </button>
+                                                    <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Edit" onClick={() => openEdit(s)}>
+                                                        <MdEdit />
+                                                    </button>
+                                                    <button className="btn btn-danger btn-sm btn-icon hover-lift" title="Delete"
+                                                        onClick={() => setShowDeleteConfirm(s)}>
+                                                        <MdDelete />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </AnimatePresence>
                             </tbody>
                         </table>
                     </div>
                 )}
 
                 {/* Pagination Controls */}
-                {!loading && totalPages > 1 && (
+                {!isLoading && totalPages > 1 && (
                     <div className="pagination" style={{ padding: '0 24px 20px' }}>
                         <button
                             className="pagination-btn"
@@ -692,7 +681,7 @@ export default function StaffPage() {
                     <div className="modal" style={{ maxWidth: 520 }}>
                         <div className="modal-header">
                             <h3><MdPayment /> Pay Salary - {showSalary.name}</h3>
-                            <button className="btn-close" onClick={() => setShowSalary(null)}><MdClose /></button>
+                            <button className="btn-close" onClick={() => setShowSalaryId(null)}><MdClose /></button>
                         </div>
                         <form onSubmit={handleSalaryPayment}>
                             <div className="modal-body">
@@ -756,7 +745,7 @@ export default function StaffPage() {
                     <div className="modal modal-lg">
                         <div className="modal-header">
                             <h3><MdHistory /> Salary History - {showHistory.name}</h3>
-                            <button className="btn-close" onClick={() => { setShowHistory(null); setHistoryData(null); }}><MdClose /></button>
+                            <button className="btn-close" onClick={() => { setShowHistoryId(null); setHistoryData(null); }}><MdClose /></button>
                         </div>
                         <div className="modal-body">
                             {historyData ? (
@@ -852,7 +841,7 @@ export default function StaffPage() {
                             ) : <div className="loading-spinner"><div className="spinner" /></div>}
                         </div>
                         <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => { setShowHistory(null); setHistoryData(null); }}>Close</button>
+                            <button className="btn btn-secondary" onClick={() => { setShowHistoryId(null); setHistoryData(null); }}>Close</button>
                         </div>
                     </div>
                 </div>
@@ -924,7 +913,7 @@ export default function StaffPage() {
                     <div className="modal modal-lg">
                         <div className="modal-header">
                             <h3><MdDateRange /> Leaves - {showLeaves.name}</h3>
-                            <button className="btn-close" onClick={() => setShowLeaves(null)}><MdClose /></button>
+                            <button className="btn-close" onClick={() => setShowLeavesId(null)}><MdClose /></button>
                         </div>
                         <div className="modal-body">
                             <form onSubmit={handleRecordLeave} style={{ marginBottom: 20, padding: 16, background: '#f8fafc', borderRadius: 8 }}>
@@ -1006,7 +995,7 @@ export default function StaffPage() {
                             )}
                         </div>
                         <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowLeaves(null)}>Close</button>
+                            <button className="btn btn-secondary" onClick={() => setShowLeavesId(null)}>Close</button>
                         </div>
                     </div>
                 </div>

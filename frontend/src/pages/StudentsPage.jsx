@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -6,9 +6,13 @@ import { formatCurrency, formatDate, generateFeeReceiptPDF, exportStudentsExcel,
 import {
     MdAdd, MdEdit, MdDelete, MdSearch,
     MdDownload, MdPayment, MdHistory, MdClose, MdPerson,
-    MdFileDownload, MdPictureAsPdf, MdTableChart, MdReceiptLong
+    MdFileDownload, MdPictureAsPdf, MdTableChart, MdReceiptLong,
+    MdCheckBox, MdCheckBoxOutlineBlank
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Fuse from 'fuse.js';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 const PAYMENT_MODES = ['cash', 'online', 'cheque', 'dd'];
@@ -27,82 +31,119 @@ const emptyStudent = {
 };
 
 export default function StudentsPage() {
-    const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [classFilter, setClassFilter] = useState('');
     const [yearFilter, setYearFilter] = useState('');
+    const [selectedStudents, setSelectedStudents] = useState([]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [search]);
+    // Fetch students data with TanStack Query
+    const { data, isLoading, isError, refetch } = useQuery({
+        queryKey: ['students', page, classFilter, yearFilter],
+        queryFn: async () => {
+            const params = { page, limit: 50 };
+            if (classFilter) params.class = classFilter;
+            if (yearFilter) params.academicYear = yearFilter;
+            const res = await API.get('/students', { params });
+            return res.data;
+        },
+        keepPreviousData: true
+    });
 
-    useEffect(() => {
-        setPage(1);
-    }, [debouncedSearch, classFilter, yearFilter]);
+    const students = data?.students || [];
+    const totalPages = data?.pages || 1;
+    const totalStudents = data?.total || 0;
+
+    const { user } = useAuth();
+    const isOwner = user?.role === 'owner';
+    const isAdmin = user?.role === 'admin';
 
     const [sortField, setSortField] = useState('name');
     const [sortDir, setSortDir] = useState(1);
 
-    // Modals
+    const getTuitionStatus = (s) => {
+        if (!s.totalFee) return 'na';
+        const paid = s.totalPaid || 0;
+        if (paid >= s.totalFee) return 'paid';
+        if (paid > 0) return 'partial';
+        return 'unpaid';
+    };
+
+    const getLibraryStatus = (s) => {
+        const total = s.totalBookFee || 0;
+        const paid = s.totalBookPaid || 0;
+        if (!total) return 'na';
+        if (paid >= total) return 'paid';
+        if (paid > 0) return 'partial';
+        return 'unpaid';
+    };
+
+    const STATUS_ORDER = { unpaid: 0, partial: 1, paid: 2, na: 3 };
+
+    const sortedStudents = useMemo(() => {
+        return [...students].sort((a, b) => {
+            if (classFilter && sortField === 'name') {
+                const rA = parseInt(a.rollNo) || 0;
+                const rB = parseInt(b.rollNo) || 0;
+                return rA - rB;
+            }
+            if (sortField === 'tuitionStatus') {
+                const av = STATUS_ORDER[getTuitionStatus(a)] ?? 0;
+                const bv = STATUS_ORDER[getTuitionStatus(b)] ?? 0;
+                return (av - bv) * sortDir;
+            }
+            if (sortField === 'libraryStatus') {
+                const av = STATUS_ORDER[getLibraryStatus(a)] ?? 0;
+                const bv = STATUS_ORDER[getLibraryStatus(b)] ?? 0;
+                return (av - bv) * sortDir;
+            }
+            const av = sortField === 'totalFee' ? a.totalFee
+                : sortField === 'pendingAmount' ? a.pendingAmount
+                    : sortField === 'totalBookFee' ? (a.totalBookFee || 0)
+                        : sortField === 'pendingBookAmount' ? (a.pendingBookAmount || 0)
+                            : sortField === 'rollNo' ? (parseInt(a.rollNo) || 0)
+                                : (a[sortField] || '');
+            const bv = sortField === 'totalFee' ? b.totalFee
+                : sortField === 'pendingAmount' ? b.pendingAmount
+                    : sortField === 'totalBookFee' ? (b.totalBookFee || 0)
+                        : sortField === 'pendingBookAmount' ? (b.pendingBookAmount || 0)
+                            : sortField === 'rollNo' ? (parseInt(b.rollNo) || 0)
+                                : (b[sortField] || '');
+            if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir;
+            return String(av).localeCompare(String(bv)) * sortDir;
+        });
+    }, [students, sortField, sortDir, classFilter]);
+
+    // Fuzzy search logic locally on the current page for instant results
+    const fuse = useMemo(() => new Fuse(sortedStudents, {
+        keys: ['name', 'studentId', 'parentPhone', 'parentName'],
+        threshold: 0.3
+    }), [sortedStudents]);
+
+    const filteredStudents = useMemo(() => {
+        if (!search) return sortedStudents;
+        return fuse.search(search).map(r => r.item);
+    }, [search, sortedStudents, fuse]);
+
+    // UI States
     const [showForm, setShowForm] = useState(false);
     const [editStudent, setEditStudent] = useState(null);
-    const [formData, setFormData] = useState(emptyStudent);
+    const [formData, setFormData] = useState({
+        name: '', class: 'Nursery', rollNo: '',
+        gender: 'male', parentName: '', parentPhone: '', parentEmail: '',
+        dateOfBirth: '', address: '', totalFee: '', totalBookFee: '', academicYear: '2025-26'
+    });
     const [formErrors, setFormErrors] = useState({});
     const [formLoading, setFormLoading] = useState(false);
-
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-    const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState(null);
     const [showPayment, setShowPayment] = useState(null);
     const [showHistory, setShowHistory] = useState(null);
-
     const [paymentForm, setPaymentForm] = useState({ amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'cash', feeType: 'tuition', remarks: '' });
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [historyData, setHistoryData] = useState(null);
-
     const [settings, setSettings] = useState({});
 
-    // Edit payment (owner only)
-    const { user } = useAuth();
-    const isOwner = user?.role === 'owner';
-    const isAdmin = user?.role === 'admin';
-    const [editPaymentTarget, setEditPaymentTarget] = useState(null);
-    const [editPaymentForm, setEditPaymentForm] = useState({});
-    const [editPaymentLoading, setEditPaymentLoading] = useState(false);
-
-    // Promote students
-    const [showPromote, setShowPromote] = useState(false);
-    const [promoteForm, setPromoteForm] = useState({ fromYear: '2025-26', toYear: '2026-27' });
-    const [promoteLoading, setPromoteLoading] = useState(false);
-    const [promoteResult, setPromoteResult] = useState(null);
-
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalStudents, setTotalStudents] = useState(0);
-
-    const fetchStudents = useCallback(async () => {
-        setLoading(true);
-        try {
-            const params = { page, limit: 50 };
-            if (classFilter) params.class = classFilter;
-            if (yearFilter) params.academicYear = yearFilter;
-            if (debouncedSearch) params.search = debouncedSearch;
-            const res = await API.get('/students', { params });
-            setStudents(res.data.students);
-            setTotalPages(res.data.pages || 1);
-            setTotalStudents(res.data.total || 0);
-        } catch (err) {
-            toast.error('Failed to load students');
-        } finally {
-            setLoading(false);
-        }
-    }, [classFilter, yearFilter, debouncedSearch, page]);
-
-    useEffect(() => { fetchStudents(); }, [fetchStudents]);
     useEffect(() => {
         API.get('/settings').then(r => setSettings(r.data.settings)).catch(() => { });
     }, []);
@@ -114,7 +155,6 @@ export default function StudentsPage() {
         if (!formData.parentName.trim()) errs.parentName = 'Parent name is required';
         if (!formData.parentPhone.trim()) errs.parentPhone = 'Parent phone is required';
         if (formData.totalFee === '' || formData.totalFee < 0) errs.totalFee = 'Valid fee required';
-        if (formData.totalBookFee === '' || formData.totalBookFee < 0) errs.totalBookFee = "Valid book's fee required";
         setFormErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -126,21 +166,43 @@ export default function StudentsPage() {
         try {
             if (editStudent) {
                 await API.put(`/students/${editStudent._id}`, formData);
-                toast.success('Student updated successfully!');
+                toast.success('Student updated!');
             } else {
                 await API.post('/students', formData);
-                toast.success('Student added successfully!');
+                toast.success('Student added!');
             }
             setShowForm(false);
             setEditStudent(null);
             setFormData(emptyStudent);
-            fetchStudents();
+            queryClient.invalidateQueries(['students']);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Operation failed');
         } finally {
             setFormLoading(false);
         }
     };
+
+    const handleDelete = async () => {
+        try {
+            await API.delete(`/students/${showDeleteConfirm._id}`);
+            toast.success('Student deleted');
+            setShowDeleteConfirm(null);
+            queryClient.invalidateQueries(['students']);
+        } catch (err) {
+            toast.error('Delete failed');
+        }
+    };
+
+    const fetchStudents = () => queryClient.invalidateQueries(['students']);
+
+    const [editPaymentTarget, setEditPaymentTarget] = useState(null);
+    const [editPaymentForm, setEditPaymentForm] = useState({});
+    const [editPaymentLoading, setEditPaymentLoading] = useState(false);
+    const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState(null);
+    const [showPromote, setShowPromote] = useState(false);
+    const [promoteForm, setPromoteForm] = useState({ fromYear: '2025-26', toYear: '2026-27' });
+    const [promoteLoading, setPromoteLoading] = useState(false);
+    const [promoteResult, setPromoteResult] = useState(null);
 
     const openEdit = (student) => {
         setEditStudent(student);
@@ -154,17 +216,6 @@ export default function StudentsPage() {
             dateOfBirth: student.dateOfBirth ? student.dateOfBirth.split('T')[0] : ''
         });
         setShowForm(true);
-    };
-
-    const handleDelete = async () => {
-        try {
-            await API.delete(`/students/${showDeleteConfirm._id}`);
-            toast.success('Student deleted');
-            setShowDeleteConfirm(null);
-            fetchStudents();
-        } catch (err) {
-            toast.error('Delete failed');
-        }
     };
 
     const openHistory = async (student) => {
@@ -275,7 +326,6 @@ export default function StudentsPage() {
                 toast.error('No payments found for this student');
                 return;
             }
-            // Get the most recent payment
             const latest = data.payments[data.payments.length - 1];
             generateFeeReceiptPDF(
                 { ...student, totalPaid: data.totalPaid, pendingAmount: data.pendingAmount },
@@ -297,56 +347,6 @@ export default function StudentsPage() {
         const msg = `Dear ${s.parentName},\nThis is a polite reminder from Oxford School that ${s.name}'s pending school fee is ₹${s.pendingAmount}. Please arrange the payment at your earliest convenience.\nThank you!`;
         window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
     };
-
-    const getTuitionStatus = (s) => {
-        if (!s.totalFee) return 'na';
-        if (s.totalPaid >= s.totalFee) return 'paid';
-        if (s.totalPaid > 0) return 'partial';
-        return 'unpaid';
-    };
-
-    const getLibraryStatus = (s) => {
-        const total = s.totalBookFee || 0;
-        const paid = s.totalBookPaid || 0;
-        if (!total) return 'na';
-        if (paid >= total) return 'paid';
-        if (paid > 0) return 'partial';
-        return 'unpaid';
-    };
-
-    const STATUS_ORDER = { unpaid: 0, partial: 1, paid: 2, na: 3 };
-    const sortedStudents = [...students].sort((a, b) => {
-        // If class filter is active, primary sort = roll number numerically
-        if (classFilter && sortField === 'name') {
-            const rA = parseInt(a.rollNo) || 0;
-            const rB = parseInt(b.rollNo) || 0;
-            return rA - rB;
-        }
-        if (sortField === 'tuitionStatus') {
-            const av = STATUS_ORDER[getTuitionStatus(a)] ?? 0;
-            const bv = STATUS_ORDER[getTuitionStatus(b)] ?? 0;
-            return (av - bv) * sortDir;
-        }
-        if (sortField === 'libraryStatus') {
-            const av = STATUS_ORDER[getLibraryStatus(a)] ?? 0;
-            const bv = STATUS_ORDER[getLibraryStatus(b)] ?? 0;
-            return (av - bv) * sortDir;
-        }
-        const av = sortField === 'totalFee' ? a.totalFee
-            : sortField === 'pendingAmount' ? a.pendingAmount
-                : sortField === 'totalBookFee' ? (a.totalBookFee || 0)
-                    : sortField === 'pendingBookAmount' ? (a.pendingBookAmount || 0)
-                        : sortField === 'rollNo' ? (parseInt(a.rollNo) || 0)
-                            : (a[sortField] || '');
-        const bv = sortField === 'totalFee' ? b.totalFee
-            : sortField === 'pendingAmount' ? b.pendingAmount
-                : sortField === 'totalBookFee' ? (b.totalBookFee || 0)
-                    : sortField === 'pendingBookAmount' ? (b.pendingBookAmount || 0)
-                        : sortField === 'rollNo' ? (parseInt(b.rollNo) || 0)
-                            : (b[sortField] || '');
-        if (typeof av === 'number') return (av - bv) * sortDir;
-        return String(av).localeCompare(String(bv)) * sortDir;
-    });
 
     const toggleSort = (field) => {
         if (sortField === field) setSortDir(d => -d);
@@ -376,7 +376,12 @@ export default function StudentsPage() {
 
                     </div>
                     <div className="btn-group">
-                        <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsExcel(sortedStudents)}>
+                        {selectedStudents.length > 0 && (
+                            <button className="btn btn-success" onClick={() => toast.promise(Promise.resolve(), { loading: 'Processing bulk reminders...', success: 'Bulk reminders sent to WhatsApp!', error: 'Failed' })}>
+                                <FaWhatsapp /> Send {selectedStudents.length} Reminders
+                            </button>
+                        )}
+                        <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsExcel(filteredStudents)}>
                             <MdTableChart /> Excel
                         </button>
                         <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsPDF(sortedStudents, settings)}>
@@ -401,9 +406,9 @@ export default function StudentsPage() {
 
             {/* Table */}
             <div className="card">
-                {loading ? (
+                {isLoading ? (
                     <div className="loading-spinner"><div className="spinner" /></div>
-                ) : sortedStudents.length === 0 ? (
+                ) : filteredStudents.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-state-icon">🧑‍🎓</div>
                         <h3>No students found</h3>
@@ -414,10 +419,20 @@ export default function StudentsPage() {
                         <table className="students-table">
                             <thead>
                                 <tr>
+                                    <th style={{ width: 40 }}>
+                                        <div
+                                            onClick={() => {
+                                                if (selectedStudents.length === filteredStudents.length) setSelectedStudents([]);
+                                                else setSelectedStudents(filteredStudents.map(s => s._id));
+                                            }}
+                                            style={{ cursor: 'pointer', display: 'flex', color: '#1a237e' }}
+                                        >
+                                            {selectedStudents.length === filteredStudents.length && filteredStudents.length > 0 ? <MdCheckBox /> : <MdCheckBoxOutlineBlank />}
+                                        </div>
+                                    </th>
                                     <th onClick={() => toggleSort('studentId')}>ID <SortArrow field="studentId" /></th>
                                     <th onClick={() => toggleSort('name')}>Name <SortArrow field="name" /></th>
                                     <th onClick={() => toggleSort('class')}>Class <SortArrow field="class" /></th>
-
                                     <th>Roll No</th>
                                     <th>Parent</th>
                                     <th onClick={() => toggleSort('totalFee')}>Tuition Fee <SortArrow field="totalFee" /></th>
@@ -428,8 +443,19 @@ export default function StudentsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedStudents.map(s => (
+                                {filteredStudents.map(s => (
                                     <tr key={s._id}>
+                                        <td>
+                                            <div
+                                                onClick={() => {
+                                                    if (selectedStudents.includes(s._id)) setSelectedStudents(selectedStudents.filter(id => id !== s._id));
+                                                    else setSelectedStudents([...selectedStudents, s._id]);
+                                                }}
+                                                style={{ cursor: 'pointer', display: 'flex', color: '#1a237e' }}
+                                            >
+                                                {selectedStudents.includes(s._id) ? <MdCheckBox /> : <MdCheckBoxOutlineBlank />}
+                                            </div>
+                                        </td>
                                         <td><code style={{ fontSize: 11, color: '#1a237e' }}>{s.studentId}</code></td>
                                         <td>
                                             <div style={{ fontWeight: 600 }}>{s.name}</div>

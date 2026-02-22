@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -33,40 +35,67 @@ function Sidebar({ isOpen, onClose }) {
 
     return (
         <>
-            <div className={`sidebar-overlay ${isOpen ? 'active' : ''}`} onClick={onClose} />
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="sidebar-overlay active"
+                        onClick={onClose}
+                    />
+                )}
+            </AnimatePresence>
             <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
                 <div className="sidebar-logo">
-                    <img src="/logo.png" alt="Oxford School Logo"
-                        style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', mixBlendMode: 'screen', marginBottom: 6 }} />
+                    <motion.img
+                        initial={{ scale: 0.8 }}
+                        animate={{ scale: 1 }}
+                        src="/logo.png"
+                        alt="Oxford School Logo"
+                        style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', mixBlendMode: 'screen', marginBottom: 6 }}
+                    />
                     <h2>Oxford School</h2>
                     <p style={{ fontSize: 11, opacity: 0.75 }}>Chityala &bull; Fee &amp; Salary Management</p>
                 </div>
                 <nav className="sidebar-nav">
                     <span className="nav-section-title">Main Navigation</span>
-                    {NAV_ITEMS.map(item => (
-                        <NavLink
+                    {NAV_ITEMS.map((item, idx) => (
+                        <motion.div
                             key={item.path}
-                            to={item.path}
-                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                            onClick={onClose}
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.1 + idx * 0.05 }}
                         >
-                            <span className="nav-icon">{item.icon}</span>
-                            {item.label}
-                        </NavLink>
+                            <NavLink
+                                to={item.path}
+                                className={({ isActive }) => `nav-item ${isActive ? 'active shadow-sm' : ''}`}
+                                onClick={onClose}
+                            >
+                                <span className="nav-icon">{item.icon}</span>
+                                {item.label}
+                            </NavLink>
+                        </motion.div>
                     ))}
                     {user?.email === 'srimanthadep@gmail.com' && (
-                        <NavLink
-                            to="/admin"
-                            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                            onClick={onClose}
+                        <motion.div
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.4 }}
                         >
-                            <span className="nav-icon"><MdAdminPanelSettings /></span>
-                            Admin Panel
-                        </NavLink>
+                            <NavLink
+                                to="/admin"
+                                className={({ isActive }) => `nav-item ${isActive ? 'active shadow-sm' : ''}`}
+                                onClick={onClose}
+                            >
+                                <span className="nav-icon"><MdAdminPanelSettings /></span>
+                                Admin Panel
+                            </NavLink>
+                        </motion.div>
                     )}
                 </nav>
                 <div className="sidebar-footer">
-                    <button className="nav-item" onClick={logout} style={{ color: 'rgba(229,57,53,0.8)' }}>
+                    <button className="nav-item hover-lift" onClick={logout} style={{ color: '#ef4444', width: '100%', textAlign: 'left' }}>
                         <span className="nav-icon"><MdLogout /></span>
                         Sign Out
                     </button>
@@ -79,33 +108,57 @@ function Sidebar({ isOpen, onClose }) {
 function AdminLayout({ children, pageTitle, pageSubtitle }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { user } = useAuth();
+    const location = useLocation();
 
     return (
         <div className="app-layout">
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="main-content">
-                <header className="topbar">
+                <header className="topbar glass">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <button className="hamburger" onClick={() => setSidebarOpen(true)}>
                             <MdMenu />
                         </button>
                         <div className="topbar-title">
-                            <h1>{pageTitle}</h1>
-                            {pageSubtitle && <p>{pageSubtitle}</p>}
+                            <motion.h1
+                                key={pageTitle}
+                                initial={{ y: -10, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                style={{ fontSize: 20, fontWeight: 700 }}
+                            >
+                                {pageTitle}
+                            </motion.h1>
+                            {pageSubtitle && <p style={{ fontSize: 12, color: '#64748b' }}>{pageSubtitle}</p>}
                         </div>
                     </div>
                     <div className="topbar-actions">
-                        <div className="user-badge">
+                        <motion.div
+                            whileHover={{ scale: 1.02 }}
+                            className="user-badge glass shadow-sm"
+                            style={{ padding: '6px 12px', borderRadius: 12 }}
+                        >
                             <img src="/logo.png" alt="logo"
-                                style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                                style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
                             <div className="user-info-text">
-                                <div className="user-name">{user?.name || 'Oxford School'}</div>
-                                <div className="user-role">{user?.role === 'owner' ? '👑 Owner' : 'Administrator'}</div>
+                                <div className="user-name" style={{ fontSize: 13, fontWeight: 600 }}>{user?.name || 'School Admin'}</div>
+                                <div className="user-role" style={{ fontSize: 10, color: '#64748b' }}>{user?.role === 'owner' ? '👑 Main Admin' : 'Staff Access'}</div>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
                 </header>
-                <main className="content-area">{children}</main>
+                <main className="content-area">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={location.pathname}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            {children}
+                        </motion.div>
+                    </AnimatePresence>
+                </main>
             </div>
         </div>
     );
@@ -207,19 +260,31 @@ function AppRoutes() {
     );
 }
 
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: 1,
+            refetchOnWindowFocus: false,
+            staleTime: 5 * 60 * 1000, // 5 minutes cache
+        },
+    },
+});
+
 export default function App() {
     return (
-        <AuthProvider>
-            <BrowserRouter>
-                <AppRoutes />
-                <Toaster
-                    position="top-right"
-                    toastOptions={{
-                        duration: 3500,
-                        style: { fontFamily: "'Inter', sans-serif", fontSize: 14, borderRadius: 10 }
-                    }}
-                />
-            </BrowserRouter>
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+                <BrowserRouter>
+                    <AppRoutes />
+                    <Toaster
+                        position="top-right"
+                        toastOptions={{
+                            duration: 3500,
+                            style: { fontFamily: "'Inter', sans-serif", fontSize: 14, borderRadius: 10 }
+                        }}
+                    />
+                </BrowserRouter>
+            </AuthProvider>
+        </QueryClientProvider>
     );
 }
