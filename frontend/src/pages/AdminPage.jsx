@@ -330,7 +330,7 @@ export default function AdminPage() {
         <div style={S.page}>
 
             {/* ── Header ── */}
-            <div style={S.header}>
+            <div className="admin-header" style={S.header}>
                 <div style={S.headerLeft}>
                     <div style={S.headerIcon}><MdShield color="#fff" /></div>
                     <div>
@@ -362,7 +362,7 @@ export default function AdminPage() {
             </div>
 
             {/* ── Tabs ── */}
-            <div style={S.tabStrip}>
+            <div className="admin-tab-strip" style={S.tabStrip}>
                 <button style={S.tab(activeTab === 'users')} onClick={() => setActiveTab('users')}>
                     <MdPeople /> User Accounts
                 </button>

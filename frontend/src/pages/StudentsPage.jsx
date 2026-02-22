@@ -768,7 +768,7 @@ export default function StudentsPage() {
                                 <strong>{showPayment.name}</strong> - {showPayment.class}
                                 <div style={{ marginTop: 12, borderTop: '1px solid #ddd', paddingTop: 8 }}>
                                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Tuition Fee:</div>
-                                    <div style={{ display: 'flex', gap: 20 }}>
+                                    <div className="payment-summary-row" style={{ display: 'flex', gap: 20 }}>
                                         <span style={{ fontSize: 13 }}>Total: <strong>{formatCurrency(showPayment.totalFee)}</strong></span>
                                         <span style={{ fontSize: 13 }}>Paid: <strong style={{ color: '#43a047' }}>{formatCurrency(showPayment.totalPaid)}</strong></span>
                                         <span style={{ fontSize: 13 }}>Pending: <strong style={{ color: '#e53935' }}>{formatCurrency(showPayment.pendingAmount)}</strong></span>
@@ -776,7 +776,7 @@ export default function StudentsPage() {
                                 </div>
                                 <div style={{ marginTop: 8, borderTop: '1px solid #ddd', paddingTop: 8 }}>
                                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Book's Fee:</div>
-                                    <div style={{ display: 'flex', gap: 20 }}>
+                                    <div className="payment-summary-row" style={{ display: 'flex', gap: 20 }}>
                                         <span style={{ fontSize: 13 }}>Total: <strong>{formatCurrency(showPayment.totalBookFee || 0)}</strong></span>
                                         <span style={{ fontSize: 13 }}>Paid: <strong style={{ color: '#43a047' }}>{formatCurrency(showPayment.totalBookPaid || 0)}</strong></span>
                                         <span style={{ fontSize: 13 }}>Pending: <strong style={{ color: '#e53935' }}>{formatCurrency(showPayment.pendingBookAmount || 0)}</strong></span>

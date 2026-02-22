@@ -155,7 +155,7 @@ export default function SettingsPage() {
         <div>
             {/* Tabs */}
             <div className="card" style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', gap: 4, padding: '16px 20px' }}>
+                <div className="settings-tabs" style={{ display: 'flex', gap: 4, padding: '16px 20px' }}>
                     <button className={`btn ${activeTab === 'general' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                         onClick={() => setActiveTab('general')}>⚙️ School Settings</button>
                     <button className={`btn ${activeTab === 'fees' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
