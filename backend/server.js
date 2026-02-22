@@ -48,6 +48,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'School Fee Management API Running' });
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.send('School Fee Management API is running. Access endpoints via /api/...');
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
