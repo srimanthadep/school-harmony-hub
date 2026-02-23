@@ -30,7 +30,7 @@ const NAV_ITEMS = [
     { path: '/settings', label: 'Settings', icon: <MdSettings /> },
 ];
 
-function Sidebar({ isOpen, onClose }) {
+function Sidebar({ isOpen, onClose, isAdminDomain }) {
     const { user, logout } = useAuth();
 
     return (
@@ -59,39 +59,43 @@ function Sidebar({ isOpen, onClose }) {
                     <p style={{ fontSize: 11, opacity: 0.75 }}>Chityala &bull; Fee &amp; Salary Management</p>
                 </div>
                 <nav className="sidebar-nav">
-                    <span className="nav-section-title">Main Navigation</span>
-                    {NAV_ITEMS.map((item, idx) => (
-                        <motion.div
-                            key={item.path}
-                            initial={{ x: -20, opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            transition={{ delay: 0.1 + idx * 0.05 }}
-                        >
-                            <NavLink
-                                to={item.path}
-                                className={({ isActive }) => `nav-item ${isActive ? 'active shadow-sm' : ''}`}
-                                onClick={onClose}
-                            >
-                                <span className="nav-icon">{item.icon}</span>
-                                {item.label}
-                            </NavLink>
-                        </motion.div>
-                    ))}
-                    {user?.email === 'srimanthadep@gmail.com' && (
-                        <motion.div
-                            initial={{ x: -20, opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            transition={{ delay: 0.4 }}
-                        >
-                            <NavLink
-                                to="/admin"
-                                className={({ isActive }) => `nav-item ${isActive ? 'active shadow-sm' : ''}`}
-                                onClick={onClose}
-                            >
-                                <span className="nav-icon"><MdAdminPanelSettings /></span>
-                                Admin Panel
-                            </NavLink>
-                        </motion.div>
+                    {!isAdminDomain && (
+                        <>
+                            <span className="nav-section-title">Main Navigation</span>
+                            {NAV_ITEMS.map((item, idx) => (
+                                <motion.div
+                                    key={item.path}
+                                    initial={{ x: -20, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    transition={{ delay: 0.1 + idx * 0.05 }}
+                                >
+                                    <NavLink
+                                        to={item.path}
+                                        className={({ isActive }) => `nav-item ${isActive ? 'active shadow-sm' : ''}`}
+                                        onClick={onClose}
+                                    >
+                                        <span className="nav-icon">{item.icon}</span>
+                                        {item.label}
+                                    </NavLink>
+                                </motion.div>
+                            ))}
+                            {user?.email === 'srimanthadep@gmail.com' && (
+                                <motion.div
+                                    initial={{ x: -20, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    transition={{ delay: 0.4 }}
+                                >
+                                    <NavLink
+                                        to="/admin"
+                                        className={({ isActive }) => `nav-item ${isActive ? 'active shadow-sm' : ''}`}
+                                        onClick={onClose}
+                                    >
+                                        <span className="nav-icon"><MdAdminPanelSettings /></span>
+                                        Admin Panel
+                                    </NavLink>
+                                </motion.div>
+                            )}
+                        </>
                     )}
                 </nav>
                 <div className="sidebar-footer">
@@ -105,14 +109,14 @@ function Sidebar({ isOpen, onClose }) {
     );
 }
 
-function AdminLayout({ children, pageTitle, pageSubtitle }) {
+function AdminLayout({ children, pageTitle, pageSubtitle, isAdminDomain }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { user } = useAuth();
     const location = useLocation();
 
     return (
         <div className="app-layout">
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} isAdminDomain={isAdminDomain} />
             <div className="main-content">
                 <header className="topbar glass">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -191,7 +195,7 @@ function AppRoutes() {
                 <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/admin" replace />} />
                 <Route path="/admin" element={
                     <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                        <AdminLayout pageTitle="Super Admin" pageSubtitle="System-wide access and limits">
+                        <AdminLayout pageTitle="Super Admin" pageSubtitle="System-wide access and limits" isAdminDomain={isAdminDomain || (isLocal && window.location.pathname.startsWith('/admin'))}>
                             <AdminPage />
                         </AdminLayout>
                     </ProtectedRoute>
