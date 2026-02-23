@@ -2090,6 +2090,10 @@ input[type="number"] {
     grid-template-columns: 1fr !important;
   }
 
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
   .btn-group {
     justify-content: stretch;
   }
