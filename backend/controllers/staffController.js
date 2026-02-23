@@ -144,6 +144,8 @@ exports.recordSalaryPayment = async (req, res) => {
 
         const payment = {
             month: req.body.month,
+            baseAmount: Math.round(Number(req.body.baseAmount || 0)),
+            cuttings: Math.round(Number(req.body.cuttings || 0)),
             amount: Math.round(Number(req.body.amount || 0)),
             paymentDate: req.body.paymentDate || new Date(),
             paymentMode: req.body.paymentMode || 'bank_transfer',
@@ -201,8 +203,10 @@ exports.editSalaryPayment = async (req, res) => {
         const payment = staff.salaryPayments.id(req.params.paymentId);
         if (!payment) return res.status(404).json({ success: false, message: 'Salary payment not found' });
 
-        const { amount, paymentDate, paymentMode, remarks, month } = req.body;
+        const { amount, baseAmount, cuttings, paymentDate, paymentMode, remarks, month } = req.body;
         if (amount !== undefined && amount !== null && amount !== '') payment.amount = Math.round(Number(amount));
+        if (baseAmount !== undefined && baseAmount !== null && baseAmount !== '') payment.baseAmount = Math.round(Number(baseAmount));
+        if (cuttings !== undefined && cuttings !== null && cuttings !== '') payment.cuttings = Math.round(Number(cuttings));
         if (paymentDate !== undefined) payment.paymentDate = paymentDate;
         if (paymentMode !== undefined) payment.paymentMode = paymentMode;
         if (remarks !== undefined) payment.remarks = remarks;

@@ -64,12 +64,12 @@ export default function StaffPage() {
 
     const [editSalaryTarget, setEditSalaryTarget] = useState(null); // { staffId, payment }
     const [editSalaryForm, setEditSalaryForm] = useState({
-        amount: '', paymentDate: '', paymentMode: 'bank_transfer', remarks: '', month: ''
+        baseAmount: '', cuttings: '', amount: '', paymentDate: '', paymentMode: 'bank_transfer', remarks: '', month: ''
     });
     const [editSalaryLoading, setEditSalaryLoading] = useState(false);
 
     const [salaryForm, setSalaryForm] = useState({
-        month: CURRENT_MONTH, amount: '', paymentDate: new Date().toISOString().split('T')[0],
+        month: CURRENT_MONTH, baseAmount: '', cuttings: '', amount: '', paymentDate: new Date().toISOString().split('T')[0],
         paymentMode: 'bank_transfer', remarks: ''
     });
     const [salaryLoading, setSalaryLoading] = useState(false);
@@ -209,10 +209,15 @@ export default function StaffPage() {
         if (salaryForm.amount === '' || salaryForm.amount < 0) { toast.error('Enter a valid amount'); return; }
         setSalaryLoading(true);
         try {
-            await API.post(`/staff/${showSalaryId}/salaries`, { ...salaryForm, amount: Number(salaryForm.amount) });
+            await API.post(`/staff/${showSalaryId}/salaries`, {
+                ...salaryForm,
+                amount: Number(salaryForm.amount),
+                baseAmount: Number(salaryForm.baseAmount || 0),
+                cuttings: Number(salaryForm.cuttings || 0)
+            });
             toast.success('Salary payment recorded!');
             setShowSalaryId(null);
-            setSalaryForm({ month: CURRENT_MONTH, amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'bank_transfer', remarks: '' });
+            setSalaryForm({ month: CURRENT_MONTH, baseAmount: '', cuttings: '', amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'bank_transfer', remarks: '' });
             queryClient.invalidateQueries(['staff']);
         } catch (err) { toast.error(err.response?.data?.message || 'Payment failed'); }
         finally { setSalaryLoading(false); }
@@ -227,6 +232,8 @@ export default function StaffPage() {
     const openEditSalary = (payment) => {
         setEditSalaryTarget({ staffId: showHistory._id, payment });
         setEditSalaryForm({
+            baseAmount: payment.baseAmount || payment.amount,
+            cuttings: payment.cuttings || 0,
             amount: payment.amount,
             paymentDate: payment.paymentDate ? payment.paymentDate.split('T')[0] : '',
             paymentMode: payment.paymentMode || 'bank_transfer',
@@ -439,6 +446,8 @@ export default function StaffPage() {
                                                             setShowSalaryId(s._id);
                                                             setSalaryForm(f => ({
                                                                 ...f,
+                                                                baseAmount: s.monthlySalary,
+                                                                cuttings: 0,
                                                                 amount: s.monthlySalary,
                                                                 month: CURRENT_MONTH,
                                                                 paymentDate: new Date().toISOString().split('T')[0]
@@ -696,10 +705,38 @@ export default function StaffPage() {
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Amount (₹) <span className="required">*</span></label>
+                                        <label className="form-label">Base Amount (₹) <span className="required">*</span></label>
+                                        <input type="number" className="form-control" value={salaryForm.baseAmount}
+                                            onWheel={(e) => e.target.blur()}
+                                            onChange={e => {
+                                                const baseAmount = e.target.value;
+                                                const cuttings = salaryForm.cuttings || 0;
+                                                setSalaryForm({
+                                                    ...salaryForm,
+                                                    baseAmount,
+                                                    amount: Math.max(0, Number(baseAmount) - Number(cuttings))
+                                                });
+                                            }} min={0} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Cuttings (₹)</label>
+                                        <input type="number" className="form-control" value={salaryForm.cuttings}
+                                            onWheel={(e) => e.target.blur()}
+                                            onChange={e => {
+                                                const cuttings = e.target.value;
+                                                const baseAmount = salaryForm.baseAmount || 0;
+                                                setSalaryForm({
+                                                    ...salaryForm,
+                                                    cuttings,
+                                                    amount: Math.max(0, Number(baseAmount) - Number(cuttings))
+                                                });
+                                            }} min={0} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Final Amount (₹) <span className="required">*</span></label>
                                         <input type="number" className="form-control" value={salaryForm.amount}
                                             onWheel={(e) => e.target.blur()}
-                                            onChange={e => setSalaryForm({ ...salaryForm, amount: e.target.value })} min={0} />
+                                            onChange={e => setSalaryForm({ ...salaryForm, amount: e.target.value })} min={0} disabled />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Payment Date</label>
@@ -861,11 +898,41 @@ export default function StaffPage() {
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Amount (₹) <span className="required">*</span></label>
+                                        <label className="form-label">Base Amount (₹) <span className="required">*</span></label>
+                                        <input type="number" className="form-control"
+                                            value={editSalaryForm.baseAmount}
+                                            onWheel={(e) => e.target.blur()}
+                                            onChange={e => {
+                                                const baseAmount = e.target.value;
+                                                const cuttings = editSalaryForm.cuttings || 0;
+                                                setEditSalaryForm({
+                                                    ...editSalaryForm,
+                                                    baseAmount,
+                                                    amount: Math.max(0, Number(baseAmount) - Number(cuttings))
+                                                });
+                                            }} min={0} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Cuttings (₹)</label>
+                                        <input type="number" className="form-control"
+                                            value={editSalaryForm.cuttings}
+                                            onWheel={(e) => e.target.blur()}
+                                            onChange={e => {
+                                                const cuttings = e.target.value;
+                                                const baseAmount = editSalaryForm.baseAmount || 0;
+                                                setEditSalaryForm({
+                                                    ...editSalaryForm,
+                                                    cuttings,
+                                                    amount: Math.max(0, Number(baseAmount) - Number(cuttings))
+                                                });
+                                            }} min={0} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Final Amount (₹) <span className="required">*</span></label>
                                         <input type="number" className="form-control"
                                             value={editSalaryForm.amount}
                                             onWheel={(e) => e.target.blur()}
-                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, amount: e.target.value })} min={0} />
+                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, amount: e.target.value })} min={0} disabled />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Payment Date</label>

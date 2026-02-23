@@ -5,6 +5,14 @@ const salaryPaymentSchema = new mongoose.Schema({
         type: String,
         required: true // e.g., "January 2024"
     },
+    baseAmount: {
+        type: Number,
+        default: 0
+    },
+    cuttings: {
+        type: Number,
+        default: 0
+    },
     amount: {
         type: Number,
         required: true,
