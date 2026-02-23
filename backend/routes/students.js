@@ -2,17 +2,21 @@ const express = require('express');
 const router = express.Router();
 const {
     getStudents, getStudent, createStudent, updateStudent, deleteStudent,
-    recordPayment, getPaymentHistory, getStudentStats, editPayment, deletePayment, promoteStudents
+    recordPayment, getPaymentHistory, getStudentStats, editPayment, deletePayment, promoteStudents, bulkImportStudents, bulkDeleteStudents
 } = require('../controllers/studentController');
 const { protect, authorize } = require('../middleware/auth');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.use(protect);
 
 // Stats
 router.get('/stats/overview', authorize('admin', 'owner'), getStudentStats);
 
-// Promote students
+// Promote & Import
 router.post('/promote', authorize('admin', 'owner'), promoteStudents);
+router.post('/import', authorize('admin', 'owner'), upload.single('file'), bulkImportStudents);
+router.post('/bulk-delete', authorize('admin', 'owner'), bulkDeleteStudents);
 
 // Student list / creation
 router.route('/')

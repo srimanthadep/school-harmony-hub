@@ -11,7 +11,8 @@ import {
 } from 'react-icons/md';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Fuse from 'fuse.js';
+import { debounce } from 'lodash-es';
+import Skeleton from '../components/Skeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
@@ -37,6 +38,21 @@ export default function StudentsPage() {
     const [classFilter, setClassFilter] = useState('');
     const [yearFilter, setYearFilter] = useState('');
     const [selectedStudents, setSelectedStudents] = useState([]);
+    // Local search state for input, actual search state for query
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const debouncedSearch = useMemo(
+        () => debounce((value) => {
+            setSearch(value);
+            setPage(1);
+        }, 500),
+        []
+    );
+
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+        debouncedSearch(e.target.value);
+    };
 
     // Fetch students data with TanStack Query
     const { data, isLoading, refetch } = useQuery({
@@ -187,6 +203,21 @@ export default function StudentsPage() {
         }
     };
 
+    const handleBulkDelete = async () => {
+        setBulkDeleteLoading(true);
+        try {
+            const res = await API.post('/students/bulk-delete', { studentIds: selectedStudents });
+            toast.success(res.data.message);
+            setSelectedStudents([]);
+            setShowBulkDeleteConfirm(false);
+            queryClient.invalidateQueries(['students']);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Bulk delete failed');
+        } finally {
+            setBulkDeleteLoading(false);
+        }
+    };
+
     const fetchStudents = () => queryClient.invalidateQueries(['students']);
 
     const [editPaymentTarget, setEditPaymentTarget] = useState(null);
@@ -197,6 +228,11 @@ export default function StudentsPage() {
     const [promoteForm, setPromoteForm] = useState({ fromYear: '2025-26', toYear: '2026-27' });
     const [promoteLoading, setPromoteLoading] = useState(false);
     const [promoteResult, setPromoteResult] = useState(null);
+    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+    const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importForm, setImportForm] = useState({ class: 'Nursery', academicYear: '2025-26', file: null });
+    const [importLoading, setImportLoading] = useState(false);
 
     const openEdit = (student) => {
         setEditStudent(student);
@@ -359,11 +395,8 @@ export default function StudentsPage() {
                             <MdSearch className="search-icon" />
                             <input
                                 placeholder="Search students..."
-                                value={search}
-                                onChange={e => {
-                                    setSearch(e.target.value);
-                                    setPage(1);
-                                }}
+                                value={searchTerm}
+                                onChange={handleSearchChange}
                             />
                         </div>
                         <select
@@ -394,9 +427,14 @@ export default function StudentsPage() {
                     </div>
                     <div className="btn-group">
                         {selectedStudents.length > 0 && (
-                            <button className="btn btn-success" onClick={() => toast.promise(Promise.resolve(), { loading: 'Processing bulk reminders...', success: 'Bulk reminders sent to WhatsApp!', error: 'Failed' })}>
-                                <FaWhatsapp /> Send {selectedStudents.length} Reminders
-                            </button>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="btn btn-success" onClick={() => toast.promise(Promise.resolve(), { loading: 'Processing bulk reminders...', success: 'Bulk reminders sent to WhatsApp!', error: 'Failed' })}>
+                                    <FaWhatsapp /> Send {selectedStudents.length} Reminders
+                                </button>
+                                <button className="btn btn-danger" onClick={() => setShowBulkDeleteConfirm(true)}>
+                                    <MdDelete /> Delete {selectedStudents.length} Students
+                                </button>
+                            </div>
                         )}
                         <button className="btn btn-secondary btn-sm btn-half" onClick={() => exportStudentsExcel(filteredStudents)}>
                             <MdTableChart /> Excel
@@ -414,6 +452,9 @@ export default function StudentsPage() {
                         <button className="btn btn-primary" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setFormErrors({}); setShowForm(true); }}>
                             <MdAdd /> Add Student
                         </button>
+                        <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
+                            📤 Bulk Import
+                        </button>
                     </div>
                 </div>
                 <div style={{ padding: '8px 24px', fontSize: 13, color: '#6b7280' }}>
@@ -424,7 +465,34 @@ export default function StudentsPage() {
             {/* Table */}
             <div className="card">
                 {isLoading ? (
-                    <div className="loading-spinner"><div className="spinner" /></div>
+                    <div className="table-container">
+                        <table className="students-table">
+                            <thead>
+                                <tr>
+                                    <th style={{ width: 40 }}></th>
+                                    <th>ID</th><th>Name</th><th>Class</th><th>Roll No</th><th>Parent</th>
+                                    <th>Tuition Fee</th><th>Status</th><th>Book's Fee</th><th>Status</th><th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[...Array(10)].map((_, i) => (
+                                    <tr key={i}>
+                                        <td><Skeleton width="20px" height="20px" /></td>
+                                        <td><Skeleton width="60px" /></td>
+                                        <td><Skeleton width="120px" /></td>
+                                        <td><Skeleton width="60px" /></td>
+                                        <td><Skeleton width="40px" /></td>
+                                        <td><Skeleton width="100px" /></td>
+                                        <td><Skeleton width="80px" /></td>
+                                        <td><Skeleton width="60px" borderRadius="12px" /></td>
+                                        <td><Skeleton width="80px" /></td>
+                                        <td><Skeleton width="60px" borderRadius="12px" /></td>
+                                        <td><div style={{ display: 'flex', gap: 4 }}><Skeleton width="24px" height="24px" /><Skeleton width="24px" height="24px" /></div></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 ) : filteredStudents.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-state-icon">🧑‍🎓</div>
@@ -1095,6 +1163,123 @@ export default function StudentsPage() {
                                     {promoteLoading ? '⏳ Processing...' : '🎓 Confirm & Promote'}
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Bulk Import Modal */}
+            {showImportModal && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !importLoading && setShowImportModal(false)}>
+                    <div className="modal" style={{ maxWidth: 500 }}>
+                        <div className="modal-header" style={{ background: 'linear-gradient(135deg,#64748b,#475569)', borderRadius: '12px 12px 0 0' }}>
+                            <h3 style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>📤 Bulk Import Students</h3>
+                            <button className="btn-close" style={{ color: '#fff' }} onClick={() => setShowImportModal(false)} disabled={importLoading}><MdClose /></button>
+                        </div>
+                        <div className="modal-body">
+                            <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, marginBottom: 20 }}>
+                                <div style={{ fontWeight: 700, color: '#475569', fontSize: 14, marginBottom: 6 }}>Instructions</div>
+                                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>
+                                    <li>Only <strong>Student Name</strong> is strictly required in the file.</li>
+                                    <li>If <strong>Class</strong> is not in the file, we'll use the one you select below.</li>
+                                    <li>If <strong>Parent Phone</strong> is missing, it marks as "0000000000".</li>
+                                    <li>Supports <strong>.csv, .xlsx, .xls</strong> formats.</li>
+                                </ul>
+                            </div>
+
+                            <div className="form-grid">
+                                <div className="form-group">
+                                    <label className="form-label">Default Class (if not in file)</label>
+                                    <select className="form-control" value={importForm.class}
+                                        onChange={e => setImportForm({ ...importForm, class: e.target.value })}>
+                                        {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Academic Year</label>
+                                    <select className="form-control" value={importForm.academicYear}
+                                        onChange={e => setImportForm({ ...importForm, academicYear: e.target.value })}>
+                                        {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="form-label">Select File (.csv, .xlsx)</label>
+                                    <div
+                                        onClick={() => document.getElementById('bulk-file-input').click()}
+                                        style={{
+                                            border: '2px dashed #cbd5e1',
+                                            borderRadius: 12,
+                                            padding: '24px',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            background: importForm.file ? '#f0fdf4' : '#f8fafc',
+                                            borderColor: importForm.file ? '#22c55e' : '#cbd5e1'
+                                        }}
+                                    >
+                                        <div style={{ fontSize: 24, marginBottom: 8 }}>{importForm.file ? '📄' : '☁️'}</div>
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: importForm.file ? '#166534' : '#475569' }}>
+                                            {importForm.file ? importForm.file.name : 'Click to click or drag & drop'}
+                                        </div>
+                                        <input
+                                            id="bulk-file-input"
+                                            type="file"
+                                            style={{ display: 'none' }}
+                                            accept=".csv,.xlsx,.xls"
+                                            onChange={e => setImportForm({ ...importForm, file: e.target.files[0] })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowImportModal(false)} disabled={importLoading}>Cancel</button>
+                            <button
+                                className="btn btn-primary"
+                                disabled={importLoading || !importForm.file}
+                                onClick={async () => {
+                                    setImportLoading(true);
+                                    const formData = new FormData();
+                                    formData.append('file', importForm.file);
+                                    formData.append('class', importForm.class);
+                                    formData.append('academicYear', importForm.academicYear);
+
+                                    const tid = toast.loading('Importing students...');
+                                    try {
+                                        const res = await API.post('/students/import', formData);
+                                        toast.success(res.data.message, { id: tid });
+                                        setShowImportModal(false);
+                                        setImportForm({ class: 'Nursery', academicYear: '2025-26', file: null });
+                                        queryClient.invalidateQueries(['students']);
+                                    } catch (err) {
+                                        toast.error(err.response?.data?.message || 'Import failed', { id: tid });
+                                    } finally {
+                                        setImportLoading(false);
+                                    }
+                                }}
+                            >
+                                {importLoading ? 'Importing...' : '🚀 Start Import'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Bulk Delete Confirm Modal */}
+            {showBulkDeleteConfirm && (
+                <div className="modal-overlay" onClick={() => !bulkDeleteLoading && setShowBulkDeleteConfirm(false)}>
+                    <div className="modal" style={{ maxWidth: 400 }}>
+                        <div className="modal-header" style={{ background: '#ef4444', color: '#fff' }}>
+                            <h3>⚠️ Confirm Bulk Delete</h3>
+                            <button className="btn-close" style={{ color: '#fff' }} onClick={() => setShowBulkDeleteConfirm(false)}><MdClose /></button>
+                        </div>
+                        <div className="modal-body" style={{ textAlign: 'center', padding: '30px 20px' }}>
+                            <div style={{ fontSize: 50, marginBottom: 15 }}>🗑️</div>
+                            <p>Are you sure you want to delete <strong>{selectedStudents.length} selected students</strong>?</p>
+                            <p style={{ fontSize: 13, color: '#ef4444', marginTop: 10 }}>This will archive their records and hide them from all lists. Regular admins cannot undo this.</p>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setShowBulkDeleteConfirm(false)} disabled={bulkDeleteLoading}>Cancel</button>
+                            <button className="btn btn-danger" onClick={handleBulkDelete} disabled={bulkDeleteLoading}>
+                                {bulkDeleteLoading ? 'Deleting...' : 'Yes, Delete All'}
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -203,9 +203,15 @@ exports.getDashboard = async (req, res) => {
 // @access  Admin
 exports.getPendingFees = async (req, res) => {
     try {
-        const { class: cls } = req.query;
+        const { class: cls, startDate, endDate } = req.query;
         const match = { isActive: true };
         if (cls) match.class = cls;
+
+        if (startDate || endDate) {
+            match.createdAt = {};
+            if (startDate) match.createdAt.$gte = new Date(startDate);
+            if (endDate) match.createdAt.$lte = new Date(endDate);
+        }
 
         const pendingStudents = await Student.aggregate([
             { $match: match },

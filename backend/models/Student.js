@@ -146,11 +146,12 @@ studentSchema.pre('save', async function (next) {
 });
 
 // Index for faster queries
+studentSchema.index({
+    name: 'text',
+    studentId: 'text',
+    parentName: 'text',
+    parentPhone: 'text'
+});
 studentSchema.index({ isActive: 1 });
-studentSchema.index({ academicYear: 1 });
-studentSchema.index({ class: 1 });
-studentSchema.index({ isActive: 1, class: 1 });
-studentSchema.index({ isActive: 1, academicYear: 1 });
-studentSchema.index({ name: 'text' });
 
 module.exports = mongoose.model('Student', studentSchema);

@@ -156,14 +156,9 @@ app.get('/', (req, res) => {
   res.send(html);
 });
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.statusCode || 500).json({
-    success: false,
-    message: err.message || 'Internal Server Error'
-  });
-});
+const { errorHandler } = require('./middleware/errorMiddleware');
+// ... after routes
+app.use(errorHandler);
 
 // Connect to MongoDB and start server
 const PORT = process.env.PORT || 5000;
