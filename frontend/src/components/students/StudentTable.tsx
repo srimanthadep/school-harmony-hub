@@ -128,7 +128,13 @@ export default function StudentTable({
                             </td>
                             <td data-label="ID"><code style={{ fontSize: 11, color: '#1a237e' }}>{s.studentId}</code></td>
                             <td data-label="Name">
-                                <div style={{ fontWeight: 600 }}>{s.name}</div>
+                                <div
+                                    className="student-name-link"
+                                    onClick={() => onViewProfile(s)}
+                                    title="View Profile"
+                                >
+                                    {s.name}
+                                </div>
                             </td>
                             <td data-label="Class">
                                 <span className="badge badge-admin" style={{ fontSize: 11 }}>{s.class}</span>

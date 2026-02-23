@@ -68,10 +68,10 @@ export default function StudentProfile({ student, settings, onClose }: StudentPr
     );
 
     const tabs = [
-        { key: 'overview', label: '📊 Overview' },
-        { key: 'tuition', label: '🎓 Tuition' },
-        { key: 'books', label: '📚 Books' },
-        { key: 'timeline', label: '📅 Timeline' }
+        { key: 'overview', label: '📊 Overview', shortLabel: '📊' },
+        { key: 'tuition', label: '🎓 Tuition', shortLabel: '🎓' },
+        { key: 'books', label: '📚 Books', shortLabel: '📚' },
+        { key: 'timeline', label: '📅 Timeline', shortLabel: '📅' }
     ];
 
     return (
@@ -122,7 +122,8 @@ export default function StudentProfile({ student, settings, onClose }: StudentPr
                                 transition: 'all 0.2s'
                             }}
                         >
-                            {tab.label}
+                            <span className="tab-label-full">{tab.label}</span>
+                            <span className="tab-label-short">{tab.shortLabel}</span>
                         </button>
                     ))}
                 </div>
@@ -135,7 +136,7 @@ export default function StudentProfile({ student, settings, onClose }: StudentPr
                             {/* Contact Info */}
                             <div style={{ marginBottom: 24 }}>
                                 <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>👤 Personal & Contact</h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="profile-2col-grid" style={{ display: 'grid', gap: 12 }}>
                                     <div className="highlight-box" style={{ padding: 12 }}>
                                         <div style={{ fontSize: 11, color: '#6b7280' }}>Parent/Guardian</div>
                                         <div style={{ fontSize: 14, fontWeight: 600 }}>{student.parentName || '-'}</div>
@@ -175,7 +176,7 @@ export default function StudentProfile({ student, settings, onClose }: StudentPr
 
                             {/* Fee Summary Cards */}
                             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>💰 Fee Summary</h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                            <div className="profile-2col-grid" style={{ display: 'grid', gap: 16, marginBottom: 24 }}>
                                 {/* Tuition Card */}
                                 <div style={{
                                     padding: 20, borderRadius: 14,
