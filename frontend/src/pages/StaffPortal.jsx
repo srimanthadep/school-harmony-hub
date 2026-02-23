@@ -80,7 +80,7 @@ export default function StaffPortal() {
                 <div className="card" style={{ marginBottom: 24 }}>
                     <div className="card-header"><h2>👤 Profile Details</h2></div>
                     <div className="card-body">
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                        <div className="portal-info-grid">
                             <div className="info-row"><span className="label">Email</span><span className="value">{staff.email}</span></div>
                             <div className="info-row"><span className="label">Phone</span><span className="value">{staff.phone}</span></div>
                             {staff.qualification && <div className="info-row"><span className="label">Qualification</span><span className="value">{staff.qualification}</span></div>}

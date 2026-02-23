@@ -433,12 +433,7 @@ export default function StaffPage() {
                                                 </span>
                                             </td>
                                             <td>
-                                                <div style={{
-                                                    display: 'grid',
-                                                    gridTemplateColumns: '1fr 1fr',
-                                                    gap: 5,
-                                                    minWidth: 90
-                                                }}>
+                                                <div className="actions-grid">
                                                     <button className="btn btn-success btn-sm btn-icon hover-lift" title="Pay Salary"
                                                         onClick={() => {
                                                             setShowSalaryId(s._id);

@@ -55,7 +55,7 @@ export default function ReportsPage() {
 
         return (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 24 }}>
+                <div className="stats-grid" style={{ marginBottom: 24 }}>
                     <div className="stat-card glass-blue">
                         <div className="stat-icon"><MdSchool /></div>
                         <div className="stat-value">{data.report.reduce((s, r) => s + r.totalStudents, 0)}</div>
@@ -168,8 +168,8 @@ export default function ReportsPage() {
         if (!data) return null;
         return (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <div style={{ display: 'flex', gap: 20, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div className="stat-card glass-red" style={{ flex: 1, minWidth: 240, padding: 20 }}>
+                <div className="filters-bar" style={{ marginBottom: 24 }}>
+                    <div className="stat-card glass-red" style={{ flex: 1, minWidth: 200, padding: 20 }}>
                         <div className="stat-icon" style={{ fontSize: 24 }}>⚠️</div>
                         <div className="stat-value" style={{ fontSize: 24 }}>{formatCurrency(data.totalPending)}</div>
                         <div className="stat-label">Total Outstanding Dues</div>
@@ -319,11 +319,11 @@ export default function ReportsPage() {
         if (!data) return null;
         return (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>
+                <div className="stats-grid" style={{ marginBottom: 24 }}>
                     <div className="stat-card glass-blue">
                         <div className="stat-icon">💰</div>
                         <div className="stat-value">{formatCurrency(data.totalMonthlySalary)}</div>
-                        <div className="stat-label">Monthly Salary Commitment</div>
+                        <div className="stat-label">Monthly Salary Promise</div>
                     </div>
                     <div className="stat-card glass-green">
                         <div className="stat-icon">✅</div>
@@ -395,8 +395,8 @@ export default function ReportsPage() {
             )}
 
             {/* Tab Navigation */}
-            <div className="card glass" style={{ marginBottom: 24, padding: 8 }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div className="card glass" style={{ marginBottom: 24, padding: '8px 12px', overflowX: 'auto' }}>
+                <div style={{ display: 'flex', gap: 8, minWidth: 'max-content' }}>
                     {TABS.map(t => (
                         <button key={t.key}
                             className={`btn ${activeTab === t.key ? 'btn-primary shadow-sm' : 'btn-ghost'} btn-sm hover-lift`}

@@ -51,7 +51,9 @@ export default function LoginPage() {
             background: 'linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)',
             position: 'relative',
             overflow: 'hidden',
-            padding: 20
+            padding: '16px',
+            width: '100vw',
+            boxSizing: 'border-box'
         }}>
             {/* Animated Background Elements */}
             <motion.div
@@ -81,7 +83,7 @@ export default function LoginPage() {
                     width: '100%', maxWidth: 420,
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     backdropFilter: 'blur(10px)',
-                    padding: '48px 40px',
+                    padding: 'clamp(24px, 10vw, 48px) clamp(20px, 8vw, 40px)',
                     borderRadius: 24,
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                     zIndex: 1

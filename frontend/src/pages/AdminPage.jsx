@@ -19,12 +19,14 @@ const S = {
     header: {
         background: 'linear-gradient(135deg, #1c232f 0%, #2d3748 100%)',
         borderRadius: 12,
-        padding: '20px 28px',
+        padding: 'clamp(12px, 4vw, 20px) clamp(16px, 4vw, 28px)',
         marginBottom: 24,
         display: 'flex',
+        flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
         boxShadow: '0 4px 20px rgba(28,35,47,0.25)',
+        gap: 16
     },
     headerLeft: { display: 'flex', alignItems: 'center', gap: 16 },
     headerIcon: {
@@ -44,7 +46,7 @@ const S = {
     /* ── Stats row ── */
     statsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16, marginBottom: 24 },
     statCard: (accent) => ({
-        background: '#fff', borderRadius: 12, padding: '20px 24px',
+        background: '#fff', borderRadius: 12, padding: 'clamp(12px, 4vw, 20px) clamp(16px, 4vw, 24px)',
         boxShadow: '0 2px 8px rgba(0,0,0,0.06)', borderLeft: `4px solid ${accent}`,
         display: 'flex', alignItems: 'center', gap: 16,
     }),
@@ -58,17 +60,21 @@ const S = {
     /* ── Tab strip ── */
     tabStrip: {
         background: '#fff', borderRadius: 12,
-        padding: '0 24px', marginBottom: 20,
+        padding: '0 12px', marginBottom: 20,
         boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
         display: 'flex', gap: 4,
+        overflowX: 'auto',
+        msOverflowStyle: 'none',
+        scrollbarWidth: 'none',
     },
     tab: (active) => ({
-        padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer',
-        fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
+        padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer',
+        fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
         borderBottom: active ? '3px solid #7267ef' : '3px solid transparent',
         color: active ? '#7267ef' : '#8996a4',
         display: 'flex', alignItems: 'center', gap: 8,
         transition: 'all 0.2s',
+        whiteSpace: 'nowrap'
     }),
     /* ── Card ── */
     card: {
@@ -76,8 +82,13 @@ const S = {
         boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden',
     },
     cardHeader: {
-        padding: '16px 24px', display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', borderBottom: '1px solid #edf2f7',
+        padding: 'clamp(12px, 3vw, 16px) clamp(16px, 4vw, 24px)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        borderBottom: '1px solid #edf2f7',
+        gap: 12
     },
     cardTitle: { fontSize: 15, fontWeight: 700, color: '#1c232f', margin: 0, display: 'flex', alignItems: 'center', gap: 8 },
     /* ── Table ── */

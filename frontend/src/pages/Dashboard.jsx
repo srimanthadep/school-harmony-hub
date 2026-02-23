@@ -65,10 +65,10 @@ export default function Dashboard() {
 
     return (
         <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ maxWidth: 1400, margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div className="card-header" style={{ marginBottom: 24, padding: 0, border: 'none', background: 'transparent' }}>
                 <div>
-                    <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.5px' }}>School Analytics</h1>
-                    <p style={{ color: '#64748b', fontSize: 14 }}>Real-time overview of your institution's performance</p>
+                    <h1 style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.5px' }}>School Analytics</h1>
+                    <p style={{ color: '#64748b', fontSize: 13 }}>Real-time institution overview</p>
                 </div>
                 <button
                     className={`btn ${isRefetching ? 'btn-secondary' : 'btn-primary'} hover-lift`}
@@ -80,7 +80,7 @@ export default function Dashboard() {
             </div>
 
             {/* Stats Grid */}
-            <div className="stats-grid" style={{ gap: 20, marginBottom: 32 }}>
+            <div className="stats-grid dashboard-stats-grid" style={{ marginBottom: 32 }}>
                 <motion.div variants={itemVariants} className="stat-card glass-blue">
                     <div className="stat-icon"><MdSchool /></div>
                     <div className="stat-value">{data.totalStudents}</div>
@@ -116,10 +116,15 @@ export default function Dashboard() {
                     <div className="stat-value" style={{ fontSize: 22 }}>{formatCurrency(data.libraryPending)}</div>
                     <div className="stat-label">Books Pending</div>
                 </motion.div>
+                <motion.div variants={itemVariants} className="stat-card glass-blue">
+                    <div className="stat-icon" style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}><MdTrendingUp /></div>
+                    <div className="stat-value" style={{ fontSize: 22 }}>{formatCurrency((data.totalFeesCollected || 0) + (data.libraryCollected || 0) - (data.totalSalaryPaid || 0))}</div>
+                    <div className="stat-label">Operating Balance</div>
+                </motion.div>
             </div>
 
             {/* Charts Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, marginBottom: 24 }}>
+            <div className="charts-grid" style={{ gap: 24, marginBottom: 24 }}>
                 {/* Monthly income vs expense */}
                 <motion.div variants={itemVariants} className="card glass">
                     <div className="card-header" style={{ borderBottom: 'none' }}>

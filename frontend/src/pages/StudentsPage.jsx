@@ -381,10 +381,10 @@ export default function StudentsPage() {
                                 <FaWhatsapp /> Send {selectedStudents.length} Reminders
                             </button>
                         )}
-                        <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsExcel(filteredStudents)}>
+                        <button className="btn btn-secondary btn-sm btn-half" onClick={() => exportStudentsExcel(filteredStudents)}>
                             <MdTableChart /> Excel
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsPDF(sortedStudents, settings)}>
+                        <button className="btn btn-secondary btn-sm btn-half" onClick={() => exportStudentsPDF(sortedStudents, settings)}>
                             <MdPictureAsPdf /> PDF
                         </button>
                         {(isAdmin || isOwner) && (
@@ -513,12 +513,7 @@ export default function StudentsPage() {
                                         </td>
                                         <td>
                                             {/* 2x2 action grid - same style as Staff page */}
-                                            <div style={{
-                                                display: 'grid',
-                                                gridTemplateColumns: '1fr 1fr',
-                                                gap: 5,
-                                                minWidth: 90
-                                            }}>
+                                            <div className="actions-grid">
                                                 {/* Row 1: Pay + Receipt */}
                                                 <button
                                                     className="btn btn-success btn-sm btn-icon"
