@@ -1229,7 +1229,7 @@ tbody td {
   }
 
   .dashboard-stats-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     row-gap: 12px !important;
     column-gap: 8px !important;
   }
@@ -1414,7 +1414,7 @@ tbody td {
   }
 
   .dashboard-stats-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 
   .btn-group .btn {
@@ -2348,59 +2348,7 @@ input[type="number"] {
   }
 }
 
-/* ===== MOBILE OPTIMIZED CARD VIEW FOR TABLES ===== */
-@media (max-width: 768px) {
-
-  .students-table thead,
-  .staff-table thead {
-    display: none;
-  }
-
-  .students-table tr,
-  .staff-table tr {
-    display: block;
-    margin-bottom: 16px;
-    background: var(--bg-secondary);
-    border-radius: var(--radius);
-    padding: 16px;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border-light);
-  }
-
-  .students-table td,
-  .staff-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border: none;
-    text-align: right;
-  }
-
-  .students-table td::before,
-  .staff-table td::before {
-    content: attr(data-label);
-    font-weight: 700;
-    font-size: 11px;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    text-align: left;
-    margin-right: 16px;
-  }
-
-  .students-table td:last-child,
-  .staff-table td:last-child {
-    justify-content: center;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-light);
-    margin-top: 8px;
-  }
-
-  .actions-grid {
-    width: 100%;
-    grid-template-columns: repeat(4, 1fr) !important;
-  }
-}
+/* Mobile tables use horizontal scroll (see .table-container above) */
 
 /* ===== PRINT OPTIMIZATION ===== */
 @media print {
