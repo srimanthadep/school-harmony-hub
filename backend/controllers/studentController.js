@@ -13,7 +13,14 @@ exports.getStudents = async (req, res) => {
 
         if (cls) query.class = cls;
         if (academicYear) query.academicYear = academicYear;
-        if (search) query.name = { $regex: search, $options: 'i' };
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { studentId: { $regex: search, $options: 'i' } },
+                { parentPhone: { $regex: search, $options: 'i' } },
+                { parentName: { $regex: search, $options: 'i' } }
+            ];
+        }
 
         const students = await Student.find(query)
             .sort({ class: 1, rollNo: 1 })

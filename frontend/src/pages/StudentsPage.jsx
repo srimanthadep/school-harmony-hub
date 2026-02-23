@@ -39,16 +39,17 @@ export default function StudentsPage() {
     const [selectedStudents, setSelectedStudents] = useState([]);
 
     // Fetch students data with TanStack Query
-    const { data, isLoading, isError, refetch } = useQuery({
-        queryKey: ['students', page, classFilter, yearFilter],
+    const { data, isLoading, refetch } = useQuery({
+        queryKey: ['students', page, classFilter, yearFilter, search],
         queryFn: async () => {
             const params = { page, limit: 50 };
             if (classFilter) params.class = classFilter;
             if (yearFilter) params.academicYear = yearFilter;
+            if (search) params.search = search;
             const res = await API.get('/students', { params });
             return res.data;
         },
-        keepPreviousData: true
+        placeholderData: (previousData) => previousData,
     });
 
     const students = data?.students || [];
@@ -115,16 +116,9 @@ export default function StudentsPage() {
         });
     }, [students, sortField, sortDir, classFilter]);
 
-    // Fuzzy search logic locally on the current page for instant results
-    const fuse = useMemo(() => new Fuse(sortedStudents, {
-        keys: ['name', 'studentId', 'parentPhone', 'parentName'],
-        threshold: 0.3
-    }), [sortedStudents]);
+    const filteredStudents = sortedStudents; // Use backend results directly
 
-    const filteredStudents = useMemo(() => {
-        if (!search) return sortedStudents;
-        return fuse.search(search).map(r => r.item);
-    }, [search, sortedStudents, fuse]);
+
 
     // UI States
     const [showForm, setShowForm] = useState(false);
@@ -363,13 +357,36 @@ export default function StudentsPage() {
                     <div className="filters-bar">
                         <div className="search-bar" style={{ minWidth: 220 }}>
                             <MdSearch className="search-icon" />
-                            <input placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} />
+                            <input
+                                placeholder="Search students..."
+                                value={search}
+                                onChange={e => {
+                                    setSearch(e.target.value);
+                                    setPage(1);
+                                }}
+                            />
                         </div>
-                        <select className="form-control" style={{ width: 130 }} value={classFilter} onChange={e => setClassFilter(e.target.value)}>
+                        <select
+                            className="form-control"
+                            style={{ width: 130 }}
+                            value={classFilter}
+                            onChange={e => {
+                                setClassFilter(e.target.value);
+                                setPage(1);
+                            }}
+                        >
                             <option value="">All Classes</option>
                             {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <select className="form-control" style={{ width: 130 }} value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+                        <select
+                            className="form-control"
+                            style={{ width: 130 }}
+                            value={yearFilter}
+                            onChange={e => {
+                                setYearFilter(e.target.value);
+                                setPage(1);
+                            }}
+                        >
                             <option value="">All Years</option>
                             {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
