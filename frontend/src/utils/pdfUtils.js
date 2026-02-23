@@ -233,14 +233,27 @@ export const generateSalarySlipPDF = async (staff, payment, settings = {}) => {
     if (staff.bankAccount) doc.text(`Bank A/C: ${staff.bankAccount}`, pageW / 2, 88);
 
     // Salary table
+    const baseAmt = payment.baseAmount || payment.amount;
+    const tableBody = [
+        ['Monthly Gross Salary', pdfRs(staff.monthlySalary)]
+    ];
+
+    if (payment.baseAmount && payment.cuttings > 0) {
+        tableBody.push(['Base Amount', pdfRs(payment.baseAmount)]);
+        tableBody.push(['Cuttings/Deductions', pdfRs(payment.cuttings)]);
+        tableBody.push(['Net Amount Paid', pdfRs(payment.amount)]);
+    } else {
+        tableBody.push(['Amount Paid', pdfRs(payment.amount)]);
+    }
+
+    if (baseAmt < staff.monthlySalary) {
+        tableBody.push(['Balance (if partial)', pdfRs(staff.monthlySalary - baseAmt)]);
+    }
+
     doc.autoTable({
         startY: 102,
         head: [['Salary Component', 'Amount (Rs.)']],
-        body: [
-            ['Monthly Gross Salary', pdfRs(staff.monthlySalary)],
-            ['Amount Paid', pdfRs(payment.amount)],
-            ...(payment.amount < staff.monthlySalary ? [['Balance (if partial)', pdfRs(staff.monthlySalary - payment.amount)]] : []),
-        ],
+        body: tableBody,
         headStyles: { fillColor: [26, 35, 126], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
         bodyStyles: { fontSize: 10, cellPadding: { top: 4, bottom: 4, left: 5, right: 5 } },
         alternateRowStyles: { fillColor: [240, 245, 255] },

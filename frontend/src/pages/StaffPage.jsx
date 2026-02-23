@@ -275,6 +275,8 @@ export default function StaffPage() {
     const confirmDeleteSalaryPayment = async () => {
         if (!showDeletePaymentConfirm) return;
         try {
+            await API.delete(`/staff/${showHistoryId}/salaries/${showDeletePaymentConfirm}`);
+            toast.success('Salary payment deleted!');
             // Refresh history
             const res = await API.get(`/staff/${showHistoryId}/salaries`);
             setHistoryData(res.data);
