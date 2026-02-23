@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Users, UserCheck, CreditCard, DollarSign, TrendingUp, AlertCircle, BookOpen, Award, CheckCircle } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { Users, UserCheck, CreditCard, DollarSign, TrendingUp, AlertCircle, Award, CheckCircle } from "lucide-react";
 
 interface Stats {
   totalStudents: number;
@@ -12,8 +11,6 @@ interface Stats {
   totalSalaryPaid: number;
   totalFeesDue: number;
   studentsFullyPaid: number;
-  totalBookFeesDue: number;
-  bookFeesCollected: number;
 }
 
 function StatCard({ title, value, icon: Icon, variant, sub }: {
@@ -44,36 +41,29 @@ export default function AdminDashboard() {
     totalStudents: 0, totalStaff: 0,
     feesCollected: 0, pendingFees: 0,
     totalSalaryPaid: 0, totalFeesDue: 0,
-    studentsFullyPaid: 0, totalBookFeesDue: 0, bookFeesCollected: 0,
+    studentsFullyPaid: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
-      const [studentsRes, staffRes, feeRes, salaryRes, feesDueRes] = await Promise.all([
-        supabase.from("students").select("id, total_fee, total_book_fee", { count: "exact" }),
+      const [studentsRes, staffRes, feeRes, salaryRes] = await Promise.all([
+        supabase.from("students").select("id, total_fee", { count: "exact" }),
         supabase.from("staff").select("id", { count: "exact" }),
-        supabase.from("fee_payments").select("amount, student_id, fee_type"),
+        supabase.from("fee_payments").select("amount, student_id"),
         supabase.from("salary_payments").select("amount"),
-        supabase.from("students").select("id, total_fee, total_book_fee"),
       ]);
 
-      const allStudents = feesDueRes.data ?? [];
+      const allStudents = studentsRes.data ?? [];
       const allFees = feeRes.data ?? [];
 
-      // Split by fee_type
-      const tuitionPayments = allFees.filter(f => !f.fee_type || f.fee_type === "tuition");
-      const bookPayments = allFees.filter(f => f.fee_type === "book");
-
-      const feesCollected = tuitionPayments.reduce((s, r) => s + Number(r.amount), 0);
-      const bookFeesCollected = bookPayments.reduce((s, r) => s + Number(r.amount), 0);
+      const feesCollected = allFees.reduce((s, r) => s + Number(r.amount), 0);
       const totalFeesDue = allStudents.reduce((s, r) => s + Number(r.total_fee), 0);
-      const totalBookFeesDue = allStudents.reduce((s, r) => s + Number(r.total_book_fee ?? 0), 0);
       const totalSalaryPaid = (salaryRes.data ?? []).reduce((s, r) => s + Number(r.amount), 0);
 
-      // Students fully paid (tuition)
+      // Students fully paid
       const paidByStudent: Record<string, number> = {};
-      tuitionPayments.forEach(f => { paidByStudent[f.student_id] = (paidByStudent[f.student_id] ?? 0) + Number(f.amount); });
+      allFees.forEach(f => { paidByStudent[f.student_id] = (paidByStudent[f.student_id] ?? 0) + Number(f.amount); });
       const studentsFullyPaid = allStudents.filter(s => (paidByStudent[s.id] ?? 0) >= Number(s.total_fee) && Number(s.total_fee) > 0).length;
 
       setStats({
@@ -84,8 +74,6 @@ export default function AdminDashboard() {
         totalSalaryPaid,
         totalFeesDue,
         studentsFullyPaid,
-        totalBookFeesDue,
-        bookFeesCollected,
       });
       setLoading(false);
     };
@@ -124,8 +112,6 @@ export default function AdminDashboard() {
         <StatCard title="Total Fees Due" value={fmt(stats.totalFeesDue)} icon={TrendingUp} variant="blue" sub="Annual total" />
         <StatCard title="Collection Rate" value={stats.totalFeesDue > 0 ? Math.round((stats.feesCollected / stats.totalFeesDue) * 100) + "%" : "0%"} icon={Award} variant="green" sub="Fee collection efficiency" />
         <StatCard title="Students Fully Paid" value={stats.studentsFullyPaid.toString()} icon={CheckCircle} variant="green" sub="Tuition cleared" />
-        <StatCard title="Book Fees Collected" value={fmt(stats.bookFeesCollected)} icon={BookOpen} variant="blue" sub={`of ${fmt(stats.totalBookFeesDue)} due`} />
-        <StatCard title="Book Fees Pending" value={fmt(Math.max(0, stats.totalBookFeesDue - stats.bookFeesCollected))} icon={AlertCircle} variant="orange" sub="Outstanding" />
       </div>
 
       {/* Quick Links */}

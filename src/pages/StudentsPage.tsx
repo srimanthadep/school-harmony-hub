@@ -26,10 +26,10 @@ interface Student {
   parent_email: string | null;
   address: string | null;
   total_fee: number;
-  total_book_fee: number;
-  academic_year: string;
-  status: string;
   admission_date: string | null;
+  user_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 interface FeePayment {
@@ -44,7 +44,7 @@ interface FeePayment {
 const emptyForm = {
   student_id: "", full_name: "", class: "1st", section: "A",
   roll_no: 1, parent_name: "", parent_phone: "", parent_email: "",
-  address: "", total_fee: 0, total_book_fee: 0, academic_year: "2024-25",
+  address: "", total_fee: 0,
 };
 
 const emptyFeeForm = {
@@ -56,7 +56,7 @@ export default function StudentsPage() {
   const [filtered, setFiltered] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("active");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Student | null>(null);
@@ -86,7 +86,6 @@ export default function StudentsPage() {
     let list = students;
     if (search) list = list.filter(s => s.full_name.toLowerCase().includes(search.toLowerCase()) || s.student_id.toLowerCase().includes(search.toLowerCase()));
     if (classFilter !== "all") list = list.filter(s => s.class === classFilter);
-    if (statusFilter !== "all") list = list.filter(s => s.status === statusFilter);
     setFiltered(list);
   }, [students, search, classFilter, statusFilter]);
 
@@ -98,7 +97,7 @@ export default function StudentsPage() {
 
   const openEdit = (s: Student) => {
     setEditing(s);
-    setForm({ student_id: s.student_id, full_name: s.full_name, class: s.class, section: s.section, roll_no: s.roll_no, parent_name: s.parent_name, parent_phone: s.parent_phone, parent_email: s.parent_email ?? "", address: s.address ?? "", total_fee: s.total_fee, total_book_fee: s.total_book_fee ?? 0, academic_year: s.academic_year ?? "2024-25" });
+    setForm({ student_id: s.student_id, full_name: s.full_name, class: s.class, section: s.section, roll_no: s.roll_no, parent_name: s.parent_name, parent_phone: s.parent_phone, parent_email: s.parent_email ?? "", address: s.address ?? "", total_fee: s.total_fee });
     setFormOpen(true);
   };
 
@@ -108,7 +107,7 @@ export default function StudentsPage() {
       return;
     }
     setSaving(true);
-    const payload = { ...form, total_fee: Number(form.total_fee), total_book_fee: Number(form.total_book_fee), roll_no: Number(form.roll_no) };
+    const payload = { ...form, total_fee: Number(form.total_fee), roll_no: Number(form.roll_no) };
     const { error } = editing
       ? await supabase.from("students").update(payload).eq("id", editing.id)
       : await supabase.from("students").insert(payload);
@@ -167,17 +166,9 @@ export default function StudentsPage() {
 
   const promoteStudents = async () => {
     setPromoting(true);
-    const { data, error } = await supabase.rpc("promote_students", {
-      _from_year: promoteFrom, _to_year: promoteTo,
-    });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Promotion complete", description: `${data} student(s) promoted to ${promoteTo}.` });
-      setPromoteOpen(false);
-      fetchStudents();
-    }
+    toast({ title: "Coming Soon", description: "Student promotion feature will be available in the next update." });
     setPromoting(false);
+    setPromoteOpen(false);
   };
 
   const exportCSV = () => {
@@ -216,14 +207,7 @@ export default function StudentsPage() {
             {CLASSES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        
       </div>
 
       {/* Table */}
@@ -237,7 +221,7 @@ export default function StudentsPage() {
                 <th>Class</th>
                 <th>Parent</th>
                 <th>Total Fee</th>
-                <th>Status</th>
+                <th>Section</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -262,7 +246,7 @@ export default function StudentsPage() {
                     <div className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>{s.parent_phone}</div>
                   </td>
                   <td className="font-semibold">₹{Number(s.total_fee).toLocaleString("en-IN")}</td>
-                  <td><span className={s.status === "active" ? "badge-success" : "badge-primary"}>{s.status ?? "active"}</span></td>
+                  <td><span className="badge-primary">{s.section}</span></td>
                   <td>
                     <div className="flex gap-1">
                       <button onClick={() => openFeeDialog(s)} className="p-1.5 rounded hover:bg-success/10 text-success transition-colors" title="Manage Fees"><CreditCard className="w-4 h-4" /></button>
@@ -302,14 +286,7 @@ export default function StudentsPage() {
             </div>
             <div><Label>Roll No *</Label><Input type="number" value={form.roll_no} onChange={e => setForm(f => ({...f, roll_no: Number(e.target.value)}))} className="mt-1" /></div>
             <div><Label>Total Annual Fee *</Label><Input type="number" value={form.total_fee} onChange={e => setForm(f => ({...f, total_fee: Number(e.target.value)}))} className="mt-1" /></div>
-            <div><Label>Total Book Fee</Label><Input type="number" value={form.total_book_fee} onChange={e => setForm(f => ({...f, total_book_fee: Number(e.target.value)}))} className="mt-1" /></div>
-            <div>
-              <Label>Academic Year</Label>
-              <Select value={form.academic_year} onValueChange={v => setForm(f => ({...f, academic_year: v}))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>{YEARS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+            
             <div><Label>Parent Name *</Label><Input value={form.parent_name} onChange={e => setForm(f => ({...f, parent_name: e.target.value}))} className="mt-1" /></div>
             <div><Label>Parent Phone *</Label><Input value={form.parent_phone} onChange={e => setForm(f => ({...f, parent_phone: e.target.value}))} className="mt-1" /></div>
             <div><Label>Parent Email</Label><Input type="email" value={form.parent_email} onChange={e => setForm(f => ({...f, parent_email: e.target.value}))} className="mt-1" /></div>
