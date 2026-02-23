@@ -8,15 +8,17 @@ import {
 import {
     MdPeople, MdSchool, MdAccountBalance, MdWarning,
     MdPayments, MdTrendingUp, MdReceipt, MdCheckCircle, MdRefresh, MdMenuBook,
-    MdArrowUpward, MdArrowDownward
+    MdArrowUpward, MdArrowDownward, MdGetApp
 } from 'react-icons/md';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePWA } from '../hooks/usePWA';
 
 const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#3b82f6'];
 
 export default function Dashboard() {
     const queryClient = useQueryClient();
+    const { isInstallable, installApp } = usePWA();
 
     const { data: dashboardData, isLoading, refetch, isRefetching } = useQuery({
         queryKey: ['dashboard_stats'],
@@ -32,16 +34,16 @@ export default function Dashboard() {
 
     const data = dashboardData;
 
-    const classWiseData = Object.entries(data.classWise || {}).map(([cls, vals]) => ({
+    const classWiseData = Object.entries(data.classWise || {}).map(([cls, vals]: [string, any]) => ({
         class: cls, collected: vals.collected, pending: vals.pending, students: vals.count
     }));
 
     const monthlyData = Object.entries(data.monthlyCollections || {})
-        .map(([month, amount]) => ({
+        .map(([month, amount]: [string, any]) => ({
             month,
             fees: amount,
             salary: data.monthlySalaryPaid?.[month] || 0,
-            net: amount - (data.monthlySalaryPaid?.[month] || 0)
+            net: (amount as number) - (data.monthlySalaryPaid?.[month] || 0)
         }))
         .slice(-6);
 
@@ -70,13 +72,24 @@ export default function Dashboard() {
                     <h1 style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.5px' }}>School Analytics</h1>
                     <p style={{ color: '#64748b', fontSize: 13 }}>Real-time institution overview</p>
                 </div>
-                <button
-                    className={`btn ${isRefetching ? 'btn-secondary' : 'btn-primary'} hover-lift`}
-                    onClick={() => refetch()}
-                    style={{ gap: 8, borderRadius: 12, padding: '12px 20px' }}
-                >
-                    <MdRefresh className={isRefetching ? 'spin' : ''} /> {isRefetching ? 'Refreshing...' : 'Refresh Overview'}
-                </button>
+                <div style={{ display: 'flex', gap: 12 }}>
+                    {isInstallable && (
+                        <button
+                            className="btn btn-secondary hover-lift"
+                            onClick={installApp}
+                            style={{ gap: 8, borderRadius: 12, padding: '12px 20px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', border: 'none' }}
+                        >
+                            <MdGetApp /> Download App
+                        </button>
+                    )}
+                    <button
+                        className={`btn ${isRefetching ? 'btn-secondary' : 'btn-primary'} hover-lift`}
+                        onClick={() => refetch()}
+                        style={{ gap: 8, borderRadius: 12, padding: '12px 20px' }}
+                    >
+                        <MdRefresh className={isRefetching ? 'spin' : ''} /> {isRefetching ? 'Refreshing...' : 'Refresh Overview'}
+                    </button>
+                </div>
             </div>
 
             {/* Stats Grid */}
@@ -248,7 +261,7 @@ export default function Dashboard() {
                         <tbody>
                             {(data.recentPayments || []).length === 0 ? (
                                 <tr><td colSpan={6} style={{ textAlign: 'center', color: '#94a3b8', padding: 48 }}>No recent transitions found</td></tr>
-                            ) : data.recentPayments.map((p, i) => (
+                            ) : data.recentPayments.map((p: any, i: number) => (
                                 <tr key={i} className="hover-lift">
                                     <td><code style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>{p.receiptNo || 'N/A'}</code></td>
                                     <td>

@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDarkMode } from './hooks/useDarkMode';
+import NotificationBell from './components/NotificationBell';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -109,6 +112,7 @@ function AdminLayout({ children, pageTitle, pageSubtitle }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { user } = useAuth();
     const location = useLocation();
+    const { isDark, toggle } = useDarkMode();
 
     return (
         <div className="app-layout">
@@ -132,6 +136,32 @@ function AdminLayout({ children, pageTitle, pageSubtitle }) {
                         </div>
                     </div>
                     <div className="topbar-actions">
+                        {/* Dark Mode Toggle */}
+                        <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={toggle}
+                            title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                            style={{
+                                width: 42, height: 42, borderRadius: '50%',
+                                border: 'none', cursor: 'pointer', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center',
+                                fontSize: 20,
+                                background: isDark ? 'rgba(249,168,37,0.15)' : 'rgba(26,35,126,0.08)',
+                                transition: 'background 0.3s'
+                            }}
+                        >
+                            <motion.span
+                                key={isDark ? 'moon' : 'sun'}
+                                initial={{ scale: 0, rotate: -90 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                exit={{ scale: 0, rotate: 90 }}
+                                transition={{ duration: 0.25 }}
+                            >
+                                {isDark ? '☀️' : '🌙'}
+                            </motion.span>
+                        </motion.button>
+                        {/* Notification Bell */}
+                        <NotificationBell />
                         <motion.div
                             whileHover={{ scale: 1.02 }}
                             className="user-badge glass shadow-sm"
@@ -159,6 +189,15 @@ function AdminLayout({ children, pageTitle, pageSubtitle }) {
                         </motion.div>
                     </AnimatePresence>
                 </main>
+                {/* Mobile Bottom Nav */}
+                <nav className="bottom-nav">
+                    {NAV_ITEMS.map(item => (
+                        <NavLink key={item.path} to={item.path} className={({ isActive }) => isActive ? 'active' : ''}>
+                            {item.icon}
+                            {item.label}
+                        </NavLink>
+                    ))}
+                </nav>
             </div>
         </div>
     );
@@ -274,16 +313,18 @@ export default function App() {
     return (
         <QueryClientProvider client={queryClient}>
             <AuthProvider>
-                <BrowserRouter>
-                    <AppRoutes />
-                    <Toaster
-                        position="top-right"
-                        toastOptions={{
-                            duration: 3500,
-                            style: { fontFamily: "'Inter', sans-serif", fontSize: 14, borderRadius: 10 }
-                        }}
-                    />
-                </BrowserRouter>
+                <NotificationProvider>
+                    <BrowserRouter>
+                        <AppRoutes />
+                        <Toaster
+                            position="top-right"
+                            toastOptions={{
+                                duration: 3500,
+                                style: { fontFamily: "'Inter', sans-serif", fontSize: 14, borderRadius: 10 }
+                            }}
+                        />
+                    </BrowserRouter>
+                </NotificationProvider>
             </AuthProvider>
         </QueryClientProvider>
     );

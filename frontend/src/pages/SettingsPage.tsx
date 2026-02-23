@@ -1,21 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
-import { MdSave, MdSettings, MdAccountBalance, MdMenuBook } from 'react-icons/md';
+import { useNotifications } from '../context/NotificationContext';
+import { getCurrentAcademicYear } from '../utils/academicYear';
+import { MdSave, MdSettings, MdAccountBalance, MdMenuBook, MdLockOutline } from 'react-icons/md';
+import { Settings, FeeStructure, BookFeeStructure } from '../types';
 
 const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
 export default function SettingsPage() {
-    const [settings, setSettings] = useState(null);
-    const [feeStructures, setFeeStructures] = useState([]);
-    const [bookFeeStructures, setBookFeeStructures] = useState([]);
+    const [settings, setSettings] = useState<Settings | null>(null);
+    const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
+    const [bookFeeStructures, setBookFeeStructures] = useState<BookFeeStructure[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
-    const [editFee, setEditFee] = useState(null);
-    const [feeForm, setFeeForm] = useState({});
-    const [editBookFee, setEditBookFee] = useState(null);
-    const [bookFeeForm, setBookFeeForm] = useState({});
+    const { addNotification } = useNotifications();
+    const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const [passLoading, setPassLoading] = useState(false);
+    const [editFee, setEditFee] = useState<string | null>(null);
+    const [feeForm, setFeeForm] = useState<any>({});
+    const [editBookFee, setEditBookFee] = useState<string | null>(null);
+    const [bookFeeForm, setBookFeeForm] = useState<any>({});
 
     useEffect(() => {
         Promise.all([
@@ -30,17 +36,47 @@ export default function SettingsPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    const saveSettings = async (e) => {
+    const saveSettings = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         try {
             await API.put('/settings', settings);
             toast.success('Settings saved!');
-        } catch { toast.error('Save failed'); }
+            addNotification({
+                type: 'info',
+                title: 'System Settings Updated',
+                message: 'Global school configuration has been successfully updated.'
+            });
+        } catch (err: any) { toast.error(err.response?.data?.message || 'Save failed'); }
         finally { setSaving(false); }
     };
 
-    const saveFeeStructure = async (e) => {
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (passForm.newPassword !== passForm.confirmPassword) return toast.error('Passwords do not match');
+        if (passForm.newPassword.length < 6) return toast.error('Password must be at least 6 characters');
+
+        setPassLoading(true);
+        try {
+            await API.put('/auth/change-password', {
+                currentPassword: passForm.currentPassword,
+                newPassword: passForm.newPassword
+            });
+            toast.success('Password changed successfully');
+            setPassForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            addNotification({
+                type: 'info',
+                title: 'Security Updated',
+                message: 'Your account password has been changed.'
+            });
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Password change failed');
+        } finally {
+            setPassLoading(false);
+        }
+    };
+
+    const saveFeeStructure = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             const res = await API.post('/settings/fee-structures', { ...feeForm, class: editFee });
@@ -48,10 +84,10 @@ export default function SettingsPage() {
             const updated = await API.get('/settings/fee-structures');
             setFeeStructures(updated.data.structures);
             setEditFee(null);
-        } catch { toast.error('Failed to save fee structure'); }
+        } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to save fee structure'); }
     };
 
-    const saveBookFeeStructure = async (e) => {
+    const saveBookFeeStructure = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             const res = await API.post('/settings/book-fee-structures', { ...bookFeeForm, class: editBookFee });
@@ -59,13 +95,13 @@ export default function SettingsPage() {
             const updated = await API.get('/settings/book-fee-structures');
             setBookFeeStructures(updated.data.structures);
             setEditBookFee(null);
-        } catch { toast.error('Failed to save book fee structure'); }
+        } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to save book fee structure'); }
     };
 
-    const openFeeEdit = (cls) => {
-        const existing = feeStructures.find(f => f.class === cls) || {};
+    const openFeeEdit = (cls: string) => {
+        const existing: any = feeStructures.find((f: any) => f.class === cls) || {};
         setFeeForm({
-            class: cls, academicYear: '2024-25',
+            class: cls, academicYear: getCurrentAcademicYear(),
             tuitionFee: existing.tuitionFee || 0,
             admissionFee: existing.admissionFee || 0,
             examFee: existing.examFee || 0,
@@ -77,10 +113,10 @@ export default function SettingsPage() {
         setEditFee(cls);
     };
 
-    const openBookFeeEdit = (cls) => {
-        const existing = bookFeeStructures.find(f => f.class === cls) || {};
+    const openBookFeeEdit = (cls: string) => {
+        const existing: any = bookFeeStructures.find((f: any) => f.class === cls) || {};
         setBookFeeForm({
-            class: cls, academicYear: '2025-26',
+            class: cls, academicYear: getCurrentAcademicYear(),
             readingBookFee: existing.readingBookFee || 0,
             textBooksFee: existing.textBooksFee || 0,
             practiceWorkBookFee: existing.practiceWorkBookFee || 0,
@@ -94,7 +130,7 @@ export default function SettingsPage() {
         setEditBookFee(cls);
     };
 
-    const getBookFeeFields = (cls) => {
+    const getBookFeeFields = (cls: string) => {
         if (cls === 'Nursery') {
             return [
                 { key: 'readingBookFee', label: 'READING BOOK' },
@@ -158,10 +194,10 @@ export default function SettingsPage() {
                 <div style={{ display: 'flex', gap: 8, padding: '16px 20px', minWidth: 'max-content' }}>
                     <button className={`btn ${activeTab === 'general' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                         onClick={() => setActiveTab('general')}>⚙️ School Settings</button>
-                    <button className={`btn ${activeTab === 'fees' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                        onClick={() => setActiveTab('fees')}>💰 Fee Structures</button>
                     <button className={`btn ${activeTab === 'books' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                         onClick={() => setActiveTab('books')}>📚 Book's Fee Structures</button>
+                    <button className={`btn ${activeTab === 'security' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setActiveTab('security')}>🔐 Security</button>
                 </div>
             </div>
 
@@ -273,7 +309,7 @@ export default function SettingsPage() {
                                                     <label className="form-label">{field.replace('Fee', ' Fee').replace(/\b\w/g, c => c.toUpperCase())} (₹)</label>
                                                     <input type="number" className="form-control" min="0"
                                                         value={feeForm[field] || 0}
-                                                        onWheel={(e) => e.target.blur()}
+                                                        onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                                         onChange={e => setFeeForm({ ...feeForm, [field]: e.target.value })} />
                                                 </div>
                                             ))}
@@ -334,7 +370,7 @@ export default function SettingsPage() {
                                                     <label className="form-label">{field.label} (₹)</label>
                                                     <input type="number" className="form-control" min="0"
                                                         value={bookFeeForm[field.key] || 0}
-                                                        onWheel={(e) => e.target.blur()}
+                                                        onWheel={(e) => (e.target as HTMLInputElement).blur()}
                                                         onChange={e => setBookFeeForm({ ...bookFeeForm, [field.key]: e.target.value })} />
                                                 </div>
                                             ))}
@@ -351,6 +387,54 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {activeTab === 'security' && (
+                <div className="card" style={{ maxWidth: 500 }}>
+                    <div className="card-header">
+                        <h2><MdLockOutline /> Change Password</h2>
+                    </div>
+                    <form onSubmit={handleChangePassword}>
+                        <div className="card-body">
+                            <div className="form-group">
+                                <label className="form-label">Current Password</label>
+                                <input
+                                    type="password"
+                                    className="form-control"
+                                    required
+                                    value={passForm.currentPassword}
+                                    onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">New Password</label>
+                                <input
+                                    type="password"
+                                    className="form-control"
+                                    required
+                                    minLength={6}
+                                    value={passForm.newPassword}
+                                    onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Confirm New Password</label>
+                                <input
+                                    type="password"
+                                    className="form-control"
+                                    required
+                                    value={passForm.confirmPassword}
+                                    onChange={e => setPassForm({ ...passForm, confirmPassword: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer" style={{ padding: '16px 24px' }}>
+                            <button type="submit" className="btn btn-primary" disabled={passLoading}>
+                                {passLoading ? 'Updating...' : 'Update Password'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
         </div>

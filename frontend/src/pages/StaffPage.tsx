@@ -2,17 +2,30 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { formatCurrency, formatDate, generateSalarySlipPDF } from '../utils/pdfUtils';
+import { useNotifications } from '../context/NotificationContext';
+import { generateSalarySlipPDF, exportStaffExcel, exportStaffPDF } from '../utils/pdfUtils';
+import { getCurrentAcademicYear, getAcademicYearOptions } from '../utils/academicYear';
 import {
-    MdAdd, MdEdit, MdDelete, MdSearch, MdClose,
-    MdPayment, MdHistory, MdDownload, MdPerson, MdReceiptLong, MdDateRange
+    MdAdd, MdSearch, MdPayment, MdReceiptLong, MdHistory, MdDateRange,
+    MdFileDownload, MdPictureAsPdf, MdTableChart, MdPerson
 } from 'react-icons/md';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Fuse from 'fuse.js';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { Staff, SalaryPayment, StaffListResponse } from '../types';
+
+// Components
+import StaffTable from '../components/staff/StaffTable';
+import StaffForm from '../components/staff/StaffForm';
+import SalaryModal from '../components/staff/SalaryModal';
+import StaffHistoryModal from '../components/staff/StaffHistoryModal';
+import EditSalaryModal from '../components/staff/EditSalaryModal';
+import LeaveModal from '../components/staff/LeaveModal';
+import EditLeaveModal from '../components/staff/EditLeaveModal';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
 
 const ROLES = ['teacher', 'principal', 'vice_principal', 'admin_staff', 'librarian', 'peon', 'guard', 'accountant', 'other'];
-const ACADEMIC_YEARS = ['2023-24', '2024-25', '2025-26', '2026-27'];
+const ACADEMIC_YEARS = getAcademicYearOptions();
 
 const generateMonths = () => {
     const months = [];
@@ -33,61 +46,69 @@ const emptyStaff = {
     name: '', phone: '', role: 'teacher', subject: '',
     department: '', qualification: '', experience: '', gender: 'male',
     address: '', monthlySalary: '', joiningDate: '',
-    bankAccount: '', bankName: '', ifscCode: '', academicYear: '2025-26',
+    bankAccount: '', bankName: '', ifscCode: '', academicYear: getCurrentAcademicYear(),
     isActive: true
 };
 
-const ROLE_DISPLAY = (r) => r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+const ROLE_DISPLAY = (r: string) => r.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 export default function StaffPage() {
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const { addNotification } = useNotifications();
+
+    // List & Filter State
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
-    const [yearFilter, setYearFilter] = useState('');
-
+    const [yearFilter, setYearFilter] = useState(getCurrentAcademicYear());
     const [sortField, setSortField] = useState('name');
     const [sortDir, setSortDir] = useState(1);
 
+    // Form Modal State
     const [showForm, setShowForm] = useState(false);
-    const [editStaff, setEditStaff] = useState(null);
-    const [formData, setFormData] = useState(emptyStaff);
-    const [formErrors, setFormErrors] = useState({});
+    const [editStaff, setEditStaff] = useState<Staff | null>(null);
+    const [formData, setFormData] = useState<any>(emptyStaff);
+    const [formErrors, setFormErrors] = useState<any>({});
     const [formLoading, setFormLoading] = useState(false);
 
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-    const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState(null);
-    const [showSalaryId, setShowSalaryId] = useState(null);
-    const [showHistoryId, setShowHistoryId] = useState(null);
-    const [historyData, setHistoryData] = useState(null);
+    // Delete Modal State
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<Staff | null>(null);
+    const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState<string | null>(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
-    const [editSalaryTarget, setEditSalaryTarget] = useState(null); // { staffId, payment }
-    const [editSalaryForm, setEditSalaryForm] = useState({
-        baseAmount: '', cuttings: '', amount: '', paymentDate: '', paymentMode: 'bank_transfer', remarks: '', month: ''
-    });
-    const [editSalaryLoading, setEditSalaryLoading] = useState(false);
-
-    const [salaryForm, setSalaryForm] = useState({
+    // Salary Modal State
+    const [showSalaryId, setShowSalaryId] = useState<string | null>(null);
+    const [salaryForm, setSalaryForm] = useState<any>({
         month: CURRENT_MONTH, baseAmount: '', cuttings: '', amount: '', paymentDate: new Date().toISOString().split('T')[0],
         paymentMode: 'bank_transfer', remarks: ''
     });
     const [salaryLoading, setSalaryLoading] = useState(false);
-    const [settings, setSettings] = useState({});
 
-    const [showLeavesId, setShowLeavesId] = useState(null); // Staff ID
+    // History & Edit Salary State
+    const [showHistoryId, setShowHistoryId] = useState<string | null>(null);
+    const [historyData, setHistoryData] = useState<any>(null);
+    const [editSalaryTarget, setEditSalaryTarget] = useState<any>(null); // { staffId, payment }
+    const [editSalaryForm, setEditSalaryForm] = useState<any>({
+        baseAmount: '', cuttings: '', amount: '', paymentDate: '', paymentMode: 'bank_transfer', remarks: '', month: ''
+    });
+    const [editSalaryLoading, setEditSalaryLoading] = useState(false);
+
+    // Leave Modal State
+    const [showLeavesId, setShowLeavesId] = useState<string | null>(null);
     const [leaveForm, setLeaveForm] = useState({ date: new Date().toISOString().split('T')[0], reason: '' });
     const [leaveLoading, setLeaveLoading] = useState(false);
-
-    const [editLeaveTarget, setEditLeaveTarget] = useState(null); // { staffId, leave }
+    const [editLeaveTarget, setEditLeaveTarget] = useState<any>(null); // { staffId, leave }
     const [editLeaveForm, setEditLeaveForm] = useState({ date: '', reason: '', status: 'approved' });
     const [editLeaveLoading, setEditLeaveLoading] = useState(false);
 
-    // Fetch staff data with TanStack Query
-    const { data, isLoading, isError, refetch } = useQuery({
+    const [settings, setSettings] = useState<any>({});
+
+    // Fetch staff data
+    const { data, isLoading } = useQuery<StaffListResponse>({
         queryKey: ['staff', page, roleFilter, yearFilter],
         queryFn: async () => {
-            const params = { page, limit: 50 };
+            const params: any = { page, limit: 50 };
             if (roleFilter) params.role = roleFilter;
             if (yearFilter) params.academicYear = yearFilter;
             const res = await API.get('/staff', { params });
@@ -99,9 +120,13 @@ export default function StaffPage() {
     const totalPages = data?.pages || 1;
     const totalStaffCount = data?.total || 0;
 
-    const getStatus = (s) => s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'paid' : 'unpaid';
+    useEffect(() => {
+        API.get('/settings').then(r => setSettings(r.data.settings)).catch(() => { });
+    }, []);
 
-    const STATUS_ORDER = { paid: 2, unpaid: 0 };
+    const getStatus = (s: Staff) => s.salaryPayments?.some(p => p.month === CURRENT_MONTH) ? 'paid' : 'unpaid';
+
+    const STATUS_ORDER: Record<string, number> = { paid: 2, unpaid: 0 };
 
     const sortedStaff = useMemo(() => {
         return [...staff].sort((a, b) => {
@@ -117,43 +142,42 @@ export default function StaffPage() {
             }
             const av = sortField === 'monthlySalary' ? a.monthlySalary
                 : sortField === 'totalSalaryPaid' ? a.totalSalaryPaid
-                    : (a[sortField] || '');
+                    : (a[sortField as keyof Staff] || '');
             const bv = sortField === 'monthlySalary' ? b.monthlySalary
                 : sortField === 'totalSalaryPaid' ? b.totalSalaryPaid
-                    : (b[sortField] || '');
+                    : (b[sortField as keyof Staff] || '');
             if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir;
             return String(av).localeCompare(String(bv)) * sortDir;
         });
     }, [staff, sortField, sortDir]);
 
-    // Fuzzy search logic locally for instant results
     const fuse = useMemo(() => new Fuse(sortedStaff, {
         keys: ['name', 'staffId', 'phone', 'role'],
         threshold: 0.3
     }), [sortedStaff]);
 
-    const filteredStaff = useMemo(() => {
+    const filteredStaff: Staff[] = useMemo(() => {
         if (!search) return sortedStaff;
         return fuse.search(search).map(r => r.item);
     }, [search, sortedStaff, fuse]);
 
-    // Derived states for modals to ensure they reactive-update when query invalidates
-    const showLeaves = useMemo(() => staff.find(s => s._id === showLeavesId), [staff, showLeavesId]);
-    const showSalary = useMemo(() => staff.find(s => s._id === showSalaryId), [staff, showSalaryId]);
-    const showHistory = useMemo(() => staff.find(s => s._id === showHistoryId), [staff, showHistoryId]);
-    useEffect(() => { API.get('/settings').then(r => setSettings(r.data.settings)).catch(() => { }); }, []);
+    // Derived states
+    const showLeaves = useMemo(() => staff.find(s => s._id === showLeavesId) || null, [staff, showLeavesId]);
+    const showSalary = useMemo(() => staff.find(s => s._id === showSalaryId) || null, [staff, showSalaryId]);
+    const showHistory = useMemo(() => staff.find(s => s._id === showHistoryId) || null, [staff, showHistoryId]);
 
+    // Handlers
     const validateForm = () => {
-        const errs = {};
-        if (!formData.name.trim()) errs.name = 'Name is required';
-        if (!formData.phone.trim()) errs.phone = 'Phone is required';
-        if (formData.monthlySalary === '' || formData.monthlySalary < 0) errs.monthlySalary = 'Valid salary required';
+        const errs: any = {};
+        if (!formData.name?.trim()) errs.name = 'Name is required';
+        if (!formData.phone?.trim()) errs.phone = 'Phone is required';
+        if (formData.monthlySalary === '' || Number(formData.monthlySalary) < 0) errs.monthlySalary = 'Valid salary required';
         if (!formData.joiningDate) errs.joiningDate = 'Joining date is required';
         setFormErrors(errs);
         return Object.keys(errs).length === 0;
     };
 
-    const handleSubmit = async (e) => {
+    const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateForm()) return;
         setFormLoading(true);
@@ -161,17 +185,27 @@ export default function StaffPage() {
             if (editStaff) {
                 await API.put(`/staff/${editStaff._id}`, formData);
                 toast.success('Staff updated!');
+                addNotification({
+                    type: 'info',
+                    title: 'Staff Updated',
+                    message: `Details updated for ${formData.name}.`
+                });
             } else {
                 await API.post('/staff', formData);
                 toast.success('Staff added!');
+                addNotification({
+                    type: 'promotion',
+                    title: 'New Staff Registered',
+                    message: `${formData.name} added as ${ROLE_DISPLAY(formData.role)}.`
+                });
             }
             setShowForm(false); setEditStaff(null); setFormData(emptyStaff);
-            queryClient.invalidateQueries(['staff']);
-        } catch (err) { toast.error(err.response?.data?.message || 'Operation failed'); }
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        } catch (err: any) { toast.error(err.response?.data?.message || 'Operation failed'); }
         finally { setFormLoading(false); }
     };
 
-    const openEdit = (s) => {
+    const openEdit = (s: Staff) => {
         setEditStaff(s);
         setFormData({
             name: s.name, phone: s.phone, role: s.role,
@@ -180,35 +214,41 @@ export default function StaffPage() {
             gender: s.gender || 'male', address: s.address || '',
             monthlySalary: s.monthlySalary, bankAccount: s.bankAccount || '',
             bankName: s.bankName || '', ifscCode: s.ifscCode || '',
-            academicYear: s.academicYear || '2025-26',
+            academicYear: s.academicYear || getCurrentAcademicYear(),
             isActive: s.isActive !== false,
             joiningDate: s.joiningDate ? s.joiningDate.split('T')[0] : ''
         });
         setShowForm(true);
     };
 
-    const handleDelete = async () => {
+    const handleDeleteStaff = async () => {
+        if (!showDeleteConfirm) return;
+        setDeleteLoading(true);
         try {
             await API.delete(`/staff/${showDeleteConfirm._id}`);
             toast.success('Staff deleted');
             setShowDeleteConfirm(null);
-            queryClient.invalidateQueries(['staff']);
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
         } catch { toast.error('Delete failed'); }
+        finally { setDeleteLoading(false); }
     };
 
-    const openHistory = async (s) => {
+    const openHistory = async (s: Staff) => {
         setShowHistoryId(s._id);
         try {
             const res = await API.get(`/staff/${s._id}/salaries`);
-            setHistoryData(res.data);
+            const data = res.data;
+            if (data.salaryPayments) data.salaryPayments = [...data.salaryPayments].reverse();
+            setHistoryData(data);
         } catch { toast.error('Failed to load salary history'); }
     };
 
-    const handleSalaryPayment = async (e) => {
+    const handleSalaryPayment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (salaryForm.amount === '' || salaryForm.amount < 0) { toast.error('Enter a valid amount'); return; }
+        if (salaryForm.amount === '' || Number(salaryForm.amount) < 0) { toast.error('Enter a valid amount'); return; }
         setSalaryLoading(true);
         try {
+            const staffName = showSalary?.name || 'Staff Member';
             await API.post(`/staff/${showSalaryId}/salaries`, {
                 ...salaryForm,
                 amount: Number(salaryForm.amount),
@@ -216,20 +256,26 @@ export default function StaffPage() {
                 cuttings: Number(salaryForm.cuttings || 0)
             });
             toast.success('Salary payment recorded!');
+            addNotification({
+                type: 'salary',
+                title: 'Salary Paid',
+                message: `₹${Number(salaryForm.amount).toLocaleString()} paid to ${staffName} for ${salaryForm.month}.`
+            });
             setShowSalaryId(null);
             setSalaryForm({ month: CURRENT_MONTH, baseAmount: '', cuttings: '', amount: '', paymentDate: new Date().toISOString().split('T')[0], paymentMode: 'bank_transfer', remarks: '' });
-            queryClient.invalidateQueries(['staff']);
-        } catch (err) { toast.error(err.response?.data?.message || 'Payment failed'); }
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        } catch (err: any) { toast.error(err.response?.data?.message || 'Payment failed'); }
         finally { setSalaryLoading(false); }
     };
 
-    const downloadLatestPayslip = (s) => {
+    const downloadLatestPayslip = (s: Staff) => {
         if (!s.salaryPayments?.length) return;
         const last = s.salaryPayments[s.salaryPayments.length - 1];
         generateSalarySlipPDF(s, last, settings);
     };
 
-    const openEditSalary = (payment) => {
+    const openEditSalary = (payment: any) => {
+        if (!showHistory) return;
         setEditSalaryTarget({ staffId: showHistory._id, payment });
         setEditSalaryForm({
             baseAmount: payment.baseAmount || payment.amount,
@@ -242,9 +288,10 @@ export default function StaffPage() {
         });
     };
 
-    const handleEditSalary = async (e) => {
+    const handleEditSalary = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (editSalaryForm.amount === '' || editSalaryForm.amount < 0) {
+        if (!editSalaryTarget) return;
+        if (editSalaryForm.amount === '' || Number(editSalaryForm.amount) < 0) {
             toast.error('Valid amount required');
             return;
         }
@@ -260,35 +307,33 @@ export default function StaffPage() {
             // Refresh history
             const res = await API.get(`/staff/${staffId}/salaries`);
             setHistoryData(res.data);
-            queryClient.invalidateQueries(['staff']);
-        } catch (err) {
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        } catch (err: any) {
             toast.error(err.response?.data?.message || 'Update failed');
         } finally {
             setEditSalaryLoading(false);
         }
     };
 
-    const handleDeleteSalaryPayment = (paymentId) => {
-        setShowDeletePaymentConfirm(paymentId);
-    };
-
     const confirmDeleteSalaryPayment = async () => {
-        if (!showDeletePaymentConfirm) return;
+        if (!showDeletePaymentConfirm || !showHistoryId) return;
+        setDeleteLoading(true);
         try {
             await API.delete(`/staff/${showHistoryId}/salaries/${showDeletePaymentConfirm}`);
             toast.success('Salary payment deleted!');
             // Refresh history
             const res = await API.get(`/staff/${showHistoryId}/salaries`);
             setHistoryData(res.data);
-            queryClient.invalidateQueries(['staff']);
-        } catch (err) {
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        } catch (err: any) {
             toast.error(err.response?.data?.message || 'Delete failed');
         } finally {
             setShowDeletePaymentConfirm(null);
+            setDeleteLoading(false);
         }
     };
 
-    const handleRecordLeave = async (e) => {
+    const handleRecordLeave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!leaveForm.date) { toast.error('Date is required'); return; }
         setLeaveLoading(true);
@@ -296,25 +341,25 @@ export default function StaffPage() {
             await API.post(`/staff/${showLeavesId}/leaves`, leaveForm);
             toast.success('Leave recorded!');
             setLeaveForm({ date: new Date().toISOString().split('T')[0], reason: '' });
-            queryClient.invalidateQueries(['staff']);
-        } catch (err) {
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        } catch (err: any) {
             toast.error(err.response?.data?.message || 'Failed to record leave');
         } finally {
             setLeaveLoading(false);
         }
     };
 
-    const handleDeleteLeave = async (leaveId) => {
+    const handleDeleteLeave = async (leaveId: string) => {
         try {
             await API.delete(`/staff/${showLeavesId}/leaves/${leaveId}`);
             toast.success('Leave deleted');
-            queryClient.invalidateQueries(['staff']);
-        } catch (err) {
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        } catch (err: any) {
             toast.error(err.response?.data?.message || 'Failed to delete leave');
         }
     };
 
-    const openEditLeave = (leave) => {
+    const openEditLeave = (leave: any) => {
         setEditLeaveTarget({ staffId: showLeavesId, leave });
         setEditLeaveForm({
             date: leave.date ? leave.date.split('T')[0] : '',
@@ -323,8 +368,9 @@ export default function StaffPage() {
         });
     };
 
-    const handleEditLeave = async (e) => {
+    const handleEditLeave = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!editLeaveTarget) return;
         setEditLeaveLoading(true);
         try {
             await API.put(
@@ -333,20 +379,18 @@ export default function StaffPage() {
             );
             toast.success('Leave updated!');
             setEditLeaveTarget(null);
-            queryClient.invalidateQueries(['staff']);
-        } catch (err) {
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+        } catch (err: any) {
             toast.error(err.response?.data?.message || 'Update failed');
         } finally {
             setEditLeaveLoading(false);
         }
     };
 
-    const toggleSort = (field) => {
+    const toggleSort = (field: string) => {
         if (sortField === field) setSortDir(d => -d);
         else { setSortField(field); setSortDir(1); }
     };
-
-    const SortArrow = ({ field }) => sortField === field ? (sortDir === 1 ? ' ↑' : ' ↓') : ' ⇅';
 
     return (
         <div>
@@ -367,127 +411,53 @@ export default function StaffPage() {
                             {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-                    <button className="btn btn-primary hover-lift" onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}>
-                        <MdAdd /> Add Staff
-                    </button>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <div className="btn-group">
+                            <button className="btn btn-secondary" onClick={() => exportStaffExcel(filteredStaff)} title="Export to Excel">
+                                <MdTableChart />
+                            </button>
+                            <button className="btn btn-secondary" onClick={() => exportStaffPDF(filteredStaff)} title="Export to PDF">
+                                <MdPictureAsPdf />
+                            </button>
+                        </div>
+                        <button className="btn btn-primary hover-lift" onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}>
+                            <MdAdd /> Add Staff
+                        </button>
+                    </div>
                 </div>
                 <div style={{ padding: '8px 24px', fontSize: 13, color: '#64748b' }}>
                     Found <strong>{totalStaffCount}</strong> staff members •
                     Showing <strong>{staff.length}</strong> on this page
                 </div>
-            </motion.div>
+            </motion.div >
 
             {/* Table */}
             <div className="card">
-                {isLoading ? (
-                    <div className="loading-spinner"><div className="spinner" /></div>
-                ) : staff.length === 0 ? (
-                    <div className="empty-state">
-                        <div className="empty-state-icon">👨‍🏫</div>
-                        <h3>No staff found</h3>
-                    </div>
-                ) : (
-                    <div className="table-container">
-                        <table className="students-table">
-                            <thead>
-                                <tr>
-                                    <th onClick={() => toggleSort('staffId')}>ID <SortArrow field="staffId" /></th>
-                                    <th onClick={() => toggleSort('name')}>Name <SortArrow field="name" /></th>
-                                    <th onClick={() => toggleSort('role')}>Role <SortArrow field="role" /></th>
-                                    <th onClick={() => toggleSort('monthlySalary')}>Monthly Salary <SortArrow field="monthlySalary" /></th>
-                                    <th onClick={() => toggleSort('totalSalaryPaid')}>Total Paid <SortArrow field="totalSalaryPaid" /></th>
-                                    <th onClick={() => toggleSort('academicYear')}>Session <SortArrow field="academicYear" /></th>
-                                    <th onClick={() => toggleSort('joiningDate')}>Joining Date <SortArrow field="joiningDate" /></th>
-                                    <th onClick={() => toggleSort('leaves')}>Leaves <SortArrow field="leaves" /></th>
-                                    <th onClick={() => toggleSort('status')}>Status <SortArrow field="status" /></th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <AnimatePresence mode='popLayout'>
-                                    {filteredStaff.map((s, idx) => (
-                                        <motion.tr
-                                            key={s._id}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: idx * 0.03 }}
-                                            className="hover-lift"
-                                        >
-                                            <td><code style={{ fontSize: 11, color: '#1a237e', fontWeight: 700 }}>{s.staffId}</code></td>
-                                            <td>
-                                                <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{s.name}</div>
-                                                {s.subject && <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>{s.subject}</div>}
-                                            </td>
-                                            <td>
-                                                <span className="badge badge-admin glass" style={{ textTransform: 'capitalize' }}>
-                                                    {ROLE_DISPLAY(s.role)}
-                                                </span>
-                                            </td>
-                                            <td style={{ fontWeight: 700 }}>{formatCurrency(s.monthlySalary)}</td>
-                                            <td style={{ fontWeight: 700, color: '#10b981' }}>{formatCurrency(s.totalSalaryPaid)}</td>
-                                            <td>
-                                                <span className="badge glass" style={{ background: '#f1f5f9', color: '#1e293b' }}>
-                                                    {s.academicYear || '-'}
-                                                </span>
-                                            </td>
-                                            <td style={{ fontSize: 12, color: '#64748b' }}>{formatDate(s.joiningDate)}</td>
-                                            <td>
-                                                <span className="badge" style={{ background: '#fff7ed', color: '#c2410c' }}>
-                                                    {s.leaves?.length || 0}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className={`badge ${getStatus(s) === 'paid' ? 'badge-paid' : 'badge-unpaid'}`}>
-                                                    {getStatus(s) === 'paid' ? 'Paid' : 'Due'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div className="actions-grid">
-                                                    <button className="btn btn-success btn-sm btn-icon hover-lift" title="Pay Salary"
-                                                        onClick={() => {
-                                                            setShowSalaryId(s._id);
-                                                            setSalaryForm(f => ({
-                                                                ...f,
-                                                                baseAmount: s.monthlySalary,
-                                                                cuttings: 0,
-                                                                amount: s.monthlySalary,
-                                                                month: CURRENT_MONTH,
-                                                                paymentDate: new Date().toISOString().split('T')[0]
-                                                            }));
-                                                        }}>
-                                                        <MdPayment />
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-primary btn-sm btn-icon hover-lift"
-                                                        title="Download Latest Payslip"
-                                                        style={{ opacity: s.totalSalaryPaid > 0 ? 1 : 0.3, cursor: s.totalSalaryPaid > 0 ? 'pointer' : 'default' }}
-                                                        onClick={() => s.totalSalaryPaid > 0 && downloadLatestPayslip(s)}>
-                                                        <MdReceiptLong />
-                                                    </button>
-                                                    <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Salary History"
-                                                        onClick={() => openHistory(s)}>
-                                                        <MdHistory />
-                                                    </button>
-                                                    <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Leaves"
-                                                        onClick={() => setShowLeavesId(s._id)}>
-                                                        <MdDateRange />
-                                                    </button>
-                                                    <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Edit" onClick={() => openEdit(s)}>
-                                                        <MdEdit />
-                                                    </button>
-                                                    <button className="btn btn-danger btn-sm btn-icon hover-lift" title="Delete"
-                                                        onClick={() => setShowDeleteConfirm(s)}>
-                                                        <MdDelete />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </motion.tr>
-                                    ))}
-                                </AnimatePresence>
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <StaffTable
+                    staff={filteredStaff}
+                    isLoading={isLoading}
+                    onEdit={openEdit}
+                    onDelete={setShowDeleteConfirm}
+                    onPaySalary={(s) => {
+                        setShowSalaryId(s._id);
+                        setSalaryForm((f: any) => ({
+                            ...f,
+                            baseAmount: s.monthlySalary,
+                            cuttings: 0,
+                            amount: s.monthlySalary,
+                            month: CURRENT_MONTH,
+                            paymentDate: new Date().toISOString().split('T')[0]
+                        }));
+                    }}
+                    downloadLatestPayslip={downloadLatestPayslip}
+                    onViewHistory={openHistory}
+                    onViewLeaves={(s) => setShowLeavesId(s._id)}
+                    sortField={sortField}
+                    sortDir={sortDir}
+                    toggleSort={toggleSort}
+                    getStatus={getStatus}
+                    roleDisplay={ROLE_DISPLAY}
+                />
 
                 {/* Pagination Controls */}
                 {!isLoading && totalPages > 1 && (
@@ -511,606 +481,92 @@ export default function StaffPage() {
                         </button>
                     </div>
                 )}
-            </div>
+            </div >
 
-            {/* Add/Edit Form Modal */}
-            {showForm && (
-                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-                    <div className="modal modal-lg">
-                        <div className="modal-header">
-                            <h3><MdPerson /> {editStaff ? 'Edit Staff' : 'Add New Staff'}</h3>
-                            <button className="btn-close" onClick={() => setShowForm(false)}><MdClose /></button>
-                        </div>
-                        <form onSubmit={handleSubmit}>
-                            <div className="modal-body">
-                                <div className="form-section-title">Personal Information</div>
-                                <div className="form-grid">
-                                    <div className="form-group">
-                                        <label className="form-label">Full Name <span className="required">*</span></label>
-                                        <input className={`form-control ${formErrors.name ? 'error' : ''}`}
-                                            value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                                        {formErrors.name && <p className="form-error">{formErrors.name}</p>}
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Phone <span className="required">*</span></label>
-                                        <input className={`form-control ${formErrors.phone ? 'error' : ''}`}
-                                            value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
-                                        {formErrors.phone && <p className="form-error">{formErrors.phone}</p>}
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Gender</label>
-                                        <select className="form-control" value={formData.gender}
-                                            onChange={e => setFormData({ ...formData, gender: e.target.value })}>
-                                            <option value="male">Male</option>
-                                            <option value="female">Female</option>
-                                            <option value="other">Other</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Address</label>
-                                        <input className="form-control" value={formData.address}
-                                            onChange={e => setFormData({ ...formData, address: e.target.value })} />
-                                    </div>
-                                </div>
+            {/* Modals */}
+            <StaffForm
+                show={showForm}
+                editStaff={editStaff}
+                formData={formData}
+                formErrors={formErrors}
+                formLoading={formLoading}
+                onClose={() => setShowForm(false)}
+                onSubmit={handleFormSubmit}
+                setFormData={setFormData}
+                roles={ROLES}
+                roleDisplay={ROLE_DISPLAY}
+            />
 
-                                <div className="form-section-title">Professional Details</div>
-                                <div className="form-grid">
-                                    <div className="form-group">
-                                        <label className="form-label">Role <span className="required">*</span></label>
-                                        <select className="form-control" value={formData.role}
-                                            onChange={e => setFormData({ ...formData, role: e.target.value })}>
-                                            {ROLES.map(r => <option key={r} value={r}>{ROLE_DISPLAY(r)}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Subject (for teachers)</label>
-                                        <input className="form-control" value={formData.subject}
-                                            onChange={e => setFormData({ ...formData, subject: e.target.value })}
-                                            placeholder="e.g., Mathematics" />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Qualification</label>
-                                        <input className="form-control" value={formData.qualification}
-                                            onChange={e => setFormData({ ...formData, qualification: e.target.value })} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Experience (years)</label>
-                                        <input type="number" className="form-control" value={formData.experience}
-                                            onWheel={(e) => e.target.blur()}
-                                            onChange={e => setFormData({ ...formData, experience: e.target.value })} min="0" />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Joining Date <span className="required">*</span></label>
-                                        <input type="date" className={`form-control ${formErrors.joiningDate ? 'error' : ''}`}
-                                            value={formData.joiningDate}
-                                            onChange={e => setFormData({ ...formData, joiningDate: e.target.value })} />
-                                        {formErrors.joiningDate && <p className="form-error">{formErrors.joiningDate}</p>}
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Academic Year</label>
-                                        <input className="form-control" value={formData.academicYear}
-                                            onChange={e => setFormData({ ...formData, academicYear: e.target.value })} />
-                                    </div>
-                                </div>
+            <SalaryModal
+                show={showSalary}
+                salaryForm={salaryForm}
+                salaryLoading={salaryLoading}
+                months={MONTHS}
+                onClose={() => setShowSalaryId(null)}
+                onSubmit={handleSalaryPayment}
+                setSalaryForm={setSalaryForm}
+                roleDisplay={ROLE_DISPLAY}
+            />
 
-                                <div className="form-section-title">Salary & Bank Details</div>
-                                <div className="form-grid">
-                                    <div className="form-group">
-                                        <label className="form-label">Monthly Salary (₹) <span className="required">*</span></label>
-                                        <input type="number" className={`form-control ${formErrors.monthlySalary ? 'error' : ''}`}
-                                            value={formData.monthlySalary}
-                                            onWheel={(e) => e.target.blur()}
-                                            onChange={e => setFormData({ ...formData, monthlySalary: e.target.value })} min="0" />
-                                        {formErrors.monthlySalary && <p className="form-error">{formErrors.monthlySalary}</p>}
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Bank Account No</label>
-                                        <input className="form-control" value={formData.bankAccount}
-                                            onChange={e => setFormData({ ...formData, bankAccount: e.target.value })} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Bank Name</label>
-                                        <input className="form-control" value={formData.bankName}
-                                            onChange={e => setFormData({ ...formData, bankName: e.target.value })} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">IFSC Code</label>
-                                        <input className="form-control" value={formData.ifscCode}
-                                            onChange={e => setFormData({ ...formData, ifscCode: e.target.value })} />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={formLoading}>
-                                    {formLoading ? 'Saving...' : editStaff ? 'Update Staff' : 'Add Staff'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <StaffHistoryModal
+                show={showHistory}
+                historyData={historyData}
+                userRole={user?.role}
+                onClose={() => { setShowHistoryId(null); setHistoryData(null); }}
+                onDownloadSlip={(p) => generateSalarySlipPDF(showHistory!, p, settings)}
+                onEditSalary={openEditSalary}
+                onDeleteSalary={setShowDeletePaymentConfirm}
+                onReverseHistory={() => setHistoryData((h: any) => ({ ...h, salaryPayments: [...h.salaryPayments].reverse() }))}
+            />
 
-            {/* Delete Confirm */}
-            {showDeleteConfirm && (
-                <div className="modal-overlay">
-                    <div className="modal" style={{ maxWidth: 400 }}>
-                        <div className="modal-header">
-                            <h3>Confirm Delete</h3>
-                            <button className="btn-close" onClick={() => setShowDeleteConfirm(null)}><MdClose /></button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="confirm-dialog">
-                                <div className="confirm-icon">🗑️</div>
-                                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Delete {showDeleteConfirm.name}?</p>
-                                <p style={{ fontSize: 13, color: '#6b7280' }}>
-                                    This action cannot be undone. The staff record will be permanently deleted.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(null)}>Cancel</button>
-                            <button className="btn btn-danger" onClick={handleDelete}>Delete Staff</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <EditSalaryModal
+                show={editSalaryTarget}
+                editForm={editSalaryForm}
+                loading={editSalaryLoading}
+                months={MONTHS}
+                onClose={() => setEditSalaryTarget(null)}
+                onFormChange={setEditSalaryForm}
+                onSubmit={handleEditSalary}
+            />
 
-            {/* Delete Payment Confirm */}
-            {showDeletePaymentConfirm && (
-                <div className="modal-overlay" style={{ zIndex: 1200 }}>
-                    <div className="modal" style={{ maxWidth: 400 }}>
-                        <div className="modal-header">
-                            <h3>Confirm Delete</h3>
-                            <button className="btn-close" onClick={() => setShowDeletePaymentConfirm(null)}><MdClose /></button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="confirm-dialog">
-                                <div className="confirm-icon">🗑️</div>
-                                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Delete Salary Record?</p>
-                                <p style={{ fontSize: 13, color: '#6b7280' }}>
-                                    This action cannot be undone. The salary payment will be permanently deleted.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowDeletePaymentConfirm(null)}>Cancel</button>
-                            <button className="btn btn-danger" onClick={confirmDeleteSalaryPayment}>Delete Record</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <LeaveModal
+                show={showLeaves}
+                leaveForm={leaveForm}
+                leaveLoading={leaveLoading}
+                userRole={user?.role}
+                onClose={() => setShowLeavesId(null)}
+                onRecordLeave={handleRecordLeave}
+                onDeleteLeave={handleDeleteLeave}
+                onEditLeave={openEditLeave}
+                setLeaveForm={setLeaveForm}
+            />
 
-            {/* Salary Payment Modal */}
-            {showSalary && (
-                <div className="modal-overlay">
-                    <div className="modal" style={{ maxWidth: 520 }}>
-                        <div className="modal-header">
-                            <h3><MdPayment /> Pay Salary - {showSalary.name}</h3>
-                            <button className="btn-close" onClick={() => setShowSalaryId(null)}><MdClose /></button>
-                        </div>
-                        <form onSubmit={handleSalaryPayment}>
-                            <div className="modal-body">
-                                <div className="highlight-box" style={{ marginBottom: 16 }}>
-                                    <strong>{showSalary.name}</strong> · {ROLE_DISPLAY(showSalary.role)}
-                                    {showSalary.subject && ` · ${showSalary.subject}`}
-                                    <div style={{ marginTop: 6, fontSize: 14 }}>
-                                        Monthly Salary: <strong style={{ color: '#1a237e' }}>{formatCurrency(showSalary.monthlySalary)}</strong>
-                                    </div>
-                                </div>
-                                <div className="form-grid">
-                                    <div className="form-group">
-                                        <label className="form-label">Month <span className="required">*</span></label>
-                                        <select className="form-control" value={salaryForm.month}
-                                            onChange={e => setSalaryForm({ ...salaryForm, month: e.target.value })}>
-                                            {MONTHS.map(m => <option key={m}>{m}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Base Amount (₹) <span className="required">*</span></label>
-                                        <input type="number" className="form-control" value={salaryForm.baseAmount}
-                                            onWheel={(e) => e.target.blur()}
-                                            onChange={e => {
-                                                const baseAmount = e.target.value;
-                                                const cuttings = salaryForm.cuttings || 0;
-                                                setSalaryForm({
-                                                    ...salaryForm,
-                                                    baseAmount,
-                                                    amount: Math.max(0, Number(baseAmount) - Number(cuttings))
-                                                });
-                                            }} min={0} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Cuttings (₹)</label>
-                                        <input type="number" className="form-control" value={salaryForm.cuttings}
-                                            onWheel={(e) => e.target.blur()}
-                                            onChange={e => {
-                                                const cuttings = e.target.value;
-                                                const baseAmount = salaryForm.baseAmount || 0;
-                                                setSalaryForm({
-                                                    ...salaryForm,
-                                                    cuttings,
-                                                    amount: Math.max(0, Number(baseAmount) - Number(cuttings))
-                                                });
-                                            }} min={0} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Final Amount (₹) <span className="required">*</span></label>
-                                        <input type="number" className="form-control" value={salaryForm.amount}
-                                            onWheel={(e) => e.target.blur()}
-                                            onChange={e => setSalaryForm({ ...salaryForm, amount: e.target.value })} min={0} disabled />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Payment Date</label>
-                                        <input type="date" className="form-control" value={salaryForm.paymentDate}
-                                            onChange={e => setSalaryForm({ ...salaryForm, paymentDate: e.target.value })} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Payment Mode</label>
-                                        <select className="form-control" value={salaryForm.paymentMode}
-                                            onChange={e => setSalaryForm({ ...salaryForm, paymentMode: e.target.value })}>
-                                            <option value="bank_transfer">Bank Transfer</option>
-                                            <option value="cash">Cash</option>
-                                            <option value="cheque">Cheque</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                                        <label className="form-label">Remarks</label>
-                                        <input className="form-control" value={salaryForm.remarks}
-                                            onChange={e => setSalaryForm({ ...salaryForm, remarks: e.target.value })}
-                                            placeholder="Optional remarks" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowSalary(null)}>Cancel</button>
-                                <button type="submit" className="btn btn-success" disabled={salaryLoading}>
-                                    {salaryLoading ? 'Processing...' : '✓ Pay Salary'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <EditLeaveModal
+                show={editLeaveTarget}
+                editForm={editLeaveForm}
+                loading={editLeaveLoading}
+                onClose={() => setEditLeaveTarget(null)}
+                onFormChange={setEditLeaveForm}
+                onSubmit={handleEditLeave}
+            />
 
-            {/* Salary History Modal */}
-            {showHistory && (
-                <div className="modal-overlay">
-                    <div className="modal modal-lg">
-                        <div className="modal-header">
-                            <h3><MdHistory /> Salary History - {showHistory.name}</h3>
-                            <button className="btn-close" onClick={() => { setShowHistoryId(null); setHistoryData(null); }}><MdClose /></button>
-                        </div>
-                        <div className="modal-body">
-                            {historyData ? (
-                                <>
-                                    <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-                                        <div className="highlight-box" style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 12, color: '#6b7280' }}>Monthly Salary</div>
-                                            <div style={{ fontSize: 20, fontWeight: 800, color: '#1a237e' }}>{formatCurrency(historyData.monthlySalary)}</div>
-                                        </div>
-                                        <div className="highlight-box" style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 12, color: '#6b7280' }}>Total Paid</div>
-                                            <div style={{ fontSize: 20, fontWeight: 800, color: '#43a047' }}>{formatCurrency(historyData.totalSalaryPaid)}</div>
-                                        </div>
-                                    </div>
-                                    {historyData.salaryPayments?.length === 0 ? (
-                                        <div className="empty-state" style={{ padding: 30 }}>
-                                            <p style={{ color: '#9ca3af' }}>No salary payments recorded yet</p>
-                                        </div>
-                                    ) : (
-                                        <div className="table-container">
-                                            <table>
-                                                <thead>
-                                                    <tr>
-                                                        <th>Slip No</th>
-                                                        <th>Month</th>
-                                                        <th>Amount</th>
-                                                        <th>Date</th>
-                                                        <th>Mode</th>
-                                                        <th>Download</th>
-                                                        {user?.role === 'owner' && (
-                                                            <>
-                                                                <th>Edit</th>
-                                                                <th>Delete</th>
-                                                            </>
-                                                        )}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {historyData.salaryPayments?.map((p, i) => (
-                                                        <tr key={i}>
-                                                            <td><code style={{ fontSize: 12, color: '#1a237e' }}>{p.slipNo || '-'}</code></td>
-                                                            <td style={{ fontWeight: 600 }}>{p.month}</td>
-                                                            <td style={{ fontWeight: 700, color: '#43a047' }}>{formatCurrency(p.amount)}</td>
-                                                            <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(p.paymentDate)}</td>
-                                                            <td style={{ textTransform: 'capitalize', fontSize: 12 }}>{(p.paymentMode || '').replace('_', ' ')}</td>
-                                                            <td>
-                                                                <button className="btn btn-secondary btn-sm" title="Download Slip"
-                                                                    onClick={() => generateSalarySlipPDF(showHistory, p, settings)}>
-                                                                    <MdDownload />
-                                                                </button>
-                                                            </td>
-                                                            {user?.role === 'owner' && (
-                                                                <>
-                                                                    <td>
-                                                                        <button
-                                                                            className="btn btn-sm"
-                                                                            title="Edit Payment"
-                                                                            style={{
-                                                                                background: 'linear-gradient(135deg,#7c3aed,#4f46e5)',
-                                                                                color: '#fff', border: 'none', borderRadius: 6,
-                                                                                padding: '4px 10px', cursor: 'pointer',
-                                                                                display: 'flex', alignItems: 'center', gap: 4
-                                                                            }}
-                                                                            onClick={() => openEditSalary(p)}
-                                                                        >
-                                                                            <MdEdit style={{ fontSize: 14 }} /> Edit
-                                                                        </button>
-                                                                    </td>
-                                                                    <td>
-                                                                        <button
-                                                                            className="btn btn-sm"
-                                                                            title="Delete Payment"
-                                                                            style={{
-                                                                                background: '#ef4444',
-                                                                                color: '#fff', border: 'none', borderRadius: 6,
-                                                                                padding: '4px 10px', cursor: 'pointer',
-                                                                                display: 'flex', alignItems: 'center', gap: 4
-                                                                            }}
-                                                                            onClick={() => handleDeleteSalaryPayment(p._id)}
-                                                                        >
-                                                                            <MdDelete style={{ fontSize: 14 }} /> Delete
-                                                                        </button>
-                                                                    </td>
-                                                                </>
-                                                            )}
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </>
-                            ) : <div className="loading-spinner"><div className="spinner" /></div>}
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => { setShowHistoryId(null); setHistoryData(null); }}>Close</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DeleteConfirmModal
+                show={!!showDeleteConfirm}
+                title="Delete Staff"
+                message={`Are you sure you want to delete ${showDeleteConfirm?.name}? This action cannot be undone.`}
+                onClose={() => setShowDeleteConfirm(null)}
+                onConfirm={handleDeleteStaff}
+                loading={deleteLoading}
+            />
 
-            {/* Edit Salary Modal (Owner Only) */}
-            {editSalaryTarget && (
-                <div className="modal-overlay" style={{ zIndex: 1100 }}>
-                    <div className="modal" style={{ maxWidth: 500 }}>
-                        <div className="modal-header">
-                            <h3><MdEdit /> Edit Salary Payment</h3>
-                            <button className="btn-close" onClick={() => setEditSalaryTarget(null)}><MdClose /></button>
-                        </div>
-                        <form onSubmit={handleEditSalary}>
-                            <div className="modal-body">
-                                <div className="form-grid">
-                                    <div className="form-group">
-                                        <label className="form-label">Month <span className="required">*</span></label>
-                                        <select className="form-control" value={editSalaryForm.month}
-                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, month: e.target.value })}>
-                                            {MONTHS.map(m => <option key={m}>{m}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Base Amount (₹) <span className="required">*</span></label>
-                                        <input type="number" className="form-control"
-                                            value={editSalaryForm.baseAmount}
-                                            onWheel={(e) => e.target.blur()}
-                                            onChange={e => {
-                                                const baseAmount = e.target.value;
-                                                const cuttings = editSalaryForm.cuttings || 0;
-                                                setEditSalaryForm({
-                                                    ...editSalaryForm,
-                                                    baseAmount,
-                                                    amount: Math.max(0, Number(baseAmount) - Number(cuttings))
-                                                });
-                                            }} min={0} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Cuttings (₹)</label>
-                                        <input type="number" className="form-control"
-                                            value={editSalaryForm.cuttings}
-                                            onWheel={(e) => e.target.blur()}
-                                            onChange={e => {
-                                                const cuttings = e.target.value;
-                                                const baseAmount = editSalaryForm.baseAmount || 0;
-                                                setEditSalaryForm({
-                                                    ...editSalaryForm,
-                                                    cuttings,
-                                                    amount: Math.max(0, Number(baseAmount) - Number(cuttings))
-                                                });
-                                            }} min={0} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Final Amount (₹) <span className="required">*</span></label>
-                                        <input type="number" className="form-control"
-                                            value={editSalaryForm.amount}
-                                            onWheel={(e) => e.target.blur()}
-                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, amount: e.target.value })} min={0} disabled />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Payment Date</label>
-                                        <input type="date" className="form-control"
-                                            value={editSalaryForm.paymentDate}
-                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, paymentDate: e.target.value })} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Payment Mode</label>
-                                        <select className="form-control"
-                                            value={editSalaryForm.paymentMode}
-                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, paymentMode: e.target.value })}>
-                                            <option value="cash">Cash</option>
-                                            <option value="bank_transfer">Bank Transfer</option>
-                                            <option value="cheque">Cheque</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                        <label className="form-label">Remarks</label>
-                                        <textarea className="form-control" rows="2"
-                                            value={editSalaryForm.remarks}
-                                            onChange={e => setEditSalaryForm({ ...editSalaryForm, remarks: e.target.value })}
-                                            placeholder="Update remarks..." />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={() => setEditSalaryTarget(null)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={editSalaryLoading}>
-                                    {editSalaryLoading ? 'Saving...' : 'Update Payment'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-            {/* Leaves Modal */}
-            {showLeaves && (
-                <div className="modal-overlay">
-                    <div className="modal modal-lg">
-                        <div className="modal-header">
-                            <h3><MdDateRange /> Leaves - {showLeaves.name}</h3>
-                            <button className="btn-close" onClick={() => setShowLeavesId(null)}><MdClose /></button>
-                        </div>
-                        <div className="modal-body">
-                            <form onSubmit={handleRecordLeave} style={{ marginBottom: 20, padding: 16, background: '#f8fafc', borderRadius: 8 }}>
-                                <h4>Record New Leave</h4>
-                                <div className="form-grid" style={{ alignItems: 'end' }}>
-                                    <div className="form-group">
-                                        <label className="form-label">Date <span className="required">*</span></label>
-                                        <input type="date" className="form-control" value={leaveForm.date}
-                                            onChange={e => setLeaveForm({ ...leaveForm, date: e.target.value })} />
-                                    </div>
-                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                        <label className="form-label">Reason</label>
-                                        <input className="form-control" value={leaveForm.reason}
-                                            placeholder="e.g. Sick Leave, Vacation"
-                                            onChange={e => setLeaveForm({ ...leaveForm, reason: e.target.value })} />
-                                    </div>
-                                    <div className="form-group">
-                                        <button type="submit" className="btn btn-primary" disabled={leaveLoading}>
-                                            {leaveLoading ? 'Saving...' : 'Record Leave'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-
-                            <h4>Leave History</h4>
-                            {!showLeaves.leaves || showLeaves.leaves.length === 0 ? (
-                                <div className="empty-state" style={{ padding: 20 }}>
-                                    <p style={{ color: '#9ca3af' }}>No leaves recorded</p>
-                                </div>
-                            ) : (
-                                <div className="table-container">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>Reason</th>
-                                                <th>Status</th>
-                                                {user?.role === 'owner' && <th>Actions</th>}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {showLeaves.leaves.map((leave, i) => (
-                                                <tr key={i}>
-                                                    <td style={{ fontWeight: 600 }}>{formatDate(leave.date)}</td>
-                                                    <td>{leave.reason || '-'}</td>
-                                                    <td><span className={`badge ${leave.status === 'approved' ? 'badge-paid' : leave.status === 'rejected' ? 'badge-unpaid' : ''}`} style={{ textTransform: 'capitalize' }}>{leave.status}</span></td>
-                                                    {user?.role === 'owner' && (
-                                                        <td>
-                                                            <div style={{ display: 'flex', gap: '6px' }}>
-                                                                <button
-                                                                    className="btn btn-sm"
-                                                                    title="Edit Leave"
-                                                                    style={{
-                                                                        background: 'linear-gradient(135deg,#7c3aed,#4f46e5)',
-                                                                        color: '#fff', border: 'none', borderRadius: 6,
-                                                                        padding: '4px 10px', cursor: 'pointer',
-                                                                        display: 'flex', alignItems: 'center', gap: 4
-                                                                    }}
-                                                                    onClick={() => openEditLeave(leave)}
-                                                                >
-                                                                    <MdEdit style={{ fontSize: 13 }} /> Edit
-                                                                </button>
-                                                                <button
-                                                                    className="btn btn-sm btn-icon"
-                                                                    title="Delete Leave"
-                                                                    style={{ color: '#ef4444' }}
-                                                                    onClick={() => handleDeleteLeave(leave._id)}
-                                                                >
-                                                                    <MdDelete />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowLeavesId(null)}>Close</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Edit Leave Modal (Owner Only) */}
-            {editLeaveTarget && (
-                <div className="modal-overlay" style={{ zIndex: 1100 }}>
-                    <div className="modal" style={{ maxWidth: 450 }}>
-                        <div className="modal-header">
-                            <h3><MdEdit /> Edit Leave</h3>
-                            <button className="btn-close" onClick={() => setEditLeaveTarget(null)}><MdClose /></button>
-                        </div>
-                        <form onSubmit={handleEditLeave}>
-                            <div className="modal-body">
-                                <div className="form-grid">
-                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                        <label className="form-label">Date <span className="required">*</span></label>
-                                        <input type="date" className="form-control"
-                                            value={editLeaveForm.date}
-                                            onChange={e => setEditLeaveForm({ ...editLeaveForm, date: e.target.value })} />
-                                    </div>
-                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                        <label className="form-label">Status</label>
-                                        <select className="form-control"
-                                            value={editLeaveForm.status}
-                                            onChange={e => setEditLeaveForm({ ...editLeaveForm, status: e.target.value })}>
-                                            <option value="approved">Approved</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="rejected">Rejected</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                        <label className="form-label">Reason</label>
-                                        <textarea className="form-control" rows="2"
-                                            value={editLeaveForm.reason}
-                                            onChange={e => setEditLeaveForm({ ...editLeaveForm, reason: e.target.value })}
-                                            placeholder="Leave reason..." />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={() => setEditLeaveTarget(null)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={editLeaveLoading}>
-                                    {editLeaveLoading ? 'Saving...' : 'Update Leave'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-        </div>
+            <DeleteConfirmModal
+                show={!!showDeletePaymentConfirm}
+                title="Delete Salary Record"
+                message="Are you sure you want to delete this salary payment? This action cannot be undone."
+                onClose={() => setShowDeletePaymentConfirm(null)}
+                onConfirm={confirmDeleteSalaryPayment}
+                loading={deleteLoading}
+            />
+        </div >
     );
 }

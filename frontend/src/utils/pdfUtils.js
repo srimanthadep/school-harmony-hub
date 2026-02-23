@@ -357,3 +357,70 @@ export const exportStudentsPDF = (students, settings = {}) => {
 
     doc.save(`Student_Report_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.pdf`);
 };
+
+// ── Export Staff Excel ───────────────────────────────────────────────
+export const exportStaffExcel = (staff) => {
+    const data = staff.map(s => ({
+        'Staff ID': s.staffId,
+        'Name': s.name,
+        'Role': (s.role || '').replace('_', ' ').toUpperCase(),
+        'Phone': s.phone,
+        'Monthly Salary': s.monthlySalary,
+        'Total Paid': s.totalSalaryPaid,
+        'Academic Year': s.academicYear,
+        'Joining Date': formatDate(s.joiningDate),
+        'Status': s.isActive ? 'Active' : 'Inactive'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Staff');
+
+    ws['!cols'] = [
+        { wch: 12 }, { wch: 22 }, { wch: 18 }, { wch: 14 }, { wch: 14 },
+        { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 10 }
+    ];
+
+    XLSX.writeFile(wb, `Staff_Export_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.xlsx`);
+};
+
+// ── Export Staff PDF ─────────────────────────────────────────────────
+export const exportStaffPDF = (staff, settings = {}) => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const schoolName = settings.schoolName || SCHOOL_NAME;
+    const pageW = doc.internal.pageSize.getWidth();
+
+    doc.setFillColor(26, 35, 126);
+    doc.rect(0, 0, pageW, 22, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+    doc.text(schoolName, pageW / 2, 10, { align: 'center' });
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.text('Staff Directory Report', pageW / 2, 17, { align: 'center' });
+
+    doc.setTextColor(50, 50, 50); doc.setFontSize(8);
+    doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, pageW - 10, 28, { align: 'right' });
+    doc.text(`Total Staff: ${staff.length}`, 10, 28);
+
+    doc.autoTable({
+        startY: 32,
+        head: [['ID', 'Name', 'Role', 'Phone', 'Monthly Sal', 'Total Paid', 'Session', 'Joined', 'Status']],
+        body: staff.map(s => [
+            s.staffId, s.name, (s.role || '').toUpperCase(), s.phone,
+            `₹${Number(s.monthlySalary).toLocaleString('en-IN')}`,
+            `₹${Number(s.totalSalaryPaid).toLocaleString('en-IN')}`,
+            s.academicYear,
+            formatDate(s.joiningDate),
+            s.isActive ? 'ACTIVE' : 'INACTIVE'
+        ]),
+        headStyles: { fillColor: [26, 35, 126], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 8, cellPadding: 2 },
+        alternateRowStyles: { fillColor: [248, 250, 255] },
+        margin: { left: 8, right: 8 },
+        styles: { overflow: 'linebreak' }
+    });
+
+    doc.save(`Staff_Report_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.pdf`);
+};
+

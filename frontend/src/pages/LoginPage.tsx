@@ -3,12 +3,13 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { MdEmail, MdLock, MdVisibility, MdVisibilityOff } from 'react-icons/md';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function LoginPage() {
-    const [form, setForm] = useState({ email: 'admin@school.edu', password: '' });
+    const [form, setForm] = useState({ email: localStorage.getItem('sfm_remember_email') || '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('sfm_remember_email'));
     const { login } = useAuth();
     const navigate = useNavigate();
 
@@ -19,6 +20,11 @@ export default function LoginPage() {
             return;
         }
         setLoading(true);
+        if (rememberMe) {
+            localStorage.setItem('sfm_remember_email', form.email);
+        } else {
+            localStorage.removeItem('sfm_remember_email');
+        }
         try {
             const user = await login(form.email, form.password);
 
@@ -156,6 +162,18 @@ export default function LoginPage() {
                         </div>
                     </div>
 
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#475569', cursor: 'pointer', userSelect: 'none' }}>
+                            <input
+                                type="checkbox"
+                                checked={rememberMe}
+                                onChange={e => setRememberMe(e.target.checked)}
+                                style={{ width: 16, height: 16, accentColor: '#1a237e', cursor: 'pointer' }}
+                            />
+                            Remember me
+                        </label>
+                    </div>
+
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -172,6 +190,7 @@ export default function LoginPage() {
                     >
                         {loading ? 'Authenticating...' : 'Sign In To Console'}
                     </motion.button>
+                    <p style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', marginTop: 10 }}>Press <kbd style={{ padding: '2px 6px', fontSize: 10, background: '#e2e8f0', borderRadius: 4, fontWeight: 700, border: '1px solid #cbd5e1' }}>Enter↵</kbd> to sign in</p>
                 </form>
 
                 <div style={{ marginTop: 32, textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>

@@ -1,7 +1,14 @@
 import React from 'react';
 import './Skeleton.css';
 
-const Skeleton = ({ width, height, borderRadius = '4px', style }) => {
+interface SkeletonProps {
+    width?: string | number;
+    height?: string | number;
+    borderRadius?: string;
+    style?: React.CSSProperties;
+}
+
+const Skeleton = ({ width, height, borderRadius = '4px', style }: SkeletonProps) => {
     return (
         <div
             className="skeleton-box"
