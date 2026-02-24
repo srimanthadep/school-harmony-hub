@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MdUndo, MdSave, MdFilterList, MdCheck, MdClose } from 'react-icons/md';
+import { MdUndo, MdSave, MdFilterList, MdCheck, MdClose, MdDownload } from 'react-icons/md';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -16,6 +16,7 @@ export default function AttendancePage() {
     const [selectedClass, setSelectedClass] = useState('1st');
     const [submitting, setSubmitting] = useState(false);
     const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
+    const [viewClass, setViewClass] = useState('All');
     const today = new Date().toISOString().split('T')[0];
     const academicYear = getCurrentAcademicYear();
 
@@ -104,8 +105,42 @@ export default function AttendancePage() {
 
     const viewRecords: { studentId: string; status: 'present' | 'absent' }[] =
         viewAttendanceData?.attendance?.records || [];
-    const viewPresent = viewRecords.filter((r) => r.status === 'present').length;
-    const viewAbsent = viewRecords.filter((r) => r.status === 'absent').length;
+
+    const filteredViewRecords = viewClass === 'All'
+        ? viewRecords
+        : viewRecords.filter((record) => {
+            const student = allStudents.find((s) => s._id === record.studentId);
+            return student?.class === viewClass;
+        });
+
+    const viewPresent = filteredViewRecords.filter((r) => r.status === 'present').length;
+    const viewAbsent = filteredViewRecords.filter((r) => r.status === 'absent').length;
+
+    const exportViewCSV = () => {
+        const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
+        const header = 'Roll No,Name,Class,Status\n';
+        const rows = filteredViewRecords
+            .map((record) => {
+                const student = allStudents.find((s) => s._id === record.studentId);
+                const name = student?.name || record.studentId;
+                return [
+                    escapeCSV(student?.rollNo || ''),
+                    escapeCSV(name),
+                    escapeCSV(student?.class || ''),
+                    escapeCSV(record.status),
+                ].join(',');
+            })
+            .join('\n');
+        const blob = new Blob([header + rows], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance-${viewDate}${viewClass !== 'All' ? `-${viewClass}` : ''}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <motion.div
@@ -165,7 +200,7 @@ export default function AttendancePage() {
             {mode === 'view' && (
                 <div>
                     {/* Date Picker */}
-                    <div className="card glass" style={{ padding: '16px 20px', marginBottom: 24 }}>
+                    <div className="card glass" style={{ padding: '16px 20px', marginBottom: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>📅 Date:</span>
                             <input
@@ -179,6 +214,28 @@ export default function AttendancePage() {
                                     background: 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer',
                                 }}
                             />
+                        </div>
+                    </div>
+
+                    {/* Class Filter */}
+                    <div className="card glass" style={{ padding: '16px 20px', marginBottom: 24 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <MdFilterList style={{ color: 'var(--text-muted)', fontSize: 18 }} />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Class:</span>
+                            {CLASSES.map((cls) => (
+                                <button
+                                    key={cls}
+                                    onClick={() => setViewClass(cls)}
+                                    style={{
+                                        padding: '6px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                                        background: viewClass === cls ? 'var(--primary)' : 'var(--bg-primary)',
+                                        color: viewClass === cls ? 'white' : 'var(--text-secondary)',
+                                        transition: 'all 0.2s',
+                                    }}
+                                >
+                                    {cls}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
@@ -213,9 +270,20 @@ export default function AttendancePage() {
                                 </div>
                             </div>
 
+                            {/* Download Button */}
+                            <div style={{ marginBottom: 16 }}>
+                                <button
+                                    onClick={exportViewCSV}
+                                    className="btn btn-success"
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, padding: '12px 20px' }}
+                                >
+                                    <MdDownload size={18} /> Download CSV{viewClass !== 'All' ? ` (${viewClass})` : ''}
+                                </button>
+                            </div>
+
                             {/* Student List */}
                             <div style={{ borderRadius: 16, background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
-                                {viewRecords.map((record) => {
+                                {filteredViewRecords.map((record) => {
                                     const student = allStudents.find((s) => s._id === record.studentId);
                                     const name = student?.name || record.studentId;
                                     const initials = name.split(' ').filter((n: string) => n).map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
@@ -254,6 +322,11 @@ export default function AttendancePage() {
                                         </div>
                                     );
                                 })}
+                                {filteredViewRecords.length === 0 && (
+                                    <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+                                        No records for {viewClass === 'All' ? 'this date' : `class ${viewClass}`}.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
