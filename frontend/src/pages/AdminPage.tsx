@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import {
     MdAdd, MdEdit, MdSecurity, MdClose, MdAdminPanelSettings,
     MdLockOutline, MdDelete, MdRestore, MdUndo, MdPeople,
-    MdHistory, MdShield, MdVerifiedUser
+    MdHistory, MdShield, MdVerifiedUser, MdFilterList, MdDownload, MdTimeline
 } from 'react-icons/md';
 
 const S = {
@@ -215,6 +215,13 @@ function TypeBadge({ type }) {
     return <span style={S.pill(c, bg)}>{type}</span>;
 }
 
+function getActionColors(action: string): [string, string] {
+    if (action === 'LOGIN') return ['#17c666', '#e5fcf1'];
+    if (action.startsWith('DELETE')) return ['#ea4d4d', '#fde8e8'];
+    if (action.startsWith('CREATE')) return ['#3ec9d6', '#e8fafc'];
+    return ['#7267ef', '#f0eeff'];
+}
+
 export default function AdminPage() {
     const { user } = useAuth();
     const [users, setUsers] = useState([]);
@@ -232,10 +239,19 @@ export default function AdminPage() {
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [hoveredRow, setHoveredRow] = useState(null);
 
+    // Activity Logs state
+    const [activityLogs, setActivityLogs] = useState([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+    const [logFilters, setLogFilters] = useState({ action: '', module: '', startDate: '', endDate: '' });
+    const [logPage, setLogPage] = useState(1);
+    const [logTotal, setLogTotal] = useState(0);
+    const LOG_LIMIT = 50;
+
     useEffect(() => {
         if (user?.email === 'srimanthadep@gmail.com') {
             fetchUsers();
             fetchHistory();
+            if (activeTab === 'logs') fetchActivityLogs();
         }
     }, [user, activeTab]);
 
@@ -257,6 +273,42 @@ export default function AdminPage() {
             setHistory(res.data.records);
         } catch { toast.error('Failed to load history log'); }
         finally { setLoadingHistory(false); }
+    };
+
+    const fetchActivityLogs = async (page = logPage, filters = logFilters) => {
+        setLoadingLogs(true);
+        try {
+            const params = new URLSearchParams({ page: String(page), limit: String(LOG_LIMIT) });
+            if (filters.action) params.append('action', filters.action);
+            if (filters.module) params.append('module', filters.module);
+            if (filters.startDate) params.append('startDate', filters.startDate);
+            if (filters.endDate) params.append('endDate', filters.endDate);
+            const res = await API.get(`/activity-logs?${params.toString()}`);
+            setActivityLogs(res.data.logs);
+            setLogTotal(res.data.total);
+        } catch { toast.error('Failed to load activity logs'); }
+        finally { setLoadingLogs(false); }
+    };
+
+    const exportActivityLogs = async () => {
+        try {
+            const params = new URLSearchParams();
+            if (logFilters.action) params.append('action', logFilters.action);
+            if (logFilters.module) params.append('module', logFilters.module);
+            if (logFilters.startDate) params.append('startDate', logFilters.startDate);
+            if (logFilters.endDate) params.append('endDate', logFilters.endDate);
+            const token = localStorage.getItem('sfm_token');
+            const baseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+            const url = `${baseURL}/activity-logs/export?${params.toString()}`;
+            const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+            if (!response.ok) { toast.error('Export failed'); return; }
+            const blob = await response.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'activity-logs.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        } catch { toast.error('Export failed'); }
     };
 
     const handleAddUser = async (e) => {
@@ -370,6 +422,10 @@ export default function AdminPage() {
                     <div style={S.statIcon('#3ec9d6')}><MdRestore /></div>
                     <div><div style={S.statVal}>{revertedCount}</div><div style={S.statLabel}>Records Reverted</div></div>
                 </div>
+                <div style={S.statCard('#9b59b6')}>
+                    <div style={S.statIcon('#9b59b6')}><MdTimeline /></div>
+                    <div><div style={S.statVal}>{logTotal}</div><div style={S.statLabel}>Activity Events</div></div>
+                </div>
             </div>
 
             {/* ── Tabs ── */}
@@ -379,6 +435,9 @@ export default function AdminPage() {
                 </button>
                 <button style={S.tab(activeTab === 'history')} onClick={() => setActiveTab('history')}>
                     <MdHistory /> Deletion Audit Stack
+                </button>
+                <button style={S.tab(activeTab === 'logs')} onClick={() => setActiveTab('logs')}>
+                    <MdTimeline /> Activity Logs
                 </button>
             </div>
 
@@ -463,7 +522,7 @@ export default function AdminPage() {
                             </div>
                         )}
                     </>
-                ) : (
+                ) : activeTab === 'history' ? (
                     <>
                         <div style={S.cardHeader}>
                             <span style={S.cardTitle}><MdHistory color="#7267ef" /> Globally Deleted Records</span>
@@ -517,6 +576,117 @@ export default function AdminPage() {
                                     </tbody>
                                 </table>
                             </div>
+                        )}
+                    </>
+                ) : (
+                    /* ── Activity Logs Panel ── */
+                    <>
+                        <div style={S.cardHeader}>
+                            <span style={S.cardTitle}><MdTimeline color="#9b59b6" /> Activity Logs</span>
+                            <button style={{ ...S.btnSecondary, display: 'flex', alignItems: 'center', gap: 6 }} onClick={exportActivityLogs}>
+                                <MdDownload size={15} /> Export CSV
+                            </button>
+                        </div>
+
+                        {/* Filters */}
+                        <div style={{ padding: '12px 20px', borderBottom: '1px solid #edf2f7', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                            <MdFilterList color="#8996a4" size={18} />
+                            <input
+                                placeholder="Filter by action (e.g. LOGIN)"
+                                style={{ ...S.input, width: 200, padding: '6px 10px', fontSize: 12 }}
+                                value={logFilters.action}
+                                onChange={e => setLogFilters(f => ({ ...f, action: e.target.value }))}
+                            />
+                            <select
+                                style={{ ...S.select, fontSize: 12, padding: '6px 10px' }}
+                                value={logFilters.module}
+                                onChange={e => setLogFilters(f => ({ ...f, module: e.target.value }))}>
+                                <option value="">All Modules</option>
+                                {['AUTH', 'STUDENTS', 'STAFF', 'FINANCE', 'SETTINGS', 'SALARIES'].map(m => (
+                                    <option key={m} value={m}>{m}</option>
+                                ))}
+                            </select>
+                            <input type="date" style={{ ...S.input, width: 150, padding: '6px 10px', fontSize: 12 }}
+                                value={logFilters.startDate}
+                                onChange={e => setLogFilters(f => ({ ...f, startDate: e.target.value }))} />
+                            <input type="date" style={{ ...S.input, width: 150, padding: '6px 10px', fontSize: 12 }}
+                                value={logFilters.endDate}
+                                onChange={e => setLogFilters(f => ({ ...f, endDate: e.target.value }))} />
+                            <button style={S.btnPrimary} onClick={() => { setLogPage(1); fetchActivityLogs(1, logFilters); }}>
+                                Apply
+                            </button>
+                            <button style={S.btnSecondary} onClick={() => {
+                                const reset = { action: '', module: '', startDate: '', endDate: '' };
+                                setLogFilters(reset); setLogPage(1); fetchActivityLogs(1, reset);
+                            }}>Clear</button>
+                        </div>
+
+                        {loadingLogs ? (
+                            <div style={{ padding: 48, textAlign: 'center', color: '#8996a4' }}>Loading…</div>
+                        ) : activityLogs.length === 0 ? (
+                            <div style={{ padding: 60, textAlign: 'center' }}>
+                                <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+                                <h3 style={{ color: '#1c232f' }}>No activity logs found</h3>
+                                <p style={{ color: '#8996a4' }}>No events match the current filters.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={S.table}>
+                                        <thead>
+                                            <tr>
+                                                {['Timestamp', 'User', 'Action', 'Module', 'Description', 'IP Address'].map(h => (
+                                                    <th key={h} style={S.th}>{h}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {activityLogs.map(log => (
+                                                <tr key={log._id}
+                                                    onMouseEnter={() => setHoveredRow(log._id)}
+                                                    onMouseLeave={() => setHoveredRow(null)}
+                                                    style={{ background: hoveredRow === log._id ? '#f8f9fc' : 'transparent', transition: 'background 0.15s' }}>
+                                                    <td style={{ ...S.td, whiteSpace: 'nowrap', color: '#8996a4', fontSize: 12 }}>
+                                                        {new Date(log.createdAt).toLocaleString()}
+                                                    </td>
+                                                    <td style={S.td}>
+                                                        {log.performedBy ? (
+                                                            <>
+                                                                <div style={{ fontWeight: 600, fontSize: 13 }}>{log.performedBy.name}</div>
+                                                                <div style={{ fontSize: 11, color: '#8996a4' }}>{log.performedBy.email}</div>
+                                                            </>
+                                                        ) : <span style={{ color: '#8996a4' }}>—</span>}
+                                                    </td>
+                                                    <td style={S.td}>
+                                                        <span style={S.pill(...getActionColors(log.action))}>
+                                                            {log.action}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ ...S.td, fontSize: 12 }}>{log.module}</td>
+                                                    <td style={{ ...S.td, fontSize: 12, maxWidth: 300 }}>{log.description || '—'}</td>
+                                                    <td style={{ ...S.td, fontSize: 12, color: '#8996a4' }}>{log.ipAddress || '—'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {/* Pagination */}
+                                <div style={{ padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #edf2f7' }}>
+                                    <span style={{ fontSize: 12, color: '#8996a4' }}>
+                                        Showing {((logPage - 1) * LOG_LIMIT) + 1}–{Math.min(logPage * LOG_LIMIT, logTotal)} of {logTotal}
+                                    </span>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button style={S.btnSecondary} disabled={logPage <= 1}
+                                            onClick={() => { const p = logPage - 1; setLogPage(p); fetchActivityLogs(p, logFilters); }}>
+                                            ← Prev
+                                        </button>
+                                        <button style={S.btnSecondary} disabled={logPage * LOG_LIMIT >= logTotal}
+                                            onClick={() => { const p = logPage + 1; setLogPage(p); fetchActivityLogs(p, logFilters); }}>
+                                            Next →
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
                         )}
                     </>
                 )}
