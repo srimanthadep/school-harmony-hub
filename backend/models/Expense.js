@@ -4,7 +4,7 @@ const expenseSchema = new mongoose.Schema({
     type: {
         type: String,
         required: [true, 'Expense type is required'],
-        enum: ['electricity_bill', 'land_lease']
+        enum: ['electricity_bill', 'land_lease', 'van_fan_fee', 'van_daily_diesel']
     },
     amount: {
         type: Number,
