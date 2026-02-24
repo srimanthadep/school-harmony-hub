@@ -16,6 +16,10 @@ const Index = () => {
     markAttendance,
     undo,
     reset,
+    submitAttendance,
+    isSaving,
+    saveError,
+    saveSuccess,
     exportCSV,
   } = useAttendance();
 
@@ -94,6 +98,10 @@ const Index = () => {
           absentCount={absentCount}
           onExportCSV={exportCSV}
           onReset={reset}
+          onSaveToServer={submitAttendance}
+          isSaving={isSaving}
+          saveError={saveError}
+          saveSuccess={saveSuccess}
         />
       )}
     </main>

@@ -5,6 +5,9 @@ export function useAttendance() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [history, setHistory] = useState<AttendanceRecord[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const currentStudent = currentIndex < sampleStudents.length ? sampleStudents[currentIndex] : null;
   const isComplete = currentIndex >= sampleStudents.length;
@@ -40,9 +43,10 @@ export function useAttendance() {
     setCurrentIndex(0);
     setRecords([]);
     setHistory([]);
+    setSaveError(null);
+    setSaveSuccess(false);
   }, []);
 
-  // Example: how to persist attendance to a backend
   const submitAttendance = useCallback(async () => {
     const payload = {
       date: new Date().toISOString().split("T")[0],
@@ -52,10 +56,33 @@ export function useAttendance() {
         timestamp: r.timestamp.toISOString(),
       })),
     };
-    console.log("📤 Submitting attendance:", JSON.stringify(payload, null, 2));
-    // Example API call:
-    // await fetch('/api/attendance', { method: 'POST', body: JSON.stringify(payload) });
-    return payload;
+
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    try {
+      const response = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to save attendance");
+      }
+
+      setSaveSuccess(true);
+      return data;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save to server";
+      setSaveError(message);
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
   }, [records]);
 
   const exportCSV = useCallback(() => {
@@ -88,6 +115,10 @@ export function useAttendance() {
     undo,
     reset,
     submitAttendance,
+    isSaving,
+    saveError,
+    saveSuccess,
     exportCSV,
   };
 }
+
