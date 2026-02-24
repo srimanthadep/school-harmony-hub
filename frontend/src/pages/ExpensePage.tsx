@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import { MdSave, MdDelete, MdElectricBolt, MdLandscape, MdAdd, MdEdit } from 'react-icons/md';
 import { motion } from 'framer-motion';
 import { formatCurrency } from '../utils/pdfUtils';
@@ -45,6 +46,7 @@ const emptyForm = {
 };
 
 export default function ExpensePage() {
+    const { isOwner } = useAuth();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -91,11 +93,12 @@ export default function ExpensePage() {
         e.preventDefault();
         setSaving(true);
         try {
+            const payload = { ...form, amount: Number(form.amount) };
             if (editId) {
-                await API.put(`/expenses/${editId}`, form);
+                await API.put(`/expenses/${editId}`, payload);
                 toast.success('Expense updated');
             } else {
-                await API.post('/expenses', form);
+                await API.post('/expenses', payload);
                 toast.success('Expense recorded');
             }
             setShowForm(false);
@@ -208,14 +211,16 @@ export default function ExpensePage() {
                                     <td style={{ fontSize: 13, color: '#64748b' }}>{exp.description || '-'}</td>
                                     <td>{exp.academicYear}</td>
                                     <td>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <button className="btn btn-secondary btn-sm" onClick={() => openEdit(exp)} title="Edit">
-                                                <MdEdit />
-                                            </button>
-                                            <button className="btn btn-sm" style={{ background: '#fee2e2', color: '#ef4444' }} onClick={() => handleDelete(exp._id)} title="Delete">
-                                                <MdDelete />
-                                            </button>
-                                        </div>
+                                        {isOwner && (
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button className="btn btn-secondary btn-sm" onClick={() => openEdit(exp)} title="Edit">
+                                                    <MdEdit />
+                                                </button>
+                                                <button className="btn btn-sm" style={{ background: '#fee2e2', color: '#ef4444' }} onClick={() => handleDelete(exp._id)} title="Delete">
+                                                    <MdDelete />
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
