@@ -1,9 +1,12 @@
-import { Undo2 } from "lucide-react";
+import { useState } from "react";
+import { Undo2, BarChart2 } from "lucide-react";
 import SwipeCard, { SwipeActions } from "@/components/SwipeCard";
 import AttendanceSummary from "@/components/AttendanceSummary";
 import { useAttendance } from "@/hooks/useAttendance";
+import ViewAttendance from "@/pages/ViewAttendance";
 
 const Index = () => {
+  const [showView, setShowView] = useState(false);
   const {
     currentStudent,
     currentIndex,
@@ -23,13 +26,27 @@ const Index = () => {
     exportCSV,
   } = useAttendance();
 
+  if (showView) {
+    return <ViewAttendance onBack={() => setShowView(false)} />;
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center bg-background px-4 py-8 sm:py-12">
       {/* Header */}
       <header className="w-full max-w-sm space-y-1 text-center mb-8">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-          📋 Attendance
-        </h1>
+        <div className="flex items-center justify-between">
+          <div className="w-8" />
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            📋 Attendance
+          </h1>
+          <button
+            onClick={() => setShowView(true)}
+            title="View saved attendance"
+            className="flex items-center justify-center h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <BarChart2 className="h-5 w-5" />
+          </button>
+        </div>
         <p className="text-sm text-muted-foreground">
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",
