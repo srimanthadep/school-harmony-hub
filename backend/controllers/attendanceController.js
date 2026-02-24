@@ -11,10 +11,19 @@ exports.saveAttendance = async (req, res) => {
             return res.status(400).json({ success: false, message: 'date and records are required' });
         }
 
-        // Upsert: replace existing attendance for the same date
+        // Merge new records with existing ones: keep existing records whose
+        // studentId is not in the incoming batch, then append all incoming records.
+        const existing = await Attendance.findOne({ date });
+        let mergedRecords = records;
+        if (existing) {
+            const incomingIds = new Set(records.map(r => r.studentId).filter(id => id != null));
+            const retained = existing.records.filter(r => !incomingIds.has(r.studentId));
+            mergedRecords = [...retained, ...records];
+        }
+
         const attendance = await Attendance.findOneAndUpdate(
             { date },
-            { date, records },
+            { $set: { records: mergedRecords } },
             { upsert: true, new: true, runValidators: true }
         );
 
