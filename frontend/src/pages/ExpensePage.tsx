@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { MdSave, MdDelete, MdElectricBolt, MdLandscape, MdAdd, MdEdit } from 'react-icons/md';
+import { MdSave, MdDelete, MdElectricBolt, MdLandscape, MdAdd, MdEdit, MdDirectionsBus, MdLocalGasStation, MdAir } from 'react-icons/md';
 import { motion } from 'framer-motion';
 import { formatCurrency } from '../utils/pdfUtils';
 import { getCurrentAcademicYear } from '../utils/academicYear';
 
 interface Expense {
     _id: string;
-    type: 'electricity_bill' | 'land_lease';
+    type: 'electricity_bill' | 'land_lease' | 'van_fan_fee' | 'van_daily_diesel';
     amount: number;
     description?: string;
     date: string;
@@ -31,6 +31,16 @@ interface ExpenseForm {
 const EXPENSE_TYPES = [
     { value: 'electricity_bill', label: 'Current Bill (Electricity)', icon: <MdElectricBolt /> },
     { value: 'land_lease', label: 'Land Lease', icon: <MdLandscape /> },
+    { value: 'van_fan_fee', label: 'Fan Fee', icon: <MdAir /> },
+    { value: 'van_daily_diesel', label: 'Daily Diesel (Van/Bus)', icon: <MdLocalGasStation /> },
+];
+
+const VAN_SUB_TYPES = EXPENSE_TYPES.filter(t => t.value.startsWith('van_'));
+
+const SUMMARY_CARDS = [
+    { value: 'electricity_bill', label: 'Current Bill (Electricity)', icon: <MdElectricBolt />, types: ['electricity_bill'], defaultTab: 'electricity_bill' },
+    { value: 'land_lease', label: 'Land Lease', icon: <MdLandscape />, types: ['land_lease'], defaultTab: 'land_lease' },
+    { value: 'van', label: 'Van', icon: <MdDirectionsBus />, types: ['van_fan_fee', 'van_daily_diesel'], defaultTab: 'van_fan_fee' },
 ];
 
 const PAYMENT_MODES = ['cash', 'bank_transfer', 'cheque', 'online'];
@@ -53,7 +63,7 @@ export default function ExpensePage() {
     const [form, setForm] = useState<ExpenseForm>({ ...emptyForm });
     const [editId, setEditId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'electricity_bill' | 'land_lease'>('electricity_bill');
+    const [activeTab, setActiveTab] = useState<'electricity_bill' | 'land_lease' | 'van_fan_fee' | 'van_daily_diesel'>('electricity_bill');
 
     const fetchExpenses = async () => {
         setLoading(true);
@@ -122,6 +132,7 @@ export default function ExpensePage() {
         }
     };
 
+    const isVanTab = activeTab === 'van_fan_fee' || activeTab === 'van_daily_diesel';
     const filtered = expenses.filter(e => e.type === activeTab);
     const totalAll = expenses.reduce((s, e) => s + e.amount, 0);
     const totalFiltered = filtered.reduce((s, e) => s + e.amount, 0);
@@ -147,14 +158,15 @@ export default function ExpensePage() {
 
             {/* Summary Cards */}
             <div className="stats-grid" style={{ marginBottom: 24, gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-                {EXPENSE_TYPES.map(t => {
-                    const total = expenses.filter(e => e.type === t.value).reduce((s, e) => s + e.amount, 0);
+                {SUMMARY_CARDS.map(card => {
+                    const total = expenses.filter(e => card.types.includes(e.type)).reduce((s, e) => s + e.amount, 0);
+                    const isActive = card.value === 'van' ? isVanTab : activeTab === card.value;
                     return (
-                        <div key={t.value} className="stat-card glass" style={{ cursor: 'pointer', border: activeTab === t.value ? '2px solid var(--primary)' : undefined }}
-                            onClick={() => setActiveTab(t.value as any)}>
-                            <div className="stat-icon">{t.icon}</div>
+                        <div key={card.value} className="stat-card glass" style={{ cursor: 'pointer', border: isActive ? '2px solid var(--primary)' : undefined }}
+                            onClick={() => setActiveTab(card.defaultTab as any)}>
+                            <div className="stat-icon">{card.icon}</div>
                             <div className="stat-value" style={{ fontSize: 20 }}>{formatCurrency(total)}</div>
-                            <div className="stat-label">{t.label}</div>
+                            <div className="stat-label">{card.label}</div>
                         </div>
                     );
                 })}
@@ -167,15 +179,34 @@ export default function ExpensePage() {
 
             {/* Tabs */}
             <div className="card" style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', gap: 8, padding: '16px 20px' }}>
-                    {EXPENSE_TYPES.map(t => (
-                        <button key={t.value}
-                            className={`btn ${activeTab === t.value ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                            onClick={() => setActiveTab(t.value as any)}>
-                            {t.icon} {t.label}
-                        </button>
-                    ))}
+                <div style={{ display: 'flex', gap: 8, padding: '16px 20px', flexWrap: 'wrap' }}>
+                    <button
+                        className={`btn ${activeTab === 'electricity_bill' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setActiveTab('electricity_bill')}>
+                        <MdElectricBolt /> Current Bill (Electricity)
+                    </button>
+                    <button
+                        className={`btn ${activeTab === 'land_lease' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setActiveTab('land_lease')}>
+                        <MdLandscape /> Land Lease
+                    </button>
+                    <button
+                        className={`btn ${isVanTab ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setActiveTab('van_fan_fee')}>
+                        <MdDirectionsBus /> Van
+                    </button>
                 </div>
+                {isVanTab && (
+                    <div style={{ display: 'flex', gap: 8, padding: '0 20px 16px', borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
+                        {VAN_SUB_TYPES.map(t => (
+                            <button key={t.value}
+                                className={`btn ${activeTab === t.value ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                                onClick={() => setActiveTab(t.value as any)}>
+                                {t.icon} {t.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Expense List */}
