@@ -933,6 +933,25 @@ tbody td {
   color: var(--danger);
 }
 
+/* Student Profile - tab labels */
+.tab-label-short {
+  display: none;
+}
+
+/* Student Profile - 2-column responsive grid */
+.profile-2col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Student name link in table */
+.student-name-link {
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--primary);
+  text-decoration: underline dotted;
+}
+
 /* ===== SEARCH & FILTERS ===== */
 .search-bar {
   display: flex;
@@ -2073,6 +2092,20 @@ input[type="number"] {
   /* Student Profile */
   .modal-lg .modal-body .highlight-box {
     font-size: 12px;
+  }
+
+  /* Student Profile - collapse 2-col grids to 1 col on mobile */
+  .profile-2col-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Student Profile - show short tab labels on mobile */
+  .tab-label-full {
+    display: none;
+  }
+
+  .tab-label-short {
+    display: inline;
   }
 }
 
