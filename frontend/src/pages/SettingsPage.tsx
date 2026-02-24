@@ -194,6 +194,8 @@ export default function SettingsPage() {
                 <div style={{ display: 'flex', gap: 8, padding: '16px 20px', minWidth: 'max-content' }}>
                     <button className={`btn ${activeTab === 'general' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                         onClick={() => setActiveTab('general')}>⚙️ School Settings</button>
+                    <button className={`btn ${activeTab === 'fees' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setActiveTab('fees')}>💰 Tuition Fee Structures</button>
                     <button className={`btn ${activeTab === 'books' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                         onClick={() => setActiveTab('books')}>📚 Book's Fee Structures</button>
                     <button className={`btn ${activeTab === 'security' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
