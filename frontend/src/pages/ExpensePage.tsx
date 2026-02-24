@@ -31,7 +31,7 @@ interface ExpenseForm {
 const EXPENSE_TYPES = [
     { value: 'electricity_bill', label: 'Current Bill (Electricity)', icon: <MdElectricBolt /> },
     { value: 'land_lease', label: 'Land Lease', icon: <MdLandscape /> },
-    { value: 'van_fan_fee', label: 'Fan Fee', icon: <MdAir /> },
+    { value: 'van_fan_fee', label: 'Van Fee', icon: <MdAir /> },
     { value: 'van_daily_diesel', label: 'Daily Diesel (Van/Bus)', icon: <MdLocalGasStation /> },
 ];
 
