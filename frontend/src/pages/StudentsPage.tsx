@@ -169,8 +169,13 @@ export default function StudentsPage() {
             setShowForm(false);
             queryClient.invalidateQueries({ queryKey: ['students'] });
         } catch (err: any) {
-            if (err.response?.data?.errors) setFormErrors(err.response.data.errors);
-            else toast.error(err.response?.data?.message || 'Action failed');
+            if (err.response?.data?.errors) {
+                setFormErrors(err.response.data.errors);
+                const firstError = Object.values(err.response.data.errors)[0] as string;
+                if (firstError) toast.error(firstError);
+            } else {
+                toast.error(err.response?.data?.message || 'Action failed');
+            }
         } finally {
             setFormLoading(false);
         }
