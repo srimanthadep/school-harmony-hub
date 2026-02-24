@@ -1,5 +1,5 @@
 import { sampleStudents, AttendanceRecord } from "@/data/students";
-import { Check, X, Download, RotateCcw } from "lucide-react";
+import { Check, X, Download, RotateCcw, Save, Loader2 } from "lucide-react";
 
 interface AttendanceSummaryProps {
   records: AttendanceRecord[];
@@ -7,6 +7,10 @@ interface AttendanceSummaryProps {
   absentCount: number;
   onExportCSV: () => void;
   onReset: () => void;
+  onSaveToServer: () => Promise<void>;
+  isSaving: boolean;
+  saveError: string | null;
+  saveSuccess: boolean;
 }
 
 export default function AttendanceSummary({
@@ -15,6 +19,10 @@ export default function AttendanceSummary({
   absentCount,
   onExportCSV,
   onReset,
+  onSaveToServer,
+  isSaving,
+  saveError,
+  saveSuccess,
 }: AttendanceSummaryProps) {
   const total = records.length;
   const presentPct = total > 0 ? Math.round((presentCount / total) * 100) : 0;
@@ -78,14 +86,32 @@ export default function AttendanceSummary({
         </div>
       </div>
 
-      {/* Actions */}
+      {/* Save / Export actions */}
+      {saveError && (
+        <p className="text-sm text-center text-destructive font-medium">{saveError}</p>
+      )}
+      {saveSuccess && (
+        <p className="text-sm text-center text-present font-medium">✅ Attendance saved to server!</p>
+      )}
       <div className="flex gap-3">
         <button
+          onClick={onSaveToServer}
+          disabled={isSaving || saveSuccess}
+          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isSaving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          {isSaving ? "Saving…" : saveSuccess ? "Saved" : "Save to Server"}
+        </button>
+        <button
           onClick={onExportCSV}
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+          className="flex items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
         >
           <Download className="h-4 w-4" />
-          Export CSV
+          CSV
         </button>
         <button
           onClick={onReset}
