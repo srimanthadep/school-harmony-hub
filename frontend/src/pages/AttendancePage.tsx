@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MdUndo, MdSave, MdFilterList } from 'react-icons/md';
+import { MdUndo, MdSave, MdFilterList, MdCheck, MdClose } from 'react-icons/md';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -12,8 +12,10 @@ import { getCurrentAcademicYear } from '../utils/academicYear';
 const CLASSES = ['All', 'Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
 export default function AttendancePage() {
+    const [mode, setMode] = useState<'mark' | 'view'>('mark');
     const [selectedClass, setSelectedClass] = useState('1st');
     const [submitting, setSubmitting] = useState(false);
+    const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
     const today = new Date().toISOString().split('T')[0];
     const academicYear = getCurrentAcademicYear();
 
@@ -27,6 +29,27 @@ export default function AttendancePage() {
         },
     });
 
+    // Query for all students (used in view mode to resolve names)
+    const { data: allStudentsData } = useQuery({
+        queryKey: ['students-all', academicYear],
+        queryFn: async () => {
+            const res = await API.get('/students', { params: { limit: 500, academicYear } });
+            return res.data;
+        },
+        enabled: mode === 'view',
+    });
+
+    // Query for attendance records for the selected view date
+    const { data: viewAttendanceData, isLoading: viewLoading, error: viewError } = useQuery({
+        queryKey: ['view-attendance', viewDate],
+        queryFn: async () => {
+            const res = await API.get(`/attendance/${viewDate}`);
+            return res.data;
+        },
+        enabled: mode === 'view',
+        retry: false,
+    });
+
     const students: AttendanceStudent[] = (data?.students || []).map((s: any) => ({
         _id: s._id,
         name: s.name,
@@ -37,7 +60,6 @@ export default function AttendancePage() {
 
     const {
         currentStudent,
-        currentIndex,
         isComplete,
         totalStudents,
         markedCount,
@@ -72,6 +94,19 @@ export default function AttendancePage() {
         }
     };
 
+    const allStudents: AttendanceStudent[] = (allStudentsData?.students || []).map((s: any) => ({
+        _id: s._id,
+        name: s.name,
+        rollNo: s.rollNo || s.staffId || '',
+        class: s.class || '',
+        gender: s.gender || 'male',
+    }));
+
+    const viewRecords: { studentId: string; status: 'present' | 'absent' }[] =
+        viewAttendanceData?.attendance?.records || [];
+    const viewPresent = viewRecords.filter((r) => r.status === 'present').length;
+    const viewAbsent = viewRecords.filter((r) => r.status === 'absent').length;
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -79,7 +114,7 @@ export default function AttendancePage() {
             style={{ maxWidth: 600, margin: '0 auto' }}
         >
             {/* Page Header */}
-            <div className="card-header" style={{ marginBottom: 24, padding: 0, border: 'none', background: 'transparent' }}>
+            <div className="card-header" style={{ marginBottom: 16, padding: 0, border: 'none', background: 'transparent' }}>
                 <div>
                     <h1 style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.5px' }}>
                         📋 Attendance
@@ -88,7 +123,7 @@ export default function AttendancePage() {
                         {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
-                {isComplete && records.length > 0 && (
+                {mode === 'mark' && isComplete && records.length > 0 && (
                     <button
                         className="btn btn-primary"
                         onClick={handleSubmit}
@@ -100,6 +135,133 @@ export default function AttendancePage() {
                 )}
             </div>
 
+            {/* Mode Toggle */}
+            <div className="card glass" style={{ padding: '8px', marginBottom: 24, display: 'flex', gap: 4 }}>
+                <button
+                    onClick={() => setMode('mark')}
+                    style={{
+                        flex: 1, padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                        border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                        background: mode === 'mark' ? 'var(--primary)' : 'transparent',
+                        color: mode === 'mark' ? 'white' : 'var(--text-muted)',
+                    }}
+                >
+                    ✏️ Mark Attendance
+                </button>
+                <button
+                    onClick={() => setMode('view')}
+                    style={{
+                        flex: 1, padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                        border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                        background: mode === 'view' ? 'var(--primary)' : 'transparent',
+                        color: mode === 'view' ? 'white' : 'var(--text-muted)',
+                    }}
+                >
+                    👁️ View Attendance
+                </button>
+            </div>
+
+            {/* View Attendance Mode */}
+            {mode === 'view' && (
+                <div>
+                    {/* Date Picker */}
+                    <div className="card glass" style={{ padding: '16px 20px', marginBottom: 24 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>📅 Date:</span>
+                            <input
+                                type="date"
+                                value={viewDate}
+                                max={today}
+                                onChange={(e) => setViewDate(e.target.value)}
+                                style={{
+                                    border: '1px solid var(--border-light)', borderRadius: 10,
+                                    padding: '8px 12px', fontSize: 13, fontWeight: 600,
+                                    background: 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer',
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Attendance Records */}
+                    {viewLoading ? (
+                        <div className="loading-spinner"><div className="spinner" /></div>
+                    ) : viewError || !viewAttendanceData?.success ? (
+                        <div className="card glass">
+                            <div className="empty-state">
+                                <div className="empty-state-icon">📭</div>
+                                <h3>No Records Found</h3>
+                                <p>No attendance was saved for <strong>{viewDate}</strong>.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            {/* Summary Stats */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                                <div style={{
+                                    background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
+                                    borderRadius: 16, padding: 20, textAlign: 'center',
+                                }}>
+                                    <div style={{ fontSize: 36, fontWeight: 900, color: '#10b981' }}>{viewPresent}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: '#10b981', opacity: 0.8 }}>Present</div>
+                                </div>
+                                <div style={{
+                                    background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                                    borderRadius: 16, padding: 20, textAlign: 'center',
+                                }}>
+                                    <div style={{ fontSize: 36, fontWeight: 900, color: '#ef4444' }}>{viewAbsent}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: '#ef4444', opacity: 0.8 }}>Absent</div>
+                                </div>
+                            </div>
+
+                            {/* Student List */}
+                            <div style={{ borderRadius: 16, background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', overflow: 'hidden' }}>
+                                {viewRecords.map((record) => {
+                                    const student = allStudents.find((s) => s._id === record.studentId);
+                                    const name = student?.name || record.studentId;
+                                    const initials = name.split(' ').filter((n: string) => n).map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+                                    return (
+                                        <div key={record.studentId} style={{
+                                            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                                            borderBottom: '1px solid var(--border-light)',
+                                        }}>
+                                            <div style={{
+                                                width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                                                background: 'linear-gradient(135deg, var(--primary), #4f46e5)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 12, fontWeight: 800, color: 'white',
+                                            }}>
+                                                {initials}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {name}
+                                                </div>
+                                                {student && (
+                                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                        {student.rollNo && `${student.rollNo} • `}{student.class}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {record.status === 'present' ? (
+                                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                                                    <MdCheck size={16} />
+                                                </div>
+                                            ) : (
+                                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                                                    <MdClose size={16} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Mark Attendance Mode */}
+            {mode === 'mark' && (<>
             {/* Class Filter */}
             <div className="card glass" style={{ padding: '16px 20px', marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -206,6 +368,7 @@ export default function AttendancePage() {
                     )}
                 </div>
             )}
+            </>)}
         </motion.div>
     );
 }
