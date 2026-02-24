@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Student = require('../models/Student');
 const Staff = require('../models/Staff');
 const DeletedRecord = require('../models/DeletedRecord');
+const ActivityLog = require('../models/ActivityLog');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
@@ -75,6 +76,16 @@ exports.login = async (req, res) => {
         // Update last login
         user.lastLogin = new Date();
         await user.save({ validateBeforeSave: false });
+
+        // Activity Log
+        await ActivityLog.create({
+            action: 'LOGIN',
+            module: 'AUTH',
+            description: `User logged in: ${user.name} (${user.email})`,
+            performedBy: user._id,
+            ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
+            userAgent: req.headers['user-agent'] || ''
+        });
 
         const token = generateToken(user._id);
 

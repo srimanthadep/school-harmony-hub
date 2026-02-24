@@ -49,6 +49,7 @@ app.use('/api/fees', require('./routes/fees'));
 app.use('/api/salaries', require('./routes/salaries'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/activity-logs', require('./routes/activityLogs'));
 
 // Health check
 app.get('/api/health', (req, res) => {
