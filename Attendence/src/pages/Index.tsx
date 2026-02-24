@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Undo2, BarChart2 } from "lucide-react";
 import SwipeCard, { SwipeActions } from "@/components/SwipeCard";
 import AttendanceSummary from "@/components/AttendanceSummary";
@@ -25,6 +25,12 @@ const Index = () => {
     saveSuccess,
     exportCSV,
   } = useAttendance();
+
+  useEffect(() => {
+    if (saveSuccess) {
+      setShowView(true);
+    }
+  }, [saveSuccess]);
 
   if (showView) {
     return <ViewAttendance onBack={() => setShowView(false)} />;
