@@ -95,18 +95,6 @@ export default function AttendanceSummary({
       )}
       <div className="flex gap-3">
         <button
-          onClick={onSaveToServer}
-          disabled={isSaving || saveSuccess}
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {isSaving ? "Saving…" : saveSuccess ? "Saved" : "Save to Server"}
-        </button>
-        <button
           onClick={onExportCSV}
           className="flex items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
         >
@@ -121,6 +109,18 @@ export default function AttendanceSummary({
           Redo
         </button>
       </div>
+      <button
+        onClick={onSaveToServer}
+        disabled={isSaving || saveSuccess}
+        className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {isSaving ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="h-4 w-4" />
+        )}
+        {isSaving ? "Saving…" : saveSuccess ? "Saved" : "Save to Server"}
+      </button>
     </div>
   );
 }
