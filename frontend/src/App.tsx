@@ -19,11 +19,12 @@ import AdminPage from './pages/AdminPage';
 import StaffPortal from './pages/StaffPortal';
 import StudentPortal from './pages/StudentPortal';
 import ExpensePage from './pages/ExpensePage';
+import AttendancePage from './pages/AttendancePage';
 
 // Icons
 import {
     MdDashboard, MdPeople, MdSchool,
-    MdBarChart, MdSettings, MdLogout, MdMenu, MdAdminPanelSettings, MdReceiptLong
+    MdBarChart, MdSettings, MdLogout, MdMenu, MdAdminPanelSettings, MdReceiptLong, MdChecklist
 } from 'react-icons/md';
 
 const NAV_ITEMS = [
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
     { path: '/staff', label: 'Staff', icon: <MdPeople /> },
     { path: '/reports', label: 'Reports', icon: <MdBarChart /> },
     { path: '/expenses', label: 'Expenses', icon: <MdReceiptLong /> },
+    { path: '/attendance', label: 'Attendance', icon: <MdChecklist /> },
     { path: '/settings', label: 'Settings', icon: <MdSettings /> },
 ];
 
@@ -279,6 +281,13 @@ function AppRoutes() {
                 <ProtectedRoute allowedRoles={['admin', 'owner']}>
                     <AdminLayout pageTitle="Expenses" pageSubtitle="Manage current bills and land lease payments">
                         <ExpensePage />
+                    </AdminLayout>
+                </ProtectedRoute>
+            } />
+            <Route path="/attendance" element={
+                <ProtectedRoute allowedRoles={['admin', 'owner']}>
+                    <AdminLayout pageTitle="Attendance" pageSubtitle="Swipe to mark student attendance">
+                        <AttendancePage />
                     </AdminLayout>
                 </ProtectedRoute>
             } />
