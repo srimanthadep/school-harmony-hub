@@ -6,7 +6,9 @@ const studentSchema = z.object({
     rollNo: z.string().min(1, "Roll number is required"),
     gender: z.enum(['male', 'female', 'other']).default('male'),
     parentName: z.string().min(2, "Parent name is required"),
-    parentPhone: z.string().regex(/^[0-9]{10}$/, "Invalid phone number"),
+    parentPhone: z.string()
+        .min(1, "Phone number is required")
+        .regex(/^[0-9]{10}$/, "Please enter a valid 10-digit phone number"),
     parentEmail: z.string().email().optional().or(z.literal('')),
     totalFee: z.coerce.number().min(0),
     totalBookFee: z.coerce.number().min(0).optional().default(0),
