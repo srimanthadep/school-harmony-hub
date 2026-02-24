@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { format } from "date-fns";
 import { sampleStudents, AttendanceRecord, AttendanceStatus } from "@/data/students";
 
 export function useAttendance() {
@@ -49,7 +50,7 @@ export function useAttendance() {
 
   const submitAttendance = useCallback(async () => {
     const payload = {
-      date: new Date().toISOString().split("T")[0],
+      date: format(new Date(), "yyyy-MM-dd"),
       records: records.map((r) => ({
         studentId: r.studentId,
         status: r.status,
