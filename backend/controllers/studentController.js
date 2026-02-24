@@ -16,12 +16,18 @@ exports.getStudents = asyncHandler(async (req, res) => {
     if (academicYear) query.academicYear = academicYear;
 
     if (search) {
-        // Use text index search if available, otherwise fallback to regex
-        query.$text = { $search: search };
+        const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const searchRegex = new RegExp(escapedSearch, 'i');
+        query.$or = [
+            { name: searchRegex },
+            { parentName: searchRegex },
+            { studentId: searchRegex },
+            { parentPhone: searchRegex }
+        ];
     }
 
     const students = await Student.find(query)
-        .sort(search ? { score: { $meta: "textScore" } } : { class: 1, rollNo: 1 })
+        .sort({ class: 1, rollNo: 1 })
         .skip((page - 1) * limit)
         .limit(parseInt(limit));
 
