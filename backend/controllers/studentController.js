@@ -2,6 +2,7 @@ const Student = require('../models/Student');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
 const ActivityLog = require('../models/ActivityLog');
+const DeletedRecord = require('../models/DeletedRecord');
 const asyncHandler = require('../utils/asyncHandler');
 const { studentSchema } = require('../validations/studentValidation');
 const _ = require('lodash');
@@ -283,6 +284,15 @@ exports.deletePayment = asyncHandler(async (req, res) => {
         performedBy: req.user.id,
         targetId: student._id,
         oldData: payment.toObject()
+    });
+
+    await DeletedRecord.create({
+        recordType: 'Fee Payment',
+        originalId: payment._id,
+        parentId: student._id,
+        description: `Deleted fee payment of ₹${payment.amount} (Receipt: ${payment.receiptNo}) for student ${student.name}`,
+        data: payment.toObject(),
+        deletedBy: req.user.id
     });
 
     student.feePayments.pull(req.params.paymentId);
