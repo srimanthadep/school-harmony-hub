@@ -50,6 +50,7 @@ app.use('/api/salaries', require('./routes/salaries'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/activity-logs', require('./routes/activityLogs'));
+app.use('/api/expenses', require('./routes/expenses'));
 
 // Health check
 app.get('/api/health', (req, res) => {

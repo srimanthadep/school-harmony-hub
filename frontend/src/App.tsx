@@ -18,11 +18,12 @@ import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import StaffPortal from './pages/StaffPortal';
 import StudentPortal from './pages/StudentPortal';
+import ExpensePage from './pages/ExpensePage';
 
 // Icons
 import {
     MdDashboard, MdPeople, MdSchool,
-    MdBarChart, MdSettings, MdLogout, MdMenu, MdAdminPanelSettings
+    MdBarChart, MdSettings, MdLogout, MdMenu, MdAdminPanelSettings, MdReceiptLong
 } from 'react-icons/md';
 
 const NAV_ITEMS = [
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
     { path: '/students', label: 'Students', icon: <MdSchool /> },
     { path: '/staff', label: 'Staff', icon: <MdPeople /> },
     { path: '/reports', label: 'Reports', icon: <MdBarChart /> },
+    { path: '/expenses', label: 'Expenses', icon: <MdReceiptLong /> },
     { path: '/settings', label: 'Settings', icon: <MdSettings /> },
 ];
 
@@ -270,6 +272,13 @@ function AppRoutes() {
                 <ProtectedRoute allowedRoles={['admin', 'owner']}>
                     <AdminLayout pageTitle="Reports" pageSubtitle="Financial reports and analytics">
                         <ReportsPage />
+                    </AdminLayout>
+                </ProtectedRoute>
+            } />
+            <Route path="/expenses" element={
+                <ProtectedRoute allowedRoles={['admin', 'owner']}>
+                    <AdminLayout pageTitle="Expenses" pageSubtitle="Manage current bills and land lease payments">
+                        <ExpensePage />
                     </AdminLayout>
                 </ProtectedRoute>
             } />
