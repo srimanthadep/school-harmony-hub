@@ -55,19 +55,23 @@ exports.upsertFeeStructure = async (req, res) => {
     try {
         const data = { ...req.body };
 
+        if (!data.class || !data.academicYear) {
+            return res.status(400).json({ success: false, message: 'class and academicYear are required' });
+        }
+
         // Manually compute totalFee since findOneAndUpdate bypasses pre-save hooks
         data.totalFee = ['tuitionFee', 'admissionFee', 'examFee', 'libraryFee', 'sportsFee', 'transportFee', 'miscFee']
             .reduce((sum, key) => sum + Number(data[key] || 0), 0);
 
         const fee = await FeeStructure.findOneAndUpdate(
-            { class: data.class, academicYear: data.academicYear || '2024-25' },
+            { class: data.class, academicYear: data.academicYear },
             data,
             { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
         );
 
-        // Cascade: update totalFee on all active students of this class
+        // Cascade: update totalFee on all active students of this class and academic year
         const updateResult = await Student.updateMany(
-            { class: data.class, isActive: true },
+            { class: data.class, academicYear: data.academicYear, isActive: true },
             { $set: { totalFee: data.totalFee } }
         );
 

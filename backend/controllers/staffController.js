@@ -12,7 +12,10 @@ exports.getStaff = async (req, res) => {
         const query = { isActive: true };
         if (role) query.role = role;
         if (academicYear) query.academicYear = academicYear;
-        if (search) query.name = { $regex: search, $options: 'i' };
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            query.name = { $regex: escapedSearch, $options: 'i' };
+        }
 
         const staff = await Staff.find(query)
             .sort({ name: 1 })
