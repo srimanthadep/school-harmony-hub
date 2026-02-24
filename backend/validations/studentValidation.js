@@ -8,8 +8,8 @@ const studentSchema = z.object({
     parentName: z.string().min(2, "Parent name is required"),
     parentPhone: z.string().regex(/^[0-9]{10}$/, "Invalid phone number"),
     parentEmail: z.string().email().optional().or(z.literal('')),
-    totalFee: z.number().min(0),
-    totalBookFee: z.number().min(0).optional().default(0),
+    totalFee: z.coerce.number().min(0),
+    totalBookFee: z.coerce.number().min(0).optional().default(0),
     academicYear: z.string().optional()
 });
 
