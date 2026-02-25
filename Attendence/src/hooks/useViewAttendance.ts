@@ -3,12 +3,12 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-f
 
 export interface AttendanceDay {
   date: string;
-  records: { studentId: string; status: "present" | "absent"; timestamp: string }[];
+  records: { studentId?: string; staffId?: string; status: "present" | "absent"; timestamp: string }[];
 }
 
 export type ViewMode = "daily" | "weekly" | "monthly" | "classwise";
 
-export function useViewAttendance() {
+export function useViewAttendance(apiBase: string = "/api/attendance") {
   const [viewMode, setViewMode] = useState<ViewMode>("daily");
   const [selectedDate, setSelectedDate] = useState<string>(
     format(new Date(), "yyyy-MM-dd")
@@ -21,7 +21,7 @@ export function useViewAttendance() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const response = await fetch(`/api/attendance/range?start=${start}&end=${end}`);
+      const response = await fetch(`${apiBase}/range?start=${start}&end=${end}`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch attendance");
@@ -34,13 +34,13 @@ export function useViewAttendance() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [apiBase]);
 
   const fetchDay = useCallback(async (date: string) => {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const response = await fetch(`/api/attendance/${date}`);
+      const response = await fetch(`${apiBase}/${date}`);
       if (response.status === 404) {
         setAttendanceDays([]);
         return;
@@ -57,7 +57,7 @@ export function useViewAttendance() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [apiBase]);
 
   const load = useCallback(() => {
     const date = new Date(selectedDate + "T00:00:00");
