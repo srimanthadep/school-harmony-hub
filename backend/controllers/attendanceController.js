@@ -1,11 +1,12 @@
 const Attendance = require('../models/Attendance');
+const Staff = require('../models/Staff');
 
 // @desc    Save attendance for a given date
 // @route   POST /api/attendance
 // @access  Public (attendance app does not require user login)
 exports.saveAttendance = async (req, res) => {
     try {
-        const { date, records } = req.body;
+        const { date, records, type = 'student' } = req.body;
 
         if (!date || !Array.isArray(records) || records.length === 0) {
             return res.status(400).json({ success: false, message: 'date and records are required' });
@@ -13,7 +14,7 @@ exports.saveAttendance = async (req, res) => {
 
         // Merge new records with existing ones: keep existing records whose
         // studentId is not in the incoming batch, then append all incoming records.
-        const existing = await Attendance.findOne({ date });
+        const existing = await Attendance.findOne({ date, type });
         let mergedRecords = records;
         if (existing) {
             const incomingIds = new Set(records.map(r => r.studentId).filter(id => id != null));
@@ -22,10 +23,36 @@ exports.saveAttendance = async (req, res) => {
         }
 
         const attendance = await Attendance.findOneAndUpdate(
-            { date },
-            { $set: { records: mergedRecords } },
+            { date, type },
+            { $set: { records: mergedRecords, type } },
             { upsert: true, new: true, runValidators: true }
         );
+
+        // Auto-record leaves for absent staff members
+        if (type === 'staff') {
+            const absentRecords = records.filter(r => r.status === 'absent');
+            for (const record of absentRecords) {
+                try {
+                    const staff = await Staff.findById(record.studentId);
+                    if (staff) {
+                        const leaveDate = new Date(date + 'T00:00:00.000Z');
+                        const alreadyHasLeave = staff.leaves.some(
+                            l => new Date(l.date).toISOString().split('T')[0] === date
+                        );
+                        if (!alreadyHasLeave) {
+                            staff.leaves.push({
+                                date: leaveDate,
+                                reason: 'Absent (auto-recorded from attendance)',
+                                status: 'approved'
+                            });
+                            await staff.save({ validateModifiedOnly: true });
+                        }
+                    }
+                } catch (leaveErr) {
+                    console.error(`Failed to auto-record leave for staff ${record.studentId}:`, leaveErr.message);
+                }
+            }
+        }
 
         res.status(200).json({ success: true, attendance });
     } catch (err) {
@@ -38,7 +65,8 @@ exports.saveAttendance = async (req, res) => {
 // @access  Public
 exports.getAttendance = async (req, res) => {
     try {
-        const attendance = await Attendance.findOne({ date: req.params.date });
+        const type = req.query.type || 'student';
+        const attendance = await Attendance.findOne({ date: req.params.date, type });
         if (!attendance) {
             return res.status(404).json({ success: false, message: 'No attendance found for this date' });
         }
@@ -53,7 +81,7 @@ exports.getAttendance = async (req, res) => {
 // @access  Public
 exports.getAttendanceRange = async (req, res) => {
     try {
-        const { start, end } = req.query;
+        const { start, end, type } = req.query;
 
         if (!start || !end) {
             return res.status(400).json({ success: false, message: 'start and end query parameters are required' });
@@ -68,9 +96,10 @@ exports.getAttendanceRange = async (req, res) => {
             return res.status(400).json({ success: false, message: 'start date must not be after end date' });
         }
 
-        const records = await Attendance.find({
-            date: { $gte: start, $lte: end }
-        }).sort({ date: 1 });
+        const query = { date: { $gte: start, $lte: end } };
+        if (type) query.type = type;
+
+        const records = await Attendance.find(query).sort({ date: 1 });
 
         res.json({ success: true, records });
     } catch (err) {
