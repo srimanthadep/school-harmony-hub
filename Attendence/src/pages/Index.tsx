@@ -1,58 +1,43 @@
-import { useState, useEffect } from "react";
-import { Undo2, BarChart2 } from "lucide-react";
-import SwipeCard, { SwipeActions } from "@/components/SwipeCard";
-import AttendanceSummary from "@/components/AttendanceSummary";
-import { useAttendance } from "@/hooks/useAttendance";
+import { useState } from "react";
+import { GraduationCap, Users, BarChart2, ChevronRight } from "lucide-react";
+import StudentAttendance from "@/pages/StudentAttendance";
+import StaffAttendance from "@/pages/StaffAttendance";
 import ViewAttendance from "@/pages/ViewAttendance";
 
+type ActiveView = "home" | "student" | "staff" | "view";
+
 const Index = () => {
-  const [showView, setShowView] = useState(false);
-  const {
-    currentStudent,
-    currentIndex,
-    isComplete,
-    totalStudents,
-    markedCount,
-    presentCount,
-    absentCount,
-    records,
-    markAttendance,
-    undo,
-    reset,
-    submitAttendance,
-    isSaving,
-    saveError,
-    saveSuccess,
-    exportCSV,
-  } = useAttendance();
+  const [activeView, setActiveView] = useState<ActiveView>("home");
 
-  useEffect(() => {
-    if (saveSuccess) {
-      setShowView(true);
-    }
-  }, [saveSuccess]);
+  if (activeView === "student") {
+    return (
+      <StudentAttendance
+        onBack={() => setActiveView("home")}
+        onSaved={() => setActiveView("view")}
+      />
+    );
+  }
 
-  if (showView) {
-    return <ViewAttendance onBack={() => setShowView(false)} />;
+  if (activeView === "staff") {
+    return (
+      <StaffAttendance
+        onBack={() => setActiveView("home")}
+        onSaved={() => setActiveView("view")}
+      />
+    );
+  }
+
+  if (activeView === "view") {
+    return <ViewAttendance onBack={() => setActiveView("home")} />;
   }
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-background px-4 py-8 sm:py-12">
       {/* Header */}
-      <header className="w-full max-w-sm space-y-1 text-center mb-8">
-        <div className="flex items-center justify-between">
-          <div className="w-8" />
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-            📋 Attendance
-          </h1>
-          <button
-            onClick={() => setShowView(true)}
-            title="View saved attendance"
-            className="flex items-center justify-center h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <BarChart2 className="h-5 w-5" />
-          </button>
-        </div>
+      <header className="w-full max-w-sm space-y-1 text-center mb-10">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+          📋 Attendance
+        </h1>
         <p className="text-sm text-muted-foreground">
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",
@@ -63,70 +48,53 @@ const Index = () => {
         </p>
       </header>
 
-      {!isComplete ? (
-        <>
-          {/* Progress */}
-          <div className="w-full max-w-sm mb-6 space-y-2">
-            <div className="flex justify-between text-xs font-semibold text-muted-foreground">
-              <span>
-                {markedCount} of {totalStudents} students
-              </span>
-              <span>{Math.round((markedCount / totalStudents) * 100)}%</span>
-            </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${(markedCount / totalStudents) * 100}%` }}
-              />
-            </div>
+      {/* Option Cards */}
+      <div className="w-full max-w-sm space-y-4">
+        {/* Student Attendance */}
+        <button
+          onClick={() => setActiveView("student")}
+          className="w-full flex items-center gap-4 rounded-2xl bg-card border border-border px-5 py-5 text-left shadow-sm hover:shadow-md hover:border-primary/40 transition-all group"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
+            <GraduationCap className="h-6 w-6" />
           </div>
-
-          {/* Swipe area */}
-          <div className="relative flex h-[360px] w-full max-w-sm items-center justify-center">
-            {currentStudent && (
-              <SwipeCard
-                key={currentStudent.id}
-                student={currentStudent}
-                onSwipe={markAttendance}
-              />
-            )}
+          <div className="flex-1">
+            <p className="text-base font-bold text-foreground">Student Attendance</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Mark attendance for students</p>
           </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
 
-          {/* Action buttons */}
-          <SwipeActions
-            onPresent={() => markAttendance("present")}
-            onAbsent={() => markAttendance("absent")}
-          />
+        {/* Staff Attendance */}
+        <button
+          onClick={() => setActiveView("staff")}
+          className="w-full flex items-center gap-4 rounded-2xl bg-card border border-border px-5 py-5 text-left shadow-sm hover:shadow-md hover:border-primary/40 transition-all group"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500 shrink-0">
+            <Users className="h-6 w-6" />
+          </div>
+          <div className="flex-1">
+            <p className="text-base font-bold text-foreground">Staff Attendance</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Mark attendance for staff members</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
 
-          {/* Undo */}
-          {markedCount > 0 && (
-            <button
-              onClick={undo}
-              className="mt-4 flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Undo2 className="h-4 w-4" />
-              Undo last
-            </button>
-          )}
-
-          {/* Hint */}
-          <p className="mt-6 text-xs text-muted-foreground/60 text-center">
-            Swipe right for Present · Swipe left for Absent
-          </p>
-        </>
-      ) : (
-        <AttendanceSummary
-          records={records}
-          presentCount={presentCount}
-          absentCount={absentCount}
-          onExportCSV={exportCSV}
-          onReset={reset}
-          onSaveToServer={submitAttendance}
-          isSaving={isSaving}
-          saveError={saveError}
-          saveSuccess={saveSuccess}
-        />
-      )}
+        {/* View Attendance */}
+        <button
+          onClick={() => setActiveView("view")}
+          className="w-full flex items-center gap-4 rounded-2xl bg-card border border-border px-5 py-5 text-left shadow-sm hover:shadow-md hover:border-primary/40 transition-all group"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-500/10 text-green-500 shrink-0">
+            <BarChart2 className="h-6 w-6" />
+          </div>
+          <div className="flex-1">
+            <p className="text-base font-bold text-foreground">View Attendance</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Review records for students &amp; staff</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </button>
+      </div>
     </main>
   );
 };
