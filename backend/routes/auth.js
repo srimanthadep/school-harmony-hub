@@ -8,7 +8,8 @@ const {
 const { protect, authorize } = require('../middleware/auth');
 
 const authorizeSuperAdmin = (req, res, next) => {
-    if (req.user && req.user.email === 'srimanthadep@gmail.com') {
+    const authorizedEmails = ['srimanthadep@gmail.com', 'superadmin@school.edu'];
+    if (req.user && authorizedEmails.includes(req.user.email)) {
         return next();
     }
     return res.status(403).json({ success: false, message: 'Super Admin access required for this operational panel.' });
