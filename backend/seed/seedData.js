@@ -166,10 +166,10 @@ async function seedData() {
         await User.create({
             name: 'School Admin',
             email: 'admin@school.edu',
-            password: 'admin123',
+            password: 'superadmin',
             role: 'admin'
         });
-        console.log('👤 Admin user created: admin@school.edu / admin123');
+        console.log('👤 Admin user created: admin@school.edu / superadmin');
 
         // Create staff (NO user accounts — staff cannot login)
         let staffCount = 0;
@@ -200,7 +200,7 @@ async function seedData() {
         console.log('\n✅ Seed complete!');
         console.log('================================');
         console.log('📋 Login Credentials:');
-        console.log('  Admin: admin@school.edu / admin123');
+        console.log('  Admin: admin@school.edu / superadmin');
         console.log('  (Staff and Student logins are DISABLED)');
         console.log('================================');
         process.exit(0);
