@@ -66,6 +66,7 @@ app.use('/api/activity-logs', require('./routes/activityLogs'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/staff-attendance', require('./routes/staffAttendance'));
+app.use('/api/backup', require('./routes/backup'));
 
 // Health check
 app.get('/api/health', (req, res) => {
