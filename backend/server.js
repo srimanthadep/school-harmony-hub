@@ -44,6 +44,11 @@ app.use(express.urlencoded({ extended: true }));
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  if (Object.keys(req.body).length) {
+    const safeBody = { ...req.body };
+    if (safeBody.password) safeBody.password = '[HIDDEN]';
+    console.log('Body:', safeBody);
+  }
   next();
 });
 
