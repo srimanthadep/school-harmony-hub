@@ -153,5 +153,6 @@ studentSchema.index({
     parentPhone: 'text'
 });
 studentSchema.index({ isActive: 1 });
+studentSchema.index({ 'feePayments.paymentDate': -1 });
 
 module.exports = mongoose.model('Student', studentSchema);

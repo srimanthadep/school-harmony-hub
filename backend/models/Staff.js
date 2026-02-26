@@ -139,6 +139,7 @@ staffSchema.pre('save', async function (next) {
 
 staffSchema.index({ isActive: 1 });
 staffSchema.index({ academicYear: 1 });
+staffSchema.index({ 'salaryPayments.paymentDate': -1 });
 staffSchema.index({ role: 1 });
 staffSchema.index({ name: 'text' });
 

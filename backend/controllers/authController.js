@@ -73,19 +73,18 @@ exports.login = async (req, res) => {
             }
         }
 
-        // Update last login
-        user.lastLogin = new Date();
-        await user.save({ validateBeforeSave: false });
-
-        // Activity Log
-        await ActivityLog.create({
-            action: 'LOGIN',
-            module: 'AUTH',
-            description: `User logged in: ${user.name} (${user.email})`,
-            performedBy: user._id,
-            ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
-            userAgent: req.headers['user-agent'] || ''
-        });
+        // Background updates (last login & activity log) in parallel to speed up response
+        Promise.all([
+            User.findByIdAndUpdate(user._id, { lastLogin: new Date() }, { validateBeforeSave: false }),
+            ActivityLog.create({
+                action: 'LOGIN',
+                module: 'AUTH',
+                description: `User logged in: ${user.name} (${user.email})`,
+                performedBy: user._id,
+                ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
+                userAgent: req.headers['user-agent'] || ''
+            })
+        ]).catch(err => console.error('Error recording login activity:', err));
 
         const token = generateToken(user._id);
 

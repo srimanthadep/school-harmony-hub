@@ -87,6 +87,11 @@ exports.getDashboard = async (req, res) => {
             Student.aggregate([
                 { $unwind: "$feePayments" },
                 {
+                    $match: {
+                        "feePayments.paymentDate": { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) }
+                    }
+                },
+                {
                     $group: {
                         _id: {
                             month: { $month: "$feePayments.paymentDate" },
@@ -95,8 +100,7 @@ exports.getDashboard = async (req, res) => {
                         total: { $sum: "$feePayments.amount" }
                     }
                 },
-                { $sort: { "_id.year": -1, "_id.month": -1 } },
-                { $limit: 6 }
+                { $sort: { "_id.year": -1, "_id.month": -1 } }
             ]),
 
             // 4. Staff Overview
@@ -112,9 +116,14 @@ exports.getDashboard = async (req, res) => {
                 }
             ]),
 
-            // 5. Monthly Salary Trends
+            // 5. Monthly Salary Trends (Last 6 Months)
             Staff.aggregate([
                 { $unwind: "$salaryPayments" },
+                {
+                    $match: {
+                        "salaryPayments.paymentDate": { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) }
+                    }
+                },
                 {
                     $group: {
                         _id: {
@@ -124,15 +133,15 @@ exports.getDashboard = async (req, res) => {
                         total: { $sum: "$salaryPayments.amount" }
                     }
                 },
-                { $sort: { "_id.year": -1, "_id.month": -1 } },
-                { $limit: 6 }
+                { $sort: { "_id.year": -1, "_id.month": -1 } }
             ]),
 
-            // 6. Recent 10 Fee Payments
+            // 6. Recent 10 Fee Payments (Optimized lookback)
             Student.aggregate([
                 { $match: { isActive: true } },
                 { $unwind: "$feePayments" },
-                { $sort: { "feePayments.paymentDate": -1, "feePayments._id": -1 } },
+                { $match: { "feePayments.paymentDate": { $gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) } } },
+                { $sort: { "feePayments.paymentDate": -1 } },
                 { $limit: 10 },
                 {
                     $project: {
