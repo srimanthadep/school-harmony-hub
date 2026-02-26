@@ -1,1 +1,0 @@
-# School Fee Management System
