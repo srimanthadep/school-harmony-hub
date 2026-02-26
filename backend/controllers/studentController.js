@@ -6,6 +6,7 @@ const DeletedRecord = require('../models/DeletedRecord');
 const asyncHandler = require('../utils/asyncHandler');
 const { studentSchema } = require('../validations/studentValidation');
 const _ = require('lodash');
+const xlsx = require('xlsx');
 
 // @desc    Get all students
 // @route   GET /api/students
@@ -440,7 +441,6 @@ exports.bulkImportStudents = asyncHandler(async (req, res) => {
     const finalDefaultClass = req.body.class || fileDefaultClass || 'Nursery';
     const finalDefaultYear = req.body.academicYear || '2025-26';
 
-    const xlsx = require('xlsx');
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -545,6 +545,115 @@ exports.bulkDeleteStudents = asyncHandler(async (req, res) => {
     });
 });
 
+
+// @desc    Sync phone numbers from CSV (safe, idempotent — updates parentPhone only)
+// @route   POST /api/students/sync-phones
+// Supports dry run via ?dryRun=true or body.dryRun=true
+exports.syncPhoneNumbers = asyncHandler(async (req, res) => {
+    if (!req.file) {
+        res.status(400);
+        throw new Error('Please upload a CSV file');
+    }
+
+    const dryRun = req.query.dryRun === 'true' || req.body.dryRun === 'true' || req.body.dryRun === true;
+
+    // Map CSV class names → model class names
+    const CLASS_MAP = {
+        'nursary': 'Nursery', 'nursery': 'Nursery',
+        'lkg': 'LKG', 'ukg': 'UKG',
+        '1': '1st', '2': '2nd', '3': '3rd', '4': '4th', '5': '5th',
+        '6': '6th', '7': '7th', '8': '8th', '9': '9th', '10': '10th',
+        '1st': '1st', '2nd': '2nd', '3rd': '3rd', '4th': '4th', '5th': '5th',
+        '6th': '6th', '7th': '7th', '8th': '8th', '9th': '9th', '10th': '10th'
+    };
+
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // Parse with headers from first row
+    const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+    const updated = [];
+    const skipped = [];
+    const bulkOps = [];
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2; // 1-based + header row
+
+        // Normalize keys (trim whitespace)
+        const normalizedRow = {};
+        for (const key of Object.keys(row)) {
+            normalizedRow[key.trim()] = row[key];
+        }
+
+        // Extract and clean Roll No
+        const rawRollNo = String(normalizedRow['Roll No'] || '').trim();
+        if (!rawRollNo || rawRollNo === '') {
+            skipped.push({ row: rowNum, reason: 'Missing roll number' });
+            continue;
+        }
+        // Strip trailing .0 from numeric roll numbers
+        const rollNo = rawRollNo.replace(/\.0+$/, '');
+
+        // Extract and map Class
+        const rawClass = String(normalizedRow['Class'] || '').trim();
+        const mappedClass = CLASS_MAP[rawClass.toLowerCase()];
+        if (!mappedClass) {
+            skipped.push({ row: rowNum, rollNo, reason: `Unknown class: "${rawClass}"` });
+            continue;
+        }
+
+        // Extract and clean Phone
+        const rawPhone = String(normalizedRow['Phone'] || '').trim();
+        if (!rawPhone || rawPhone === '') {
+            skipped.push({ row: rowNum, rollNo, class: mappedClass, reason: 'Missing phone number' });
+            continue;
+        }
+        // Strip trailing .0 and non-digits
+        const phone = rawPhone.replace(/\.0+$/, '').replace(/\D/g, '');
+        // Validate 10-digit phone (Indian format, consistent with existing validation)
+        if (phone.length !== 10) {
+            skipped.push({ row: rowNum, rollNo, class: mappedClass, reason: `Invalid phone "${rawPhone}" (must be 10 digits)` });
+            continue;
+        }
+
+        bulkOps.push({
+            updateOne: {
+                filter: { class: mappedClass, rollNo },
+                update: { $set: { parentPhone: phone } },
+                upsert: false   // never create new students
+            }
+        });
+        updated.push({ row: rowNum, rollNo, class: mappedClass, phone });
+    }
+
+    let matchedCount = 0;
+    let modifiedCount = 0;
+
+    if (!dryRun && bulkOps.length > 0) {
+        const result = await Student.bulkWrite(bulkOps, { ordered: false });
+        matchedCount = result.matchedCount;
+        modifiedCount = result.modifiedCount;
+    } else if (dryRun) {
+        matchedCount = updated.length;
+        modifiedCount = updated.length;
+    }
+
+    res.json({
+        success: true,
+        dryRun,
+        message: dryRun
+            ? `DRY RUN: ${updated.length} CSV rows have valid phone numbers (DB match not verified), ${skipped.length} skipped.`
+            : `Sync complete: ${modifiedCount} phone numbers updated, ${skipped.length} rows skipped.`,
+        processed: updated.length,
+        matchedCount,
+        modifiedCount,
+        skippedCount: skipped.length,
+        skipped
+    });
+});
 
 // @desc    Get dashboard stats
 exports.getStudentStats = asyncHandler(async (req, res) => {

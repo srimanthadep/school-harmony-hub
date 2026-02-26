@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
     getStudents, getStudent, createStudent, updateStudent, deleteStudent,
-    recordPayment, getPaymentHistory, getStudentStats, editPayment, deletePayment, promoteStudents, bulkImportStudents, bulkDeleteStudents
+    recordPayment, getPaymentHistory, getStudentStats, editPayment, deletePayment, promoteStudents, bulkImportStudents, bulkDeleteStudents, syncPhoneNumbers
 } = require('../controllers/studentController');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require('multer');
@@ -17,6 +17,7 @@ router.get('/stats/overview', authorize('admin', 'owner'), getStudentStats);
 router.post('/promote', authorize('admin', 'owner'), promoteStudents);
 router.post('/import', authorize('admin', 'owner'), upload.single('file'), bulkImportStudents);
 router.post('/bulk-delete', authorize('admin', 'owner'), bulkDeleteStudents);
+router.post('/sync-phones', authorize('admin', 'owner'), upload.single('file'), syncPhoneNumbers);
 
 // Student list / creation
 router.route('/')
