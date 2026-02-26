@@ -168,6 +168,53 @@ async function masterReconstruction() {
         }
         console.log(`✅ Total Students Imported: ${studentCount}`);
 
+        // 3.5 RECONSTRUCT MANUALLY ADDED STUDENTS FROM LOGS
+        console.log('\n--- RECONSTRUCTING MANUALLY ADDED STUDENTS FROM LOGS ---');
+        let manualCount = 0;
+        if (fs.existsSync(ACTIVITY_CSV)) {
+            const csvContent = fs.readFileSync(ACTIVITY_CSV, 'utf-8');
+            const logs = parse(csvContent, { columns: true });
+
+            // First pass: CREATE_STUDENT logs
+            for (const log of logs) {
+                if (log.Action !== 'CREATE_STUDENT') continue;
+                const match = log.Description.match(/Added new student: (.*)/);
+                if (match) {
+                    const name = match[1].trim();
+                    const exists = await Student.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+                    if (!exists) {
+                        let studentData = { name, rollNo: 'MANUAL', class: 'Nursery', parentName: 'Parent', parentPhone: '0000000000', totalFee: 15000, academicYear: '2025-26' };
+                        const dbLog = await ActivityLog.findOne({ createdAt: new Date(log.Timestamp), action: 'CREATE_STUDENT' });
+                        if (dbLog && dbLog.newData) studentData = { ...studentData, ...dbLog.newData };
+                        await Student.create(studentData);
+                        manualCount++;
+                    }
+                }
+            }
+
+            // Second pass: RECORD_PAYMENT logs for missing names
+            for (const log of logs) {
+                if (log.Action !== 'RECORD_PAYMENT' && log.Action !== 'EDIT_PAYMENT') continue;
+                const match = log.Description.match(/Recorded payment of [\d.]+ for (.*?) \(Receipt: /) ||
+                    log.Description.match(/Edited payment for (.*?) \(Receipt: /);
+                if (match) {
+                    const name = match[1].trim();
+                    if (name.toLowerCase().includes('test')) continue;
+                    const exists = await Student.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+                    if (!exists) {
+                        await Student.create({
+                            name, rollNo: 'LOG-REC', class: 'Nursery', parentName: 'Parent (Recovered)',
+                            parentPhone: '0000000000', totalFee: 15000, academicYear: '2025-26'
+                        });
+                        manualCount++;
+                    }
+                }
+            }
+        }
+        console.log(`✅ Manually Added Students Restored: ${manualCount}`);
+        studentCount += manualCount;
+        console.log(`✅ Updated Total Students: ${studentCount}`);
+
         // 4. RESTORE FEE PAYMENTS FROM BACKUP CSV
         console.log('\n--- RESTORING FEE PAYMENTS FROM BACKUP LOGS ---');
         if (fs.existsSync(ACTIVITY_CSV)) {
