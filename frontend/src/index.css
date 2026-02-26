@@ -2335,6 +2335,11 @@ input[type="number"] {
   padding: 16px 12px !important;
 }
 
+/* ===== BOTTOM NAV ===== */
+.bottom-nav {
+  display: none;
+}
+
 /* ===== BOTTOM NAV (Phone only) ===== */
 @media (max-width: 768px) {
   .bottom-nav {
