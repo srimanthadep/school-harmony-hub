@@ -1,5 +1,5 @@
 import React, { useState, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation, Outlet } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -117,17 +117,29 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     );
 }
 
-interface AdminLayoutProps {
-    children: React.ReactNode;
-    pageTitle: string;
-    pageSubtitle?: string;
+interface AdminLayoutWrapperProps {
+    // No specific props needed anymore as we'll get info from current route or context
 }
 
-function AdminLayout({ children, pageTitle, pageSubtitle }: AdminLayoutProps) {
+function AdminLayoutWrapper() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { user } = useAuth();
     const location = useLocation();
     const { isDark, toggle } = useDarkMode();
+
+    // Mapping of paths to titles
+    const routeInfo: Record<string, { title: string; subtitle: string }> = {
+        '/dashboard': { title: 'Dashboard', subtitle: 'Overview of school finances' },
+        '/students': { title: 'Students', subtitle: 'Manage student records and fees' },
+        '/staff': { title: 'Staff', subtitle: 'Manage staff and salaries' },
+        '/reports': { title: 'Reports', subtitle: 'Financial reports and analytics' },
+        '/expenses': { title: 'Expenses', subtitle: 'Manage current bills and land lease payments' },
+        '/attendance': { title: 'Attendance', subtitle: 'Swipe to mark student attendance' },
+        '/settings': { title: 'Settings', subtitle: 'School configuration' },
+        '/admin': { title: 'Super Admin', subtitle: 'System-wide access and limits' },
+    };
+
+    const { title: pageTitle, subtitle: pageSubtitle } = routeInfo[location.pathname] || { title: 'Oxford School', subtitle: '' };
 
     return (
         <div className="app-layout">
@@ -200,7 +212,7 @@ function AdminLayout({ children, pageTitle, pageSubtitle }: AdminLayoutProps) {
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.2 }}
                         >
-                            {children}
+                            <Outlet />
                         </motion.div>
                     </AnimatePresence>
                 </main>
@@ -248,13 +260,13 @@ function AppRoutes() {
         return (
             <Routes>
                 <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/admin" replace />} />
-                <Route path="/admin" element={
+                <Route element={
                     <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                        <AdminLayout pageTitle="Super Admin" pageSubtitle="System-wide access and limits">
-                            <AdminPage />
-                        </AdminLayout>
+                        <AdminLayoutWrapper />
                     </ProtectedRoute>
-                } />
+                }>
+                    <Route path="/admin" element={<AdminPage />} />
+                </Route>
                 <Route path="/" element={<Navigate to={user ? '/admin' : '/login'} replace />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
@@ -265,55 +277,20 @@ function AppRoutes() {
         <Routes>
             <Route path="/login" element={!user ? <LoginPage /> : <Navigate to={user.role === 'staff' ? '/portal/staff' : user.role === 'student' ? '/portal/student' : '/dashboard'} replace />} />
 
-            <Route path="/dashboard" element={
+            {/* Admin Layout Perspective */}
+            <Route element={
                 <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                    <AdminLayout pageTitle="Dashboard" pageSubtitle="Overview of school finances">
-                        <Dashboard />
-                    </AdminLayout>
+                    <AdminLayoutWrapper />
                 </ProtectedRoute>
-            } />
-            <Route path="/students" element={
-                <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                    <AdminLayout pageTitle="Students" pageSubtitle="Manage student records and fees">
-                        <StudentsPage />
-                    </AdminLayout>
-                </ProtectedRoute>
-            } />
-            <Route path="/staff" element={
-                <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                    <AdminLayout pageTitle="Staff" pageSubtitle="Manage staff and salaries">
-                        <StaffPage />
-                    </AdminLayout>
-                </ProtectedRoute>
-            } />
-            <Route path="/reports" element={
-                <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                    <AdminLayout pageTitle="Reports" pageSubtitle="Financial reports and analytics">
-                        <ReportsPage />
-                    </AdminLayout>
-                </ProtectedRoute>
-            } />
-            <Route path="/expenses" element={
-                <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                    <AdminLayout pageTitle="Expenses" pageSubtitle="Manage current bills and land lease payments">
-                        <ExpensePage />
-                    </AdminLayout>
-                </ProtectedRoute>
-            } />
-            <Route path="/attendance" element={
-                <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                    <AdminLayout pageTitle="Attendance" pageSubtitle="Swipe to mark student attendance">
-                        <AttendancePage />
-                    </AdminLayout>
-                </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-                <ProtectedRoute allowedRoles={['admin', 'owner']}>
-                    <AdminLayout pageTitle="Settings" pageSubtitle="School configuration">
-                        <SettingsPage />
-                    </AdminLayout>
-                </ProtectedRoute>
-            } />
+            }>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/students" element={<StudentsPage />} />
+                <Route path="/staff" element={<StaffPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/expenses" element={<ExpensePage />} />
+                <Route path="/attendance" element={<AttendancePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+            </Route>
 
             <Route path="/portal/staff" element={
                 <ProtectedRoute allowedRoles={['staff']}>
