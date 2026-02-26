@@ -1,7 +1,9 @@
-require('dotenv').config({ path: '../.env' });
-const mongoose = require('mongoose');
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Student = require('../models/Student');
 const Staff = require('../models/Staff');
@@ -164,10 +166,10 @@ async function seedData() {
         await User.create({
             name: 'School Admin',
             email: 'admin@school.edu',
-            password: 'Admin@123',
+            password: 'admin123',
             role: 'admin'
         });
-        console.log('👤 Admin user created: admin@school.edu / Admin@123');
+        console.log('👤 Admin user created: admin@school.edu / admin123');
 
         // Create staff (NO user accounts — staff cannot login)
         let staffCount = 0;
@@ -198,7 +200,7 @@ async function seedData() {
         console.log('\n✅ Seed complete!');
         console.log('================================');
         console.log('📋 Login Credentials:');
-        console.log('  Admin: admin@school.edu / Admin@123');
+        console.log('  Admin: admin@school.edu / admin123');
         console.log('  (Staff and Student logins are DISABLED)');
         console.log('================================');
         process.exit(0);
