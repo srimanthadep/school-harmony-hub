@@ -40,3 +40,6 @@ Desktop.ini
 
 # Vercel
 .vercel
+
+# Backup temp files
+temp_backups
