@@ -37,7 +37,12 @@ const NAV_ITEMS = [
     { path: '/settings', label: 'Settings', icon: <MdSettings /> },
 ];
 
-function Sidebar({ isOpen, onClose }) {
+interface SidebarProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+function Sidebar({ isOpen, onClose }: SidebarProps) {
     const { user, logout } = useAuth();
 
     return (
@@ -112,7 +117,13 @@ function Sidebar({ isOpen, onClose }) {
     );
 }
 
-function AdminLayout({ children, pageTitle, pageSubtitle }) {
+interface AdminLayoutProps {
+    children: React.ReactNode;
+    pageTitle: string;
+    pageSubtitle?: string;
+}
+
+function AdminLayout({ children, pageTitle, pageSubtitle }: AdminLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { user } = useAuth();
     const location = useLocation();
@@ -207,7 +218,12 @@ function AdminLayout({ children, pageTitle, pageSubtitle }) {
     );
 }
 
-function ProtectedRoute({ children, allowedRoles }) {
+interface ProtectedRouteProps {
+    children: React.ReactNode;
+    allowedRoles?: string[];
+}
+
+function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
     const { user, loading } = useAuth();
     if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
     if (!user) return <Navigate to="/login" replace />;
