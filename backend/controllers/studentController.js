@@ -170,7 +170,8 @@ exports.updateStudent = asyncHandler(async (req, res) => {
         k => String(oldPicked[k] ?? '') !== String(validatedData[k] ?? '')
     );
     const changesText = changedFields.length
-        ? changedFields.map(k => `${k}: "${oldPicked[k] ?? ''}" → "${validatedData[k] ?? ''}"`).join(', ')
+        ? changedFields.slice(0, 5).map(k => `${k}: "${oldPicked[k] ?? ''}" → "${validatedData[k] ?? ''}"`).join(', ')
+            + (changedFields.length > 5 ? ` ...and ${changedFields.length - 5} more` : '')
         : 'no field changes detected';
 
     // Activity Log
@@ -206,7 +207,7 @@ exports.deleteStudent = asyncHandler(async (req, res) => {
         description: `Archived student: ${student.name} (${student.studentId || student._id}), Class: ${student.class}, Parent: ${student.parentName}`,
         performedBy: req.user.id,
         targetId: student._id,
-        oldData: { name: student.name, studentId: student.studentId, class: student.class, rollNo: student.rollNo, parentName: student.parentName, parentPhone: student.parentPhone, totalFee: student.totalFee, academicYear: student.academicYear }
+        oldData: _.pick(student.toObject(), ['name', 'studentId', 'class', 'rollNo', 'parentName', 'parentPhone', 'totalFee', 'academicYear'])
     });
 
     res.json({ success: true, message: 'Student deleted successfully' });

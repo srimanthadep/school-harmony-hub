@@ -431,7 +431,7 @@ export default function AdminPage() {
     const renderChangedFields = (oldData: any, newData: any) => {
         if (!oldData || !newData) return null;
         const allKeys = [...new Set([...Object.keys(oldData), ...Object.keys(newData)])].filter(k => !SKIP_KEYS.has(k));
-        const changed = allKeys.filter(k => String(oldData[k] ?? '') !== String(newData[k] ?? ''));
+        const changed = allKeys.filter(k => JSON.stringify(oldData[k] ?? '') !== JSON.stringify(newData[k] ?? ''));
         if (changed.length === 0) return null;
         return (
             <div style={{ marginBottom: 8 }}>
@@ -784,7 +784,7 @@ export default function AdminPage() {
                                     <table style={S.table}>
                                         <thead>
                                             <tr>
-                                                {['Timestamp', 'User', 'Action', 'Module', 'Description', 'IP Address', ''].map(h => (
+                                                {['Timestamp', 'User', 'Action', 'Module', 'Description', 'IP Address', 'Details'].map(h => (
                                                     <th key={h} style={S.th}>{h}</th>
                                                 ))}
                                             </tr>
@@ -793,10 +793,12 @@ export default function AdminPage() {
                                             {activityLogs.map(log => (
                                                 <React.Fragment key={log._id}>
                                                 <tr
+                                                    tabIndex={0}
                                                     onMouseEnter={() => setHoveredRow(log._id)}
                                                     onMouseLeave={() => setHoveredRow(null)}
                                                     style={{ background: hoveredRow === log._id ? '#f8f9fc' : 'transparent', transition: 'background 0.15s', cursor: 'pointer' }}
-                                                    onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}>
+                                                    onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
+                                                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedLogId(expandedLogId === log._id ? null : log._id); } }}>
                                                     <td style={{ ...S.td, whiteSpace: 'nowrap', color: '#8996a4', fontSize: 12 }}>
                                                         {new Date(log.createdAt).toLocaleString()}
                                                     </td>
