@@ -154,7 +154,7 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
     // Payment mode
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
     doc.text(`Payment Mode: ${(payment.paymentMode || 'cash').replace('_', ' ').toUpperCase()}`, 8, finalY + 6);
-    if (payment.remarks) doc.text(`Remarks: ${payment.remarks}`, 8, finalY + 11);
+    if (payment.remarks) doc.text(`Fee Receipt Change: ${payment.remarks}`, 8, finalY + 11);
 
     // Status badge
     const status = pendingAmt <= 0 ? 'FULLY PAID' : 'PARTIAL PAYMENT';

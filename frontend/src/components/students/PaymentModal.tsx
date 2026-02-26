@@ -87,7 +87,7 @@ export default function PaymentModal({
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Remarks</label>
+                                <label className="form-label">Fee Receipt Change</label>
                                 <input className="form-control" value={paymentForm.remarks}
                                     onChange={e => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
                                     placeholder="Optional note" />
