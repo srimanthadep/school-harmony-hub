@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -46,21 +46,20 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Hash password before saving (SHA-256 for instant performance)
-userSchema.pre('save', function (next) {
+// Hash password before saving
+userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();
-    this.password = crypto.createHash('sha256')
-        .update(this.password + (process.env.JWT_SECRET || 'fallback_salt'))
-        .digest('hex');
-    next();
+    try {
+        this.password = await bcrypt.hash(this.password, 10);
+        next();
+    } catch (err) {
+        next(err);
+    }
 });
 
 // Compare password
 userSchema.methods.comparePassword = function (candidatePassword) {
-    const hash = crypto.createHash('sha256')
-        .update(candidatePassword + (process.env.JWT_SECRET || 'fallback_salt'))
-        .digest('hex');
-    return hash === this.password;
+    return bcrypt.compare(candidatePassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);
