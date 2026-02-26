@@ -245,6 +245,7 @@ export default function AdminPage() {
     const [logFilters, setLogFilters] = useState({ action: '', module: '', startDate: '', endDate: '' });
     const [logPage, setLogPage] = useState(1);
     const [logTotal, setLogTotal] = useState(0);
+    const [logView, setLogView] = useState<'table' | 'timeline'>('table');
     const LOG_LIMIT = 50;
 
     useEffect(() => {
@@ -583,9 +584,24 @@ export default function AdminPage() {
                     <>
                         <div style={S.cardHeader}>
                             <span style={S.cardTitle}><MdTimeline color="#9b59b6" /> Activity Logs</span>
-                            <button style={{ ...S.btnSecondary, display: 'flex', alignItems: 'center', gap: 6 }} onClick={exportActivityLogs}>
-                                <MdDownload size={15} /> Export CSV
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {/* View toggle */}
+                                <div style={{ display: 'flex', background: '#f0f3f8', borderRadius: 8, padding: 3, gap: 2 }}>
+                                    <button
+                                        onClick={() => setLogView('table')}
+                                        style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12, fontFamily: 'inherit', background: logView === 'table' ? '#fff' : 'transparent', color: logView === 'table' ? '#1c232f' : '#8996a4', boxShadow: logView === 'table' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none' }}>
+                                        ☰ Table
+                                    </button>
+                                    <button
+                                        onClick={() => setLogView('timeline')}
+                                        style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12, fontFamily: 'inherit', background: logView === 'timeline' ? '#fff' : 'transparent', color: logView === 'timeline' ? '#1c232f' : '#8996a4', boxShadow: logView === 'timeline' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none' }}>
+                                        ⏱ Timeline
+                                    </button>
+                                </div>
+                                <button style={{ ...S.btnSecondary, display: 'flex', alignItems: 'center', gap: 6 }} onClick={exportActivityLogs}>
+                                    <MdDownload size={15} /> Export CSV
+                                </button>
+                            </div>
                         </div>
 
                         {/* Filters */}
@@ -629,6 +645,56 @@ export default function AdminPage() {
                                 <h3 style={{ color: '#1c232f' }}>No activity logs found</h3>
                                 <p style={{ color: '#8996a4' }}>No events match the current filters.</p>
                             </div>
+                        ) : logView === 'timeline' ? (
+                            <>
+                                {/* Timeline View */}
+                                <div style={{ padding: '20px 24px', position: 'relative' }}>
+                                    {/* Vertical line */}
+                                    <div style={{ position: 'absolute', left: 52, top: 0, bottom: 0, width: 2, background: '#edf2f7', zIndex: 0 }} />
+                                    {activityLogs.map((log, idx) => {
+                                        const [dotColor] = getActionColors(log.action);
+                                        return (
+                                            <div key={log._id} style={{ display: 'flex', gap: 16, marginBottom: idx < activityLogs.length - 1 ? 24 : 0, position: 'relative', zIndex: 1 }}>
+                                                {/* Dot */}
+                                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: dotColor, flexShrink: 0, marginTop: 2, boxShadow: `0 0 0 4px ${dotColor}22`, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#fff', fontWeight: 700, position: 'relative', left: 24 }}>
+                                                    {log.action ? log.action[0] : '•'}
+                                                </div>
+                                                {/* Content */}
+                                                <div style={{ flex: 1, background: '#f8f9fc', borderRadius: 10, padding: '10px 14px', border: '1px solid #edf2f7', marginLeft: 12 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+                                                        <span style={S.pill(...getActionColors(log.action))}>{log.action}</span>
+                                                        <span style={{ fontSize: 11, background: '#e8eaf6', color: '#5b6b79', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>{log.module}</span>
+                                                        <span style={{ fontSize: 11, color: '#8996a4', marginLeft: 'auto' }}>{new Date(log.createdAt).toLocaleString()}</span>
+                                                    </div>
+                                                    {log.performedBy && (
+                                                        <div style={{ fontSize: 12, fontWeight: 600, color: '#3e4853' }}>
+                                                            {log.performedBy.name} <span style={{ fontWeight: 400, color: '#8996a4' }}>({log.performedBy.email})</span>
+                                                        </div>
+                                                    )}
+                                                    {log.description && <div style={{ fontSize: 12, color: '#5b6b79', marginTop: 3 }}>{log.description}</div>}
+                                                    {log.ipAddress && <div style={{ fontSize: 11, color: '#adb5c3', marginTop: 2 }}>IP: {log.ipAddress}</div>}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {/* Pagination */}
+                                <div style={{ padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #edf2f7' }}>
+                                    <span style={{ fontSize: 12, color: '#8996a4' }}>
+                                        Showing {((logPage - 1) * LOG_LIMIT) + 1}–{Math.min(logPage * LOG_LIMIT, logTotal)} of {logTotal}
+                                    </span>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button style={S.btnSecondary} disabled={logPage <= 1}
+                                            onClick={() => { const p = logPage - 1; setLogPage(p); fetchActivityLogs(p, logFilters); }}>
+                                            ← Prev
+                                        </button>
+                                        <button style={S.btnSecondary} disabled={logPage * LOG_LIMIT >= logTotal}
+                                            onClick={() => { const p = logPage + 1; setLogPage(p); fetchActivityLogs(p, logFilters); }}>
+                                            Next →
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
                         ) : (
                             <>
                                 <div style={{ overflowX: 'auto' }}>

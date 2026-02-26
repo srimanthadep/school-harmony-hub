@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MdUndo, MdSave, MdFilterList, MdCheck, MdClose, MdDownload } from 'react-icons/md';
+import { MdUndo, MdSave, MdFilterList, MdCheck, MdClose, MdDownload, MdWifiOff, MdSync } from 'react-icons/md';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import { useAttendance, AttendanceStudent } from '../hooks/useAttendance';
 import SwipeCard, { SwipeActions } from '../components/attendance/SwipeCard';
 import AttendanceSummary from '../components/attendance/AttendanceSummary';
 import { getCurrentAcademicYear } from '../utils/academicYear';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 
 const CLASSES = ['All', 'Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
@@ -22,6 +23,7 @@ export default function AttendancePage() {
     const [viewType, setViewType] = useState<'student' | 'staff'>('student');
     const today = new Date().toISOString().split('T')[0];
     const academicYear = getCurrentAcademicYear();
+    const { isOnline, enqueue, syncAll, syncing, pendingCount } = useOfflineSync();
 
     // Fetch students for marking
     const { data, isLoading } = useQuery({
@@ -112,21 +114,29 @@ export default function AttendancePage() {
 
     const handleSubmit = async () => {
         if (records.length === 0) return;
+        const isStaff = mode === 'mark-staff';
+        const label = isStaff ? 'Staff' : selectedClass;
+        const payload = {
+            date: today,
+            class: isStaff ? undefined : selectedClass,
+            academicYear,
+            type: (isStaff ? 'staff' : 'student') as 'student' | 'staff',
+            records: records.map((r) => ({
+                studentId: r.studentId,
+                status: r.status,
+                timestamp: r.timestamp.toISOString(),
+            })),
+        };
+
+        if (!isOnline) {
+            enqueue(payload);
+            toast.success(`Offline: Attendance for ${label} queued. Will sync when online.`, { icon: '📶' });
+            return;
+        }
+
         setSubmitting(true);
         try {
-            const isStaff = mode === 'mark-staff';
-            await API.post('/attendance', {
-                date: today,
-                class: isStaff ? undefined : selectedClass,
-                academicYear,
-                type: isStaff ? 'staff' : 'student',
-                records: records.map((r) => ({
-                    studentId: r.studentId,
-                    status: r.status,
-                    timestamp: r.timestamp.toISOString(),
-                })),
-            });
-            const label = isStaff ? 'Staff' : selectedClass;
+            await API.post('/attendance', payload);
             toast.success(`Attendance saved for ${label}!`);
             if (isStaff) {
                 const absentStaff = records.filter(r => r.status === 'absent');
@@ -223,6 +233,37 @@ export default function AttendancePage() {
             animate={{ opacity: 1, y: 0 }}
             style={{ maxWidth: 600, margin: '0 auto' }}
         >
+            {/* Offline Banner */}
+            {!isOnline && (
+                <div aria-live="polite" style={{
+                    background: '#f59e0b', color: '#fff', borderRadius: 10, padding: '10px 16px',
+                    marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600,
+                }}>
+                    <MdWifiOff size={18} />
+                    You're offline — attendance will be queued and synced automatically when you reconnect.
+                    {pendingCount > 0 && <span style={{ marginLeft: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: 20, padding: '2px 10px' }}>{pendingCount} pending</span>}
+                </div>
+            )}
+            {/* Sync Banner (online + pending items) */}
+            {isOnline && pendingCount > 0 && (
+                <div aria-live="polite" style={{
+                    background: '#10b981', color: '#fff', borderRadius: 10, padding: '10px 16px',
+                    marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600,
+                }}>
+                    <MdSync size={18} style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
+                    {syncing ? `Syncing ${pendingCount} offline record(s)…` : `${pendingCount} offline record(s) pending.`}
+                    {!syncing && (
+                        <button onClick={async () => {
+                            const { synced, failed } = await syncAll();
+                            if (synced > 0) toast.success(`Synced ${synced} attendance record(s)!`);
+                            if (failed > 0) toast.error(`${failed} record(s) failed to sync.`);
+                        }} style={{
+                            marginLeft: 'auto', background: 'rgba(255,255,255,0.25)', border: 'none',
+                            borderRadius: 8, padding: '4px 14px', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 12,
+                        }}>Sync Now</button>
+                    )}
+                </div>
+            )}
             {/* Page Header */}
             <div className="card-header" style={{ marginBottom: 16, padding: 0, border: 'none', background: 'transparent' }}>
                 <div>
