@@ -2,9 +2,17 @@ const mongoose = require('mongoose');
 const archiver = require('archiver');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = fs.promises;
 
-// Concurrency lock
+// Concurrency lock (single-instance; for multi-instance, use a database-backed flag)
 let backupInProgress = false;
+
+const cleanup = (backupDir) => {
+    fs.rm(backupDir, { recursive: true, force: true }, (err) => {
+        if (err) console.error('Backup cleanup error:', err.message);
+    });
+    backupInProgress = false;
+};
 
 /**
  * POST /api/backup/download
@@ -20,8 +28,7 @@ exports.downloadBackup = async (req, res) => {
     const backupDir = path.join(__dirname, '..', 'temp_backups', `backup_${Date.now()}`);
 
     try {
-        // Create temp directory
-        fs.mkdirSync(backupDir, { recursive: true });
+        await fsPromises.mkdir(backupDir, { recursive: true });
 
         // Get all collection names from the database
         const db = mongoose.connection.db;
@@ -31,7 +38,7 @@ exports.downloadBackup = async (req, res) => {
         for (const col of collections) {
             const data = await db.collection(col.name).find({}).toArray();
             const filePath = path.join(backupDir, `${col.name}.json`);
-            fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+            await fsPromises.writeFile(filePath, JSON.stringify(data, null, 2));
         }
 
         // Set response headers for ZIP download
@@ -47,25 +54,14 @@ exports.downloadBackup = async (req, res) => {
             throw err;
         });
 
-        // When the response finishes (download complete), clean up temp files
-        res.on('finish', () => {
-            fs.rm(backupDir, { recursive: true, force: true }, () => {});
-            backupInProgress = false;
-        });
-
-        // If client disconnects, still clean up
-        res.on('close', () => {
-            fs.rm(backupDir, { recursive: true, force: true }, () => {});
-            backupInProgress = false;
-        });
+        res.on('finish', () => cleanup(backupDir));
+        res.on('close', () => cleanup(backupDir));
 
         archive.pipe(res);
         archive.directory(backupDir, false);
         await archive.finalize();
     } catch (err) {
-        // Clean up on error
-        fs.rm(backupDir, { recursive: true, force: true }, () => {});
-        backupInProgress = false;
+        cleanup(backupDir);
         console.error('Backup error:', err);
         if (!res.headersSent) {
             res.status(500).json({ success: false, message: 'Backup failed: ' + err.message });

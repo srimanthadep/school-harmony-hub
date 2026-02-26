@@ -31,7 +31,8 @@ export default function Dashboard() {
             const link = document.createElement('a');
             link.href = url;
             const disposition = res.headers['content-disposition'];
-            const filename = disposition ? disposition.split('filename=')[1]?.replace(/"/g, '') : 'school_backup.zip';
+            const match = disposition?.match(/filename[^;=\n]*=['"]?([^'"\n;]*)/);
+            const filename = match?.[1] || 'school_backup.zip';
             link.setAttribute('download', filename);
             document.body.appendChild(link);
             link.click();
