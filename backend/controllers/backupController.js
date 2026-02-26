@@ -48,7 +48,8 @@ exports.downloadBackup = async (req, res) => {
         const yyyy = now.getFullYear();
         const hh = String(now.getHours()).padStart(2, '0');
         const min = String(now.getMinutes()).padStart(2, '0');
-        const filename = `${dd}-${mm}-${yyyy}-${hh}${min}.zip`;
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const filename = `backup-${dd}-${mm}-${yyyy}-${hh}-${min}-${ss}.zip`;
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 

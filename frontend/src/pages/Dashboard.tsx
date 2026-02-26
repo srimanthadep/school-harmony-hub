@@ -108,7 +108,7 @@ export default function Dashboard() {
                         disabled={backupLoading}
                         style={{ gap: 8, borderRadius: 12, padding: '12px 20px', background: backupLoading ? '#94a3b8' : 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none' }}
                     >
-                        <MdBackup className={backupLoading ? 'spin' : ''} /> {backupLoading ? 'Preparing backup…' : 'Backup Now'}
+                        <MdBackup className={backupLoading ? 'spin' : ''} /> {backupLoading ? 'Preparing backup…' : 'Download Backup'}
                     </button>
                     {isInstallable && (
                         <button
