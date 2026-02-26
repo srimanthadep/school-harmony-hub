@@ -247,7 +247,7 @@ export default function SettingsPage() {
                                 <div>
                                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>School Logo</div>
                                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>PNG, JPG or SVG · max 2 MB · Used on receipts and reports</div>
-                                    <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
+                                    <input ref={logoInputRef} type="file" accept="image/*" aria-label="Upload school logo" style={{ display: 'none' }} onChange={handleLogoUpload} />
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => logoInputRef.current?.click()} disabled={logoUploading}>
                                             <MdUpload /> {logoUploading ? 'Uploading…' : 'Upload Logo'}

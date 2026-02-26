@@ -235,7 +235,7 @@ export default function AttendancePage() {
         >
             {/* Offline Banner */}
             {!isOnline && (
-                <div style={{
+                <div aria-live="polite" style={{
                     background: '#f59e0b', color: '#fff', borderRadius: 10, padding: '10px 16px',
                     marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600,
                 }}>
@@ -246,7 +246,7 @@ export default function AttendancePage() {
             )}
             {/* Sync Banner (online + pending items) */}
             {isOnline && pendingCount > 0 && (
-                <div style={{
+                <div aria-live="polite" style={{
                     background: '#10b981', color: '#fff', borderRadius: 10, padding: '10px 16px',
                     marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600,
                 }}>

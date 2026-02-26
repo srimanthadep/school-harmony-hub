@@ -25,6 +25,8 @@ function saveQueue(queue: QueuedAttendance[]) {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
 }
 
+let _queueIdCounter = 0;
+
 export function useOfflineSync() {
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [queue, setQueue] = useState<QueuedAttendance[]>(loadQueue);
@@ -42,9 +44,10 @@ export function useOfflineSync() {
     }, []);
 
     const enqueue = useCallback((payload: Omit<QueuedAttendance, 'id' | 'queuedAt'>) => {
+        _queueIdCounter++;
         const item: QueuedAttendance = {
             ...payload,
-            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            id: `${Date.now()}-${_queueIdCounter}-${Math.random().toString(36).slice(2)}`,
             queuedAt: new Date().toISOString(),
         };
         setQueue(prev => {
@@ -84,10 +87,10 @@ export function useOfflineSync() {
 
     // Auto-sync when coming back online
     useEffect(() => {
-        if (isOnline && queue.length > 0) {
+        if (isOnline && loadQueue().length > 0) {
             syncAll();
         }
-    }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [isOnline, syncAll]);
 
     return { isOnline, queue, enqueue, syncAll, syncing, pendingCount: queue.length };
 }

@@ -657,7 +657,7 @@ export default function AdminPage() {
                                             <div key={log._id} style={{ display: 'flex', gap: 16, marginBottom: idx < activityLogs.length - 1 ? 24 : 0, position: 'relative', zIndex: 1 }}>
                                                 {/* Dot */}
                                                 <div style={{ width: 28, height: 28, borderRadius: '50%', background: dotColor, flexShrink: 0, marginTop: 2, boxShadow: `0 0 0 4px ${dotColor}22`, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#fff', fontWeight: 700, position: 'relative', left: 24 }}>
-                                                    {log.action?.[0] || '?'}
+                                                    {log.action ? log.action[0] : '•'}
                                                 </div>
                                                 {/* Content */}
                                                 <div style={{ flex: 1, background: '#f8f9fc', borderRadius: 10, padding: '10px 14px', border: '1px solid #edf2f7', marginLeft: 12 }}>
