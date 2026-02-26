@@ -13,7 +13,7 @@ export default function LoginPage() {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.email || !form.password) {
             toast.error('Please enter email and password');
@@ -41,7 +41,7 @@ export default function LoginPage() {
             } else {
                 navigate('/dashboard');
             }
-        } catch (err) {
+        } catch (err: any) {
             toast.error(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {
             setLoading(false);

@@ -554,6 +554,7 @@ export default function StaffPage() {
                 show={!!showDeleteConfirm}
                 title="Delete Staff"
                 message={`Are you sure you want to delete ${showDeleteConfirm?.name}? This action cannot be undone.`}
+                confirmText="Delete Staff"
                 onClose={() => setShowDeleteConfirm(null)}
                 onConfirm={handleDeleteStaff}
                 loading={deleteLoading}
@@ -563,6 +564,7 @@ export default function StaffPage() {
                 show={!!showDeletePaymentConfirm}
                 title="Delete Salary Record"
                 message="Are you sure you want to delete this salary payment? This action cannot be undone."
+                confirmText="Delete Payment"
                 onClose={() => setShowDeletePaymentConfirm(null)}
                 onConfirm={confirmDeleteSalaryPayment}
                 loading={deleteLoading}
