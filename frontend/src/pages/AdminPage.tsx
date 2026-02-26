@@ -246,6 +246,7 @@ export default function AdminPage() {
     const [logPage, setLogPage] = useState(1);
     const [logTotal, setLogTotal] = useState(0);
     const [logView, setLogView] = useState<'table' | 'timeline'>('table');
+    const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
     const LOG_LIMIT = 50;
 
     useEffect(() => {
@@ -389,6 +390,78 @@ export default function AdminPage() {
 
     const activeUsers = users.filter(u => u.isActive).length;
     const revertedCount = history.filter(r => r.reverted).length;
+
+    const LABEL_MAP: Record<string, string> = {
+        studentId: 'Student ID', name: 'Name', class: 'Class', rollNo: 'Roll No',
+        parentName: 'Parent Name', parentPhone: 'Parent Phone', parentEmail: 'Parent Email',
+        totalFee: 'Total Fee', bookFee: 'Book Fee', academicYear: 'Academic Year',
+        amount: 'Amount', paymentDate: 'Payment Date', paymentMode: 'Payment Mode',
+        feeType: 'Fee Type', receiptNo: 'Receipt No', remarks: 'Remarks',
+        studentName: 'Student Name', recordedBy: 'Recorded By',
+    };
+    const formatLabel = (key: string) => LABEL_MAP[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+    const formatValue = (val: any): string => {
+        if (val === null || val === undefined) return '—';
+        if (typeof val === 'object' && val instanceof Date) return new Date(val).toLocaleDateString();
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(val)) return new Date(val).toLocaleDateString();
+        if (typeof val === 'object') return JSON.stringify(val);
+        return String(val);
+    };
+    const SKIP_KEYS = new Set(['_id', '__v', 'userId', 'isActive', 'feePayments', 'createdAt', 'updatedAt', 'leaves', 'salaryPayments']);
+
+    const renderDataSection = (title: string, data: any, color: string) => {
+        if (!data || typeof data !== 'object') return null;
+        const entries = Object.entries(data).filter(([k]) => !SKIP_KEYS.has(k));
+        if (entries.length === 0) return null;
+        return (
+            <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{title}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '4px 16px' }}>
+                    {entries.map(([k, v]) => (
+                        <div key={k} style={{ fontSize: 12, display: 'flex', gap: 6 }}>
+                            <span style={{ color: '#8996a4', minWidth: 100, fontWeight: 600 }}>{formatLabel(k)}:</span>
+                            <span style={{ color: '#1c232f', wordBreak: 'break-word' }}>{formatValue(v)}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const renderChangedFields = (oldData: any, newData: any) => {
+        if (!oldData || !newData) return null;
+        const allKeys = [...new Set([...Object.keys(oldData), ...Object.keys(newData)])].filter(k => !SKIP_KEYS.has(k));
+        const changed = allKeys.filter(k => JSON.stringify(oldData[k] ?? '') !== JSON.stringify(newData[k] ?? ''));
+        if (changed.length === 0) return null;
+        return (
+            <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#7267ef', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Changed Fields</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '4px 16px' }}>
+                    {changed.map(k => (
+                        <div key={k} style={{ fontSize: 12, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                            <span style={{ color: '#8996a4', minWidth: 100, fontWeight: 600 }}>{formatLabel(k)}:</span>
+                            <span style={{ color: '#ea4d4d', textDecoration: 'line-through' }}>{formatValue(oldData[k])}</span>
+                            <span style={{ color: '#8996a4' }}>→</span>
+                            <span style={{ color: '#17c666', fontWeight: 600 }}>{formatValue(newData[k])}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const renderLogDetails = (log: any) => {
+        const hasOld = log.oldData && typeof log.oldData === 'object' && Object.keys(log.oldData).length > 0;
+        const hasNew = log.newData && typeof log.newData === 'object' && Object.keys(log.newData).length > 0;
+        if (!hasOld && !hasNew) return <div style={{ fontSize: 12, color: '#8996a4', fontStyle: 'italic' }}>No additional details recorded for this entry.</div>;
+        return (
+            <div>
+                {hasOld && hasNew && renderChangedFields(log.oldData, log.newData)}
+                {hasOld && renderDataSection(hasNew ? 'Previous Data' : 'Data', log.oldData, '#ea4d4d')}
+                {hasNew && renderDataSection(hasOld ? 'New Data' : 'Data', log.newData, '#17c666')}
+            </div>
+        );
+    };
 
     return (
         <div style={S.page}>
@@ -673,6 +746,16 @@ export default function AdminPage() {
                                                     )}
                                                     {log.description && <div style={{ fontSize: 12, color: '#5b6b79', marginTop: 3 }}>{log.description}</div>}
                                                     {log.ipAddress && <div style={{ fontSize: 11, color: '#adb5c3', marginTop: 2 }}>IP: {log.ipAddress}</div>}
+                                                    <button
+                                                        onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
+                                                        style={{ background: 'none', border: 'none', color: '#7267ef', cursor: 'pointer', fontSize: 11, fontWeight: 700, padding: '4px 0', fontFamily: 'inherit', marginTop: 4 }}>
+                                                        {expandedLogId === log._id ? '▲ Hide Details' : '▼ View Details'}
+                                                    </button>
+                                                    {expandedLogId === log._id && (
+                                                        <div style={{ marginTop: 8, padding: '10px 12px', background: '#fff', borderRadius: 8, border: '1px solid #edf2f7' }}>
+                                                            {renderLogDetails(log)}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -701,17 +784,21 @@ export default function AdminPage() {
                                     <table style={S.table}>
                                         <thead>
                                             <tr>
-                                                {['Timestamp', 'User', 'Action', 'Module', 'Description', 'IP Address'].map(h => (
+                                                {['Timestamp', 'User', 'Action', 'Module', 'Description', 'IP Address', 'Details'].map(h => (
                                                     <th key={h} style={S.th}>{h}</th>
                                                 ))}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {activityLogs.map(log => (
-                                                <tr key={log._id}
+                                                <React.Fragment key={log._id}>
+                                                <tr
+                                                    tabIndex={0}
                                                     onMouseEnter={() => setHoveredRow(log._id)}
                                                     onMouseLeave={() => setHoveredRow(null)}
-                                                    style={{ background: hoveredRow === log._id ? '#f8f9fc' : 'transparent', transition: 'background 0.15s' }}>
+                                                    style={{ background: hoveredRow === log._id ? '#f8f9fc' : 'transparent', transition: 'background 0.15s', cursor: 'pointer' }}
+                                                    onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
+                                                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedLogId(expandedLogId === log._id ? null : log._id); } }}>
                                                     <td style={{ ...S.td, whiteSpace: 'nowrap', color: '#8996a4', fontSize: 12 }}>
                                                         {new Date(log.createdAt).toLocaleString()}
                                                     </td>
@@ -731,7 +818,18 @@ export default function AdminPage() {
                                                     <td style={{ ...S.td, fontSize: 12 }}>{log.module}</td>
                                                     <td style={{ ...S.td, fontSize: 12, maxWidth: 300 }}>{log.description || '—'}</td>
                                                     <td style={{ ...S.td, fontSize: 12, color: '#8996a4' }}>{log.ipAddress || '—'}</td>
+                                                    <td style={{ ...S.td, fontSize: 12, color: '#7267ef', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                                        {expandedLogId === log._id ? '▲ Hide' : '▼ Details'}
+                                                    </td>
                                                 </tr>
+                                                {expandedLogId === log._id && (
+                                                    <tr>
+                                                        <td colSpan={7} style={{ padding: '12px 20px', background: '#f8f9fc', borderBottom: '1px solid #edf2f7' }}>
+                                                            {renderLogDetails(log)}
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                                </React.Fragment>
                                             ))}
                                         </tbody>
                                     </table>
