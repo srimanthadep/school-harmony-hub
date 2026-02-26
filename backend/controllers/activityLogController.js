@@ -67,7 +67,7 @@ exports.exportActivityLogs = asyncHandler(async (req, res) => {
         return `"${str}"`;
     };
 
-    const header = ['Timestamp', 'User', 'Email', 'Role', 'Action', 'Module', 'Description', 'IP Address'];
+    const header = ['Timestamp', 'User', 'Email', 'Role', 'Action', 'Module', 'Description', 'IP Address', 'Old Data', 'New Data'];
     const rows = logs.map(log => [
         escape(new Date(log.createdAt).toISOString()),
         escape(log.performedBy?.name || ''),
@@ -76,7 +76,9 @@ exports.exportActivityLogs = asyncHandler(async (req, res) => {
         escape(log.action),
         escape(log.module),
         escape(log.description || ''),
-        escape(log.ipAddress || '')
+        escape(log.ipAddress || ''),
+        escape(log.oldData ? JSON.stringify(log.oldData) : ''),
+        escape(log.newData ? JSON.stringify(log.newData) : '')
     ]);
 
     const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n');

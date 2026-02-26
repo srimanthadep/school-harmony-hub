@@ -164,14 +164,23 @@ exports.updateStudent = asyncHandler(async (req, res) => {
         runValidators: true
     });
 
+    // Build list of changed fields for description
+    const oldPicked = _.pick(oldStudent.toObject(), Object.keys(validatedData));
+    const changedFields = Object.keys(validatedData).filter(
+        k => String(oldPicked[k] ?? '') !== String(validatedData[k] ?? '')
+    );
+    const changesText = changedFields.length
+        ? changedFields.map(k => `${k}: "${oldPicked[k] ?? ''}" → "${validatedData[k] ?? ''}"`).join(', ')
+        : 'no field changes detected';
+
     // Activity Log
     await ActivityLog.create({
         action: 'UPDATE_STUDENT',
         module: 'STUDENTS',
-        description: `Updated student: ${student.name}`,
+        description: `Updated student: ${student.name} (${student.studentId || student._id}) — Changed: ${changesText}`,
         performedBy: req.user.id,
         targetId: student._id,
-        oldData: _.pick(oldStudent.toObject(), Object.keys(validatedData)),
+        oldData: oldPicked,
         newData: validatedData
     });
 
@@ -194,9 +203,10 @@ exports.deleteStudent = asyncHandler(async (req, res) => {
     await ActivityLog.create({
         action: 'DELETE_STUDENT',
         module: 'STUDENTS',
-        description: `Archived student: ${student.name}`,
+        description: `Archived student: ${student.name} (${student.studentId || student._id}), Class: ${student.class}, Parent: ${student.parentName}`,
         performedBy: req.user.id,
-        targetId: student._id
+        targetId: student._id,
+        oldData: { name: student.name, studentId: student.studentId, class: student.class, rollNo: student.rollNo, parentName: student.parentName, parentPhone: student.parentPhone, totalFee: student.totalFee, academicYear: student.academicYear }
     });
 
     res.json({ success: true, message: 'Student deleted successfully' });
@@ -233,10 +243,18 @@ exports.recordPayment = asyncHandler(async (req, res) => {
     await ActivityLog.create({
         action: 'RECORD_PAYMENT',
         module: 'FINANCE',
-        description: `Recorded payment of ${payment.amount} for ${student.name} (Receipt: ${receiptNo})`,
+        description: `Recorded payment of ₹${payment.amount} for ${student.name} (${student.studentId || student._id}), Class: ${student.class}, Receipt: ${receiptNo}, Mode: ${payment.paymentMode}, Type: ${payment.feeType}`,
         performedBy: req.user.id,
         targetId: student._id,
-        newData: payment
+        newData: {
+            ...payment,
+            studentName: student.name,
+            studentId: student.studentId,
+            class: student.class,
+            rollNo: student.rollNo,
+            parentName: student.parentName,
+            parentPhone: student.parentPhone
+        }
     });
 
     res.status(201).json({
@@ -300,11 +318,11 @@ exports.editPayment = asyncHandler(async (req, res) => {
     await ActivityLog.create({
         action: 'EDIT_PAYMENT',
         module: 'FINANCE',
-        description: `Edited payment for ${student.name} (Receipt: ${payment.receiptNo})`,
+        description: `Edited payment for ${student.name} (${student.studentId || student._id}), Receipt: ${payment.receiptNo}, Class: ${student.class}`,
         performedBy: req.user.id,
         targetId: student._id,
-        oldData: oldPayment,
-        newData: payment.toObject()
+        oldData: { ...oldPayment, studentName: student.name, studentId: student.studentId, class: student.class },
+        newData: { ...payment.toObject(), studentName: student.name, studentId: student.studentId, class: student.class }
     });
 
     res.json({ success: true, message: 'Payment updated successfully', payment, student });
@@ -331,10 +349,10 @@ exports.deletePayment = asyncHandler(async (req, res) => {
     await ActivityLog.create({
         action: 'DELETE_PAYMENT',
         module: 'FINANCE',
-        description: `Deleted payment of ${payment.amount} for ${student.name} (Receipt: ${payment.receiptNo})`,
+        description: `Deleted payment of ₹${payment.amount} for ${student.name} (${student.studentId || student._id}), Receipt: ${payment.receiptNo}, Class: ${student.class}`,
         performedBy: req.user.id,
         targetId: student._id,
-        oldData: payment.toObject()
+        oldData: { ...payment.toObject(), studentName: student.name, studentId: student.studentId, class: student.class, parentName: student.parentName, parentPhone: student.parentPhone }
     });
 
     await DeletedRecord.create({
