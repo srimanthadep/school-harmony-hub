@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useNotifications } from '../context/NotificationContext';
 import { getCurrentAcademicYear } from '../utils/academicYear';
-import { MdSave, MdSettings, MdAccountBalance, MdMenuBook, MdLockOutline } from 'react-icons/md';
+import { MdSave, MdSettings, MdAccountBalance, MdMenuBook, MdLockOutline, MdUpload } from 'react-icons/md';
 import { Settings, FeeStructure, BookFeeStructure } from '../types';
 
 const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
@@ -22,6 +22,8 @@ export default function SettingsPage() {
     const [feeForm, setFeeForm] = useState<any>({});
     const [editBookFee, setEditBookFee] = useState<string | null>(null);
     const [bookFeeForm, setBookFeeForm] = useState<any>({});
+    const [logoUploading, setLogoUploading] = useState(false);
+    const logoInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         Promise.all([
@@ -49,6 +51,30 @@ export default function SettingsPage() {
             });
         } catch (err: any) { toast.error(err.response?.data?.message || 'Save failed'); }
         finally { setSaving(false); }
+    };
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) return toast.error('Please select an image file');
+        if (file.size > 2 * 1024 * 1024) return toast.error('Image must be smaller than 2 MB');
+        setLogoUploading(true);
+        try {
+            const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            await API.put('/settings', { logoUrl: base64 });
+            setSettings(s => s ? { ...s, logoUrl: base64 } : s);
+            toast.success('School logo updated!');
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Logo upload failed');
+        } finally {
+            setLogoUploading(false);
+            if (logoInputRef.current) logoInputRef.current.value = '';
+        }
     };
 
     const handleChangePassword = async (e: React.FormEvent) => {
@@ -208,6 +234,38 @@ export default function SettingsPage() {
                     <div className="card-header"><h2><MdSettings /> School Configuration</h2></div>
                     <form onSubmit={saveSettings}>
                         <div className="card-body">
+                            {/* School Logo */}
+                            <div className="form-section-title">School Branding</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
+                                <div style={{ width: 80, height: 80, borderRadius: 12, border: '2px dashed var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', flexShrink: 0 }}>
+                                    {settings.logoUrl ? (
+                                        <img src={settings.logoUrl} alt="School Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                    ) : (
+                                        <span style={{ fontSize: 32 }}>🏫</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>School Logo</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>PNG, JPG or SVG · max 2 MB · Used on receipts and reports</div>
+                                    <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => logoInputRef.current?.click()} disabled={logoUploading}>
+                                            <MdUpload /> {logoUploading ? 'Uploading…' : 'Upload Logo'}
+                                        </button>
+                                        {settings.logoUrl && (
+                                            <button type="button" className="btn btn-sm" style={{ color: '#ef4444', background: 'transparent', border: '1px solid #ef4444' }}
+                                                onClick={async () => {
+                                                    await API.put('/settings', { logoUrl: '' });
+                                                    setSettings(s => s ? { ...s, logoUrl: '' } : s);
+                                                    toast.success('Logo removed');
+                                                }}>
+                                                Remove
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="form-section-title">School Information</div>
                             <div className="form-grid">
                                 <div className="form-group">

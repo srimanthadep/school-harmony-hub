@@ -120,6 +120,7 @@ export interface Settings {
     salarySlipPrefix?: string;
     academicYear?: string;
     currency?: string;
+    logoUrl?: string;
     [key: string]: any;
 }
 
