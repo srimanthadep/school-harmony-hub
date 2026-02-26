@@ -349,20 +349,30 @@ export const exportStudentsPDF = (students, settings = {}) => {
 
     doc.autoTable({
         startY: 32,
-        head: [['ID', 'Name', 'Class', 'Roll', 'Parent', 'Phone', 'Total Fee', 'Paid', 'Pending', 'Status']],
-        body: students.map(s => [
-            s.studentId, s.name, s.class, s.rollNo,
-            s.parentName, s.parentPhone,
-            `₹${Number(s.totalFee).toLocaleString('en-IN')}`,
-            `₹${Number(s.totalPaid).toLocaleString('en-IN')}`,
-            `₹${Number(s.pendingAmount).toLocaleString('en-IN')}`,
-            (s.paymentStatus || 'unpaid').toUpperCase()
-        ]),
+        head: [['ID', 'Name', 'Class', 'Roll', 'Parent', 'Phone', 'Paid', 'Pending', 'Recent Payments']],
+        body: students.map(s => {
+            const lastThree = (s.feePayments || [])
+                .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
+                .slice(0, 3)
+                .map(p => `Rs.${p.amount} (${formatDate(p.paymentDate)})`)
+                .join('\n');
+
+            return [
+                s.studentId, s.name, s.class, s.rollNo,
+                s.parentName, s.parentPhone,
+                `Rs.${Number(s.totalPaid).toLocaleString('en-IN')}`,
+                `Rs.${Number(s.pendingAmount).toLocaleString('en-IN')}`,
+                lastThree || '-'
+            ];
+        }),
         headStyles: { fillColor: [26, 35, 126], textColor: 255, fontSize: 8, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 8, cellPadding: 2 },
+        bodyStyles: { fontSize: 7.5, cellPadding: 2 },
         alternateRowStyles: { fillColor: [248, 250, 255] },
         margin: { left: 8, right: 8 },
-        styles: { overflow: 'linebreak' }
+        styles: { overflow: 'linebreak' },
+        columnStyles: {
+            8: { cellWidth: 50, fontSize: 7 }
+        }
     });
 
     doc.save(`Student_Report_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.pdf`);
@@ -438,20 +448,30 @@ export const exportStaffPDF = (staff, settings = {}) => {
 
     doc.autoTable({
         startY: 32,
-        head: [['ID', 'Name', 'Role', 'Phone', 'Monthly Sal', 'Total Paid', 'Session', 'Joined', 'Status']],
-        body: staff.map(s => [
-            s.staffId, s.name, (s.role || '').toUpperCase(), s.phone,
-            `₹${Number(s.monthlySalary).toLocaleString('en-IN')}`,
-            `₹${Number(s.totalSalaryPaid).toLocaleString('en-IN')}`,
-            s.academicYear,
-            formatDate(s.joiningDate),
-            s.isActive ? 'ACTIVE' : 'INACTIVE'
-        ]),
+        head: [['ID', 'Name', 'Role', 'Phone', 'Monthly Sal', 'Total Paid', 'Session', 'Last 3 Payments']],
+        body: staff.map(s => {
+            const lastThreeSalaries = (s.salaryPayments || [])
+                .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
+                .slice(0, 3)
+                .map(p => `${p.month}: Rs.${p.amount}`)
+                .join('\n');
+
+            return [
+                s.staffId, s.name, (s.role || '').toUpperCase(), s.phone,
+                `Rs.${Number(s.monthlySalary).toLocaleString('en-IN')}`,
+                `Rs.${Number(s.totalSalaryPaid).toLocaleString('en-IN')}`,
+                s.academicYear,
+                lastThreeSalaries || '-'
+            ];
+        }),
         headStyles: { fillColor: [26, 35, 126], textColor: 255, fontSize: 8, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 8, cellPadding: 2 },
+        bodyStyles: { fontSize: 7.5, cellPadding: 2 },
         alternateRowStyles: { fillColor: [248, 250, 255] },
         margin: { left: 8, right: 8 },
-        styles: { overflow: 'linebreak' }
+        styles: { overflow: 'linebreak' },
+        columnStyles: {
+            7: { cellWidth: 45, fontSize: 7 }
+        }
     });
 
     doc.save(`Staff_Report_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.pdf`);
