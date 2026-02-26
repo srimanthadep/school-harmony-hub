@@ -368,10 +368,44 @@ export default function StudentsPage() {
                                 </button>
                             </div>
                         )}
-                        <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsExcel(students)}>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            disabled={isLoading}
+                            onClick={async () => {
+                                const loadingToast = toast.loading('Preparing Excel export...');
+                                try {
+                                    const params: any = { limit: 1000 }; // High limit to get all
+                                    if (classFilter) params.class = classFilter;
+                                    if (yearFilter) params.academicYear = yearFilter;
+                                    if (search) params.search = search;
+                                    const res = await API.get('/students', { params });
+                                    exportStudentsExcel(res.data.students);
+                                    toast.success('Excel exported!', { id: loadingToast });
+                                } catch (err) {
+                                    toast.error('Export failed', { id: loadingToast });
+                                }
+                            }}
+                        >
                             <MdTableChart /> Excel
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => exportStudentsPDF(sortedStudents, settings)}>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            disabled={isLoading}
+                            onClick={async () => {
+                                const loadingToast = toast.loading('Preparing PDF report...');
+                                try {
+                                    const params: any = { limit: 1000 };
+                                    if (classFilter) params.class = classFilter;
+                                    if (yearFilter) params.academicYear = yearFilter;
+                                    if (search) params.search = search;
+                                    const res = await API.get('/students', { params });
+                                    exportStudentsPDF(res.data.students, settings);
+                                    toast.success('PDF exported!', { id: loadingToast });
+                                } catch (err) {
+                                    toast.error('Export failed', { id: loadingToast });
+                                }
+                            }}
+                        >
                             <MdPictureAsPdf /> PDF
                         </button>
                         {(isAdmin || isOwner) && (

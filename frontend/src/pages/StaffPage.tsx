@@ -417,10 +417,44 @@ export default function StaffPage() {
                     </div>
                     <div style={{ display: 'flex', gap: 10 }}>
                         <div className="btn-group">
-                            <button className="btn btn-secondary" onClick={() => exportStaffExcel(filteredStaff)} title="Export to Excel">
+                            <button
+                                className="btn btn-secondary"
+                                disabled={isLoading}
+                                onClick={async () => {
+                                    const loadingToast = toast.loading('Exporting all staff to Excel...');
+                                    try {
+                                        const params: any = { limit: 1000 };
+                                        if (roleFilter) params.role = roleFilter;
+                                        if (yearFilter) params.academicYear = yearFilter;
+                                        const res = await API.get('/staff', { params });
+                                        exportStaffExcel(res.data.staff);
+                                        toast.success('Excel ready!', { id: loadingToast });
+                                    } catch {
+                                        toast.error('Export failed', { id: loadingToast });
+                                    }
+                                }}
+                                title="Export to Excel"
+                            >
                                 <MdTableChart />
                             </button>
-                            <button className="btn btn-secondary" onClick={() => exportStaffPDF(filteredStaff)} title="Export to PDF">
+                            <button
+                                className="btn btn-secondary"
+                                disabled={isLoading}
+                                onClick={async () => {
+                                    const loadingToast = toast.loading('Exporting all staff to PDF...');
+                                    try {
+                                        const params: any = { limit: 1000 };
+                                        if (roleFilter) params.role = roleFilter;
+                                        if (yearFilter) params.academicYear = yearFilter;
+                                        const res = await API.get('/staff', { params });
+                                        exportStaffPDF(res.data.staff, settings);
+                                        toast.success('PDF ready!', { id: loadingToast });
+                                    } catch {
+                                        toast.error('Export failed', { id: loadingToast });
+                                    }
+                                }}
+                                title="Export to PDF"
+                            >
                                 <MdPictureAsPdf />
                             </button>
                         </div>
