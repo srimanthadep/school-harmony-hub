@@ -281,39 +281,49 @@ export const generateSalarySlipPDF = async (staff, payment, settings = {}) => {
 
 // ── Export Students Excel ────────────────────────────────────────────
 export const exportStudentsExcel = (students) => {
-    const data = students.map(s => ({
-        'Student ID': s.studentId,
-        'Name': s.name,
-        'Class': s.class,
+    const data = students.map(s => {
+        const row = {
+            'Student ID': s.studentId,
+            'Name': s.name,
+            'Class': s.class,
+            'Roll No': s.rollNo,
+            'Gender': s.gender,
+            'Parent Name': s.parentName,
+            'Parent Phone': s.parentPhone,
+            'Parent Email': s.parentEmail || '',
+            'Total Fee': s.totalFee,
+            'Total Paid': s.totalPaid,
+            'Pending Amount': s.pendingAmount,
+            'Payment Status': (s.paymentStatus || 'unpaid').toUpperCase(),
+            'Admission Date': formatDate(s.admissionDate)
+        };
 
-        'Roll No': s.rollNo,
-        'Gender': s.gender,
-        'Parent Name': s.parentName,
-        'Parent Phone': s.parentPhone,
-        'Parent Email': s.parentEmail || '',
-        'Total Fee': s.totalFee,
-        'Total Paid': s.totalPaid,
-        'Pending Amount': s.pendingAmount,
-        'Payment Status': s.paymentStatus,
-        'Admission Date': formatDate(s.admissionDate)
-    }));
+        if (s.feePayments && s.feePayments.length > 0) {
+            const sortedPayments = [...s.feePayments].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+            row['Payment History (Concatenated)'] = sortedPayments
+                .map(p => `₹${p.amount} (${p.receiptNo})`)
+                .join('; ');
+
+            sortedPayments.slice(0, 15).forEach((p, idx) => {
+                row[`Payment ${idx + 1}`] = `₹${p.amount} on ${formatDate(p.paymentDate)} [Ref: ${p.receiptNo}]`;
+            });
+        }
+
+        return row;
+    });
 
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Students');
 
-    // Style header row
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let C = range.s.c; C <= range.e.c; C++) {
-        const addr = XLSX.utils.encode_cell({ r: 0, c: C });
-        if (!ws[addr]) continue;
-        ws[addr].s = { font: { bold: true }, fill: { fgColor: { rgb: '1a237e' } } };
-    }
-
-    ws['!cols'] = [
+    const cols = [
         { wch: 12 }, { wch: 22 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
-        { wch: 22 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 }
+        { wch: 22 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
+        { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 40 }
     ];
+    for (let i = 0; i < 15; i++) cols.push({ wch: 35 });
+    ws['!cols'] = cols;
 
     XLSX.writeFile(wb, `Students_Export_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.xlsx`);
 };
@@ -360,26 +370,49 @@ export const exportStudentsPDF = (students, settings = {}) => {
 
 // ── Export Staff Excel ───────────────────────────────────────────────
 export const exportStaffExcel = (staff) => {
-    const data = staff.map(s => ({
-        'Staff ID': s.staffId,
-        'Name': s.name,
-        'Role': (s.role || '').replace('_', ' ').toUpperCase(),
-        'Phone': s.phone,
-        'Monthly Salary': s.monthlySalary,
-        'Total Paid': s.totalSalaryPaid,
-        'Academic Year': s.academicYear,
-        'Joining Date': formatDate(s.joiningDate),
-        'Status': s.isActive ? 'Active' : 'Inactive'
-    }));
+    const data = staff.map(s => {
+        const row = {
+            'Staff ID': s.staffId,
+            'Name': s.name,
+            'Role': (s.role || '').replace('_', ' ').toUpperCase(),
+            'Phone': s.phone,
+            'Monthly Salary': s.monthlySalary,
+            'Total Paid': s.totalSalaryPaid || 0,
+            'Academic Year': s.academicYear,
+            'Joining Date': formatDate(s.joiningDate),
+            'Status': s.isActive ? 'Active' : 'Inactive'
+        };
+
+        // Add detailed payment history
+        if (s.salaryPayments && s.salaryPayments.length > 0) {
+            const sortedPayments = [...s.salaryPayments].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+            // Add a summary string
+            row['Payment History (Concatenated)'] = sortedPayments
+                .map(p => `${p.month}: ₹${p.amount}`)
+                .join('; ');
+
+            // Add last 12 payments as separate columns
+            sortedPayments.slice(0, 12).forEach((p, idx) => {
+                row[`Payment ${idx + 1}`] = `${p.month}: ₹${p.amount} (${formatDate(p.paymentDate)})`;
+            });
+        }
+
+        return row;
+    });
 
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Staff');
 
-    ws['!cols'] = [
+    // Adjust column widths
+    const cols = [
         { wch: 12 }, { wch: 22 }, { wch: 18 }, { wch: 14 }, { wch: 14 },
-        { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 10 }
+        { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 40 }
     ];
+    // Add widths for dynamic payment columns
+    for (let i = 0; i < 12; i++) cols.push({ wch: 30 });
+    ws['!cols'] = cols;
 
     XLSX.writeFile(wb, `Staff_Export_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.xlsx`);
 };
