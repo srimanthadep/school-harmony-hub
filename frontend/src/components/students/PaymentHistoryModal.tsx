@@ -64,7 +64,7 @@ export default function PaymentHistoryModal({
                                                 <th>Type</th>
                                                 <th>Date</th>
                                                 <th>Mode</th>
-                                                <th>Remarks</th>
+                                                <th>Fee Receipt Change</th>
                                                 <th>Download</th>
                                                 {isOwner && (
                                                     <>

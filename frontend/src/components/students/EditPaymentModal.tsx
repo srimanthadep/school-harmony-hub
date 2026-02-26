@@ -63,7 +63,7 @@ export default function EditPaymentModal({
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Remarks</label>
+                                <label className="form-label">Fee Receipt Change</label>
                                 <input className="form-control"
                                     value={editForm.remarks}
                                     onChange={e => onFormChange({ ...editForm, remarks: e.target.value })}
