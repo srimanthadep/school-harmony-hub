@@ -19,7 +19,7 @@ const app = express();
 app.use(compression());
 app.use(helmet());
 
-const whitelist = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.0.184:5174', 'http://localhost:8080'];
+const whitelist = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.0.184:5174', 'http://localhost:8080', 'https://oxfordschool.cc', 'https://www.oxfordschool.cc', 'https://admin.oxfordschool.cc'];
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || whitelist.indexOf(origin) !== -1) {
