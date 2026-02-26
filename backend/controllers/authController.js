@@ -54,12 +54,12 @@ exports.login = async (req, res) => {
 
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+            return res.status(401).json({ success: false, message: 'User not found' });
         }
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+            return res.status(401).json({ success: false, message: 'Incorrect password' });
         }
 
         if (!user.isActive) {

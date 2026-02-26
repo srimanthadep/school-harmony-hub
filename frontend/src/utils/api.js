@@ -18,9 +18,12 @@ API.interceptors.response.use(
     response => response,
     error => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('sfm_token');
-            localStorage.removeItem('sfm_user');
-            window.location.href = '/login';
+            // If it's not a login request, clear data and redirect
+            if (!error.config.url.includes('/auth/login')) {
+                localStorage.removeItem('sfm_token');
+                localStorage.removeItem('sfm_user');
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }
