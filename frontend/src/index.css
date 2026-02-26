@@ -2343,18 +2343,18 @@ input[type="number"] {
 /* ===== BOTTOM NAV (Phone only) ===== */
 @media (max-width: 768px) {
   .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     height: 60px;
-    background: var(--bg-primary, #fff);
+    background: var(--bg-secondary, #fff) !important;
     border-top: 1px solid var(--border, #e2e8f0);
     display: flex;
     justify-content: space-around;
     align-items: center;
-    z-index: 900;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+    z-index: 999 !important;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 

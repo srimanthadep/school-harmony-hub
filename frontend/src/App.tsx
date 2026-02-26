@@ -193,16 +193,16 @@ function AdminLayout({ children, pageTitle, pageSubtitle }) {
                         </motion.div>
                     </AnimatePresence>
                 </main>
-                {/* Mobile Bottom Nav */}
-                <nav className="bottom-nav">
-                    {NAV_ITEMS.map(item => (
-                        <NavLink key={item.path} to={item.path} className={({ isActive }) => isActive ? 'active' : ''}>
-                            {item.icon}
-                            {item.label}
-                        </NavLink>
-                    ))}
-                </nav>
             </div>
+            {/* Mobile Bottom Nav */}
+            <nav className="bottom-nav">
+                {NAV_ITEMS.map(item => (
+                    <NavLink key={item.path} to={item.path} className={({ isActive }) => isActive ? 'active' : ''}>
+                        {item.icon}
+                        {item.label}
+                    </NavLink>
+                ))}
+            </nav>
         </div>
     );
 }
