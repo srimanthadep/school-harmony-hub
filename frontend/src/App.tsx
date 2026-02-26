@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -8,18 +8,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDarkMode } from './hooks/useDarkMode';
 import NotificationBell from './components/NotificationBell';
 
-// Pages
-import LoginPage from './pages/LoginPage';
-import Dashboard from './pages/Dashboard';
-import StudentsPage from './pages/StudentsPage';
-import StaffPage from './pages/StaffPage';
-import ReportsPage from './pages/ReportsPage';
-import SettingsPage from './pages/SettingsPage';
-import AdminPage from './pages/AdminPage';
-import StaffPortal from './pages/StaffPortal';
-import StudentPortal from './pages/StudentPortal';
-import ExpensePage from './pages/ExpensePage';
-import AttendancePage from './pages/AttendancePage';
+// Lazy Loaded Pages
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const StudentsPage = lazy(() => import('./pages/StudentsPage'));
+const StaffPage = lazy(() => import('./pages/StaffPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const StaffPortal = lazy(() => import('./pages/StaffPortal'));
+const StudentPortal = lazy(() => import('./pages/StudentPortal'));
+const ExpensePage = lazy(() => import('./pages/ExpensePage'));
+const AttendancePage = lazy(() => import('./pages/AttendancePage'));
 
 // Icons
 import {
@@ -349,7 +349,9 @@ export default function App() {
             <AuthProvider>
                 <NotificationProvider>
                     <BrowserRouter>
-                        <AppRoutes />
+                        <Suspense fallback={<div className="loading-spinner"><div className="spinner" /></div>}>
+                            <AppRoutes />
+                        </Suspense>
                         <Toaster
                             position="top-right"
                             toastOptions={{

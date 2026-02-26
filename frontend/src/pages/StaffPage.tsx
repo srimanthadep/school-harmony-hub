@@ -62,7 +62,7 @@ export default function StaffPage() {
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [yearFilter, setYearFilter] = useState(getCurrentAcademicYear());
-    const [sortField, setSortField] = useState('name');
+    const [sortField, setSortField] = useState('staffId');
     const [sortDir, setSortDir] = useState(1);
 
     // Form Modal State
@@ -130,6 +130,9 @@ export default function StaffPage() {
 
     const sortedStaff = useMemo(() => {
         return [...staff].sort((a, b) => {
+            if (sortField === 'staffId') {
+                return (a.staffId || '').localeCompare(b.staffId || '', undefined, { numeric: true }) * sortDir;
+            }
             if (sortField === 'status') {
                 const av = STATUS_ORDER[getStatus(a)] ?? 0;
                 const bv = STATUS_ORDER[getStatus(b)] ?? 0;
@@ -146,6 +149,7 @@ export default function StaffPage() {
             const bv = sortField === 'monthlySalary' ? b.monthlySalary
                 : sortField === 'totalSalaryPaid' ? b.totalSalaryPaid
                     : (b[sortField as keyof Staff] || '');
+
             if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * sortDir;
             return String(av).localeCompare(String(bv)) * sortDir;
         });

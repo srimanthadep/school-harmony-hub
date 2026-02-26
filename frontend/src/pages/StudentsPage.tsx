@@ -103,7 +103,7 @@ export default function StudentsPage() {
     const [classFilter, setClassFilter] = useState('');
     const [yearFilter, setYearFilter] = useState(getCurrentAcademicYear());
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-    const [sortField, setSortField] = useState('name');
+    const [sortField, setSortField] = useState('rollNo');
     const [sortDir, setSortDir] = useState(1);
 
     const debouncedSearch = useMemo(
@@ -137,7 +137,20 @@ export default function StudentsPage() {
     const totalStudents = data?.total || 0;
 
     const sortedStudents = useMemo(() => {
+        const classOrder = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
         return [...students].sort((a: any, b: any) => {
+            if (sortField === 'rollNo') {
+                const classA = classOrder.indexOf(a.class);
+                const classB = classOrder.indexOf(b.class);
+                if (classA !== classB) return (classA - classB) * sortDir;
+                return (a.rollNo || '').localeCompare(b.rollNo || '', undefined, { numeric: true }) * sortDir;
+            }
+            if (sortField === 'class') {
+                const classA = classOrder.indexOf(a.class);
+                const classB = classOrder.indexOf(b.class);
+                if (classA !== classB) return (classA - classB) * sortDir;
+                return (a.rollNo || '').localeCompare(b.rollNo || '', undefined, { numeric: true }) * sortDir;
+            }
             let valA = a[sortField];
             let valB = b[sortField];
             if (typeof valA === 'string') valA = valA.toLowerCase();

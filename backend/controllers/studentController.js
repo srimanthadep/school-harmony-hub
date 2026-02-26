@@ -29,17 +29,68 @@ exports.getStudents = asyncHandler(async (req, res) => {
 
     const students = await Student.find(query)
         .sort({ class: 1, rollNo: 1 })
+        .collation({ locale: 'en_US', numericOrdering: true })
         .skip((page - 1) * limit)
-        .limit(parseInt(limit));
+        .limit(parseInt(limit))
+        .lean();
+
+    // Manually attach virtual fields for lean objects
+    const studentsWithVirtuals = students.map(s => {
+        const tuitionPaid = (s.feePayments || [])
+            .filter(p => !p.feeType || p.feeType === 'tuition')
+            .reduce((sum, p) => sum + p.amount, 0);
+
+        const bookPaid = (s.feePayments || [])
+            .filter(p => p.feeType === 'book')
+            .reduce((sum, p) => sum + p.amount, 0);
+
+        const totalPaid = tuitionPaid;
+        const pendingAmount = s.totalFee - totalPaid;
+        const totalBookPaid = bookPaid;
+        const pendingBookAmount = (s.totalBookFee || 0) - totalBookPaid;
+
+        // Tuition specific status
+        let tuitionStatus = 'unpaid';
+        if (tuitionPaid >= s.totalFee) tuitionStatus = 'paid';
+        else if (tuitionPaid > 0) tuitionStatus = 'partial';
+
+        // Book specific status
+        let bookStatus = 'unpaid';
+        const totalBook = s.totalBookFee || 0;
+        if (totalBook > 0) {
+            if (bookPaid >= totalBook) bookStatus = 'paid';
+            else if (bookPaid > 0) bookStatus = 'partial';
+        } else {
+            bookStatus = 'na';
+        }
+
+        const paid = tuitionPaid + bookPaid;
+        const total = s.totalFee + (s.totalBookFee || 0);
+        let paymentStatus = 'unpaid';
+        if (paid >= total) paymentStatus = 'paid';
+        else if (paid > 0) paymentStatus = 'partial';
+
+        return {
+            ...s,
+            totalPaid,
+            pendingAmount,
+            totalBookPaid,
+            pendingBookAmount,
+            paymentStatus,
+            tuitionStatus,
+            bookStatus,
+            libraryStatus: bookStatus
+        };
+    });
 
     const total = await Student.countDocuments(query);
 
     res.json({
         success: true,
-        count: students.length,
+        count: studentsWithVirtuals.length,
         total,
         pages: Math.ceil(total / limit),
-        students
+        students: studentsWithVirtuals
     });
 });
 
@@ -480,7 +531,23 @@ exports.bulkDeleteStudents = asyncHandler(async (req, res) => {
 exports.getStudentStats = asyncHandler(async (req, res) => {
     const stats = await Student.aggregate([
         { $match: { isActive: true } },
-        { $addFields: { paidNow: { $sum: "$feePayments.amount" } } },
+        {
+            $addFields: {
+                paidNow: {
+                    $reduce: {
+                        input: {
+                            $filter: {
+                                input: { $ifNull: ["$feePayments", []] },
+                                as: "p",
+                                cond: { $or: [{ $eq: ["$$p.feeType", "tuition"] }, { $not: ["$$p.feeType"] }] }
+                            }
+                        },
+                        initialValue: 0,
+                        in: { $add: ["$$value", "$$p.amount"] }
+                    }
+                }
+            }
+        },
         {
             $group: {
                 _id: "$class",

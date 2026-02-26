@@ -9,12 +9,14 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+const compression = require('compression');
 const { initBackupService } = require('./services/backupService');
 initBackupService();
 
 const app = express();
 
-// Security middleware
+// Performance and Security middleware
+app.use(compression());
 app.use(helmet());
 
 const whitelist = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.0.184:5174', 'http://localhost:8080'];

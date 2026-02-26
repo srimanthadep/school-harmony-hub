@@ -212,7 +212,7 @@ exports.getDashboard = async (req, res) => {
 // @access  Admin
 exports.getPendingFees = async (req, res) => {
     try {
-        const { class: cls, startDate, endDate } = req.query;
+        const { class: cls, startDate, endDate, page = 1, limit = 50 } = req.query;
         const match = { isActive: true };
         if (cls) match.class = cls;
 
@@ -222,44 +222,115 @@ exports.getPendingFees = async (req, res) => {
             if (endDate) match.createdAt.$lte = new Date(endDate);
         }
 
-        const pendingStudents = await Student.aggregate([
-            { $match: match },
-            {
-                $addFields: {
-                    totalPaid: { $sum: "$feePayments.amount" }
-                }
-            },
-            {
-                $addFields: {
-                    pendingAmount: { $subtract: ["$totalFee", "$totalPaid"] }
-                }
-            },
-            { $match: { pendingAmount: { $gt: 0 } } },
-            { $sort: { pendingAmount: -1 } },
-            {
-                $project: {
-                    _id: 1,
-                    studentId: 1,
-                    name: 1,
-                    class: 1,
-                    rollNo: 1,
-                    parentPhone: 1,
-                    totalFee: 1,
-                    totalPaid: 1,
-                    pendingAmount: 1,
-                    paymentStatus: {
-                        $cond: [
-                            { $eq: ["$totalPaid", 0] }, "unpaid", "partial"
-                        ]
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const limitNum = parseInt(limit);
+
+        const [pendingStudents, totalCountResult] = await Promise.all([
+            Student.aggregate([
+                { $match: match },
+                {
+                    $addFields: {
+                        totalPaid: {
+                            $sum: {
+                                $filter: {
+                                    input: { $ifNull: ["$feePayments", []] },
+                                    as: "p",
+                                    cond: { $or: [{ $eq: ["$$p.feeType", "tuition"] }, { $not: ["$$p.feeType"] }] }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    $addFields: {
+                        // totalPaid is now just a filtered array, need to sum the amounts
+                        tuitionPaidSum: {
+                            $reduce: {
+                                input: {
+                                    $filter: {
+                                        input: { $ifNull: ["$feePayments", []] },
+                                        as: "p",
+                                        cond: { $or: [{ $eq: ["$$p.feeType", "tuition"] }, { $not: ["$$p.feeType"] }] }
+                                    }
+                                },
+                                initialValue: 0,
+                                in: { $add: ["$$value", "$$p.amount"] }
+                            }
+                        }
+                    }
+                },
+                {
+                    $addFields: {
+                        pendingAmount: { $subtract: ["$totalFee", "$tuitionPaidSum"] }
+                    }
+                },
+                { $match: { pendingAmount: { $gt: 0 } } },
+                {
+                    $addFields: {
+                        classOrder: {
+                            $indexOfArray: [
+                                ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'],
+                                "$class"
+                            ]
+                        }
+                    }
+                },
+                { $sort: { classOrder: 1, rollNo: 1 } },
+                { $skip: skip },
+                { $limit: limitNum },
+                {
+                    $project: {
+                        _id: 1,
+                        studentId: 1,
+                        name: 1,
+                        class: 1,
+                        rollNo: 1,
+                        parentPhone: 1,
+                        totalFee: 1,
+                        totalPaid: "$tuitionPaidSum",
+                        pendingAmount: 1,
+                        paymentStatus: {
+                            $cond: [
+                                { $eq: ["$tuitionPaidSum", 0] }, "unpaid", "partial"
+                            ]
+                        }
                     }
                 }
-            }
+            ]),
+            Student.aggregate([
+                { $match: match },
+                {
+                    $addFields: {
+                        tuitionPaidSum: {
+                            $reduce: {
+                                input: {
+                                    $filter: {
+                                        input: { $ifNull: ["$feePayments", []] },
+                                        as: "p",
+                                        cond: { $or: [{ $eq: ["$$p.feeType", "tuition"] }, { $not: ["$$p.feeType"] }] }
+                                    }
+                                },
+                                initialValue: 0,
+                                in: { $add: ["$$value", "$$p.amount"] }
+                            }
+                        }
+                    }
+                },
+                { $addFields: { pendingAmount: { $subtract: ["$totalFee", "$tuitionPaidSum"] } } },
+                { $match: { pendingAmount: { $gt: 0 } } },
+                { $group: { _id: null, count: { $sum: 1 }, totalPending: { $sum: "$pendingAmount" } } }
+            ])
         ]);
+
+        const totalData = totalCountResult[0] || { count: 0, totalPending: 0 };
 
         res.json({
             success: true,
             count: pendingStudents.length,
-            totalPending: pendingStudents.reduce((s, st) => s + st.pendingAmount, 0),
+            total: totalData.count,
+            pages: Math.ceil(totalData.count / limitNum),
+            currentPage: parseInt(page),
+            totalPending: totalData.totalPending,
             pendingStudents
         });
     } catch (err) {
@@ -308,7 +379,17 @@ exports.getClasswiseFees = async (req, res) => {
                     unpaidCount: 1
                 }
             },
-            { $sort: { class: 1 } }
+            {
+                $addFields: {
+                    classOrder: {
+                        $indexOfArray: [
+                            ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'],
+                            "$_id"
+                        ]
+                    }
+                }
+            },
+            { $sort: { classOrder: 1 } }
         ]);
 
         res.json({ success: true, report });
@@ -323,7 +404,7 @@ exports.getClasswiseFees = async (req, res) => {
 exports.getSalaryReport = async (req, res) => {
     try {
         const { month } = req.query;
-        const staff = await Staff.find({ isActive: true });
+        const staff = await Staff.find({ isActive: true }).sort({ staffId: 1 });
 
         const report = staff.map(s => {
             const filteredPayments = month
@@ -402,7 +483,11 @@ exports.getMonthlyReport = async (req, res) => {
         const report = Object.values(monthlyStats).map(item => ({
             ...item,
             net: item.income - item.expense
-        })).sort((a, b) => new Date(b.month) - new Date(a.month));
+        })).sort((a, b) => {
+            const dateA = new Date(a.month.split(' ')[1], months.indexOf(a.month.split(' ')[0]));
+            const dateB = new Date(b.month.split(' ')[1], months.indexOf(b.month.split(' ')[0]));
+            return dateB.getTime() - dateA.getTime();
+        });
 
         res.json({ success: true, report });
     } catch (err) {

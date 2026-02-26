@@ -80,10 +80,10 @@ export default function AttendancePage() {
     const students: AttendanceStudent[] = (data?.students || []).map((s: any) => ({
         _id: s._id,
         name: s.name,
-        rollNo: s.rollNo || s.staffId || '',
+        rollNo: s.rollNo || '',
         class: s.class || '',
         gender: s.gender || 'male',
-    }));
+    })).sort((a: AttendanceStudent, b: AttendanceStudent) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true }));
 
     // Staff list for mark mode
     const staffMembers: AttendanceStudent[] = (staffData?.staff || []).map((s: any) => ({
@@ -92,7 +92,7 @@ export default function AttendancePage() {
         rollNo: s.staffId || '',
         class: s.role ? s.role.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : '',
         gender: s.gender || 'male',
-    }));
+    })).sort((a: AttendanceStudent, b: AttendanceStudent) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true }));
 
     const activeList = mode === 'mark-staff' ? staffMembers : students;
 
@@ -145,7 +145,7 @@ export default function AttendancePage() {
     const allStudents: AttendanceStudent[] = (allStudentsData?.students || []).map((s: any) => ({
         _id: s._id,
         name: s.name,
-        rollNo: s.rollNo || s.staffId || '',
+        rollNo: s.rollNo || '',
         class: s.class || '',
         gender: s.gender || 'male',
     }));
@@ -163,11 +163,25 @@ export default function AttendancePage() {
     const viewRecords: { studentId: string; status: 'present' | 'absent' }[] =
         viewAttendanceData?.attendance?.records || [];
 
-    const filteredViewRecords = (viewType === 'staff' || viewClass === 'All')
+    const filteredViewRecords = ((viewType === 'staff' || viewClass === 'All')
         ? viewRecords
         : viewRecords.filter((record) => {
             const student = viewPeople.find((s) => s._id === record.studentId);
             return student?.class === viewClass;
+        })).sort((a: any, b: any) => {
+            const classOrder = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+            const pA = viewPeople.find(p => p._id === a.studentId);
+            const pB = viewPeople.find(p => p._id === b.studentId);
+            if (!pA || !pB) return 0;
+            if (viewType === 'staff') {
+                return (pA.rollNo || '').localeCompare(pB.rollNo || '', undefined, { numeric: true });
+            }
+            if (pA.class !== pB.class) {
+                const idxA = classOrder.indexOf(pA.class || '');
+                const idxB = classOrder.indexOf(pB.class || '');
+                return idxA - idxB;
+            }
+            return (pA.rollNo || '').localeCompare(pB.rollNo || '', undefined, { numeric: true });
         });
 
     const viewPresent = filteredViewRecords.filter((r) => r.status === 'present').length;
@@ -437,213 +451,213 @@ export default function AttendancePage() {
 
             {/* Mark Student Attendance Mode */}
             {mode === 'mark-student' && (<>
-            {/* Class Filter */}
-            <div className="card glass" style={{ padding: '16px 20px', marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <MdFilterList style={{ color: 'var(--text-muted)', fontSize: 18 }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Class:</span>
-                    {CLASSES.map((cls) => (
-                        <button
-                            key={cls}
-                            onClick={() => { setSelectedClass(cls); reset(); }}
-                            style={{
-                                padding: '6px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
-                                background: selectedClass === cls ? 'var(--primary)' : 'var(--bg-primary)',
-                                color: selectedClass === cls ? 'white' : 'var(--text-secondary)',
-                                transition: 'all 0.2s',
-                            }}
-                        >
-                            {cls}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Loading State */}
-            {isLoading ? (
-                <div className="loading-spinner"><div className="spinner" /></div>
-            ) : totalStudents === 0 ? (
-                <div className="card glass">
-                    <div className="empty-state">
-                        <div className="empty-state-icon">📋</div>
-                        <h3>No Students Found</h3>
-                        <p>No students are enrolled in <strong>{selectedClass}</strong> for {academicYear}.</p>
+                {/* Class Filter */}
+                <div className="card glass" style={{ padding: '16px 20px', marginBottom: 24 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <MdFilterList style={{ color: 'var(--text-muted)', fontSize: 18 }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Class:</span>
+                        {CLASSES.map((cls) => (
+                            <button
+                                key={cls}
+                                onClick={() => { setSelectedClass(cls); reset(); }}
+                                style={{
+                                    padding: '6px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
+                                    background: selectedClass === cls ? 'var(--primary)' : 'var(--bg-primary)',
+                                    color: selectedClass === cls ? 'white' : 'var(--text-secondary)',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                {cls}
+                            </button>
+                        ))}
                     </div>
                 </div>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {!isComplete ? (
-                        <>
-                            {/* Progress */}
-                            <div style={{ width: '100%', marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
-                                    <span>{markedCount} of {totalStudents} students</span>
-                                    <span>{totalStudents > 0 ? Math.round((markedCount / totalStudents) * 100) : 0}%</span>
-                                </div>
-                                <div style={{ height: 8, borderRadius: 99, background: 'var(--bg-primary)', overflow: 'hidden' }}>
-                                    <div style={{
-                                        height: '100%', borderRadius: 99,
-                                        background: 'linear-gradient(90deg, var(--primary), #4f46e5)',
-                                        width: `${totalStudents > 0 ? (markedCount / totalStudents) * 100 : 0}%`,
-                                        transition: 'width 0.3s ease',
-                                    }} />
-                                </div>
-                            </div>
 
-                            {/* Swipe Area */}
-                            <div style={{
-                                position: 'relative', height: 400, width: '100%', maxWidth: 360,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
-                            }}>
-                                {currentStudent && (
-                                    <SwipeCard
-                                        key={currentStudent._id}
-                                        student={currentStudent}
-                                        onSwipe={markAttendance}
-                                    />
+                {/* Loading State */}
+                {isLoading ? (
+                    <div className="loading-spinner"><div className="spinner" /></div>
+                ) : totalStudents === 0 ? (
+                    <div className="card glass">
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📋</div>
+                            <h3>No Students Found</h3>
+                            <p>No students are enrolled in <strong>{selectedClass}</strong> for {academicYear}.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        {!isComplete ? (
+                            <>
+                                {/* Progress */}
+                                <div style={{ width: '100%', marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                                        <span>{markedCount} of {totalStudents} students</span>
+                                        <span>{totalStudents > 0 ? Math.round((markedCount / totalStudents) * 100) : 0}%</span>
+                                    </div>
+                                    <div style={{ height: 8, borderRadius: 99, background: 'var(--bg-primary)', overflow: 'hidden' }}>
+                                        <div style={{
+                                            height: '100%', borderRadius: 99,
+                                            background: 'linear-gradient(90deg, var(--primary), #4f46e5)',
+                                            width: `${totalStudents > 0 ? (markedCount / totalStudents) * 100 : 0}%`,
+                                            transition: 'width 0.3s ease',
+                                        }} />
+                                    </div>
+                                </div>
+
+                                {/* Swipe Area */}
+                                <div style={{
+                                    position: 'relative', height: 400, width: '100%', maxWidth: 360,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+                                }}>
+                                    {currentStudent && (
+                                        <SwipeCard
+                                            key={currentStudent._id}
+                                            student={currentStudent}
+                                            onSwipe={markAttendance}
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Action Buttons */}
+                                <SwipeActions
+                                    onPresent={() => markAttendance('present')}
+                                    onAbsent={() => markAttendance('absent')}
+                                />
+
+                                {/* Undo */}
+                                {markedCount > 0 && (
+                                    <button
+                                        onClick={undo}
+                                        style={{
+                                            marginTop: 16, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
+                                            fontWeight: 600, color: 'var(--text-muted)', background: 'none', border: 'none',
+                                            cursor: 'pointer', transition: 'color 0.2s',
+                                        }}
+                                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                    >
+                                        <MdUndo size={16} /> Undo last
+                                    </button>
                                 )}
-                            </div>
 
-                            {/* Action Buttons */}
-                            <SwipeActions
-                                onPresent={() => markAttendance('present')}
-                                onAbsent={() => markAttendance('absent')}
+                                {/* Hint */}
+                                <p style={{ marginTop: 20, fontSize: 12, color: 'var(--text-muted)', opacity: 0.6, textAlign: 'center' }}>
+                                    Swipe right for Present · Swipe left for Absent
+                                </p>
+                            </>
+                        ) : (
+                            <AttendanceSummary
+                                records={records}
+                                students={students}
+                                presentCount={presentCount}
+                                absentCount={absentCount}
+                                onExportCSV={exportCSV}
+                                onReset={reset}
                             />
-
-                            {/* Undo */}
-                            {markedCount > 0 && (
-                                <button
-                                    onClick={undo}
-                                    style={{
-                                        marginTop: 16, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
-                                        fontWeight: 600, color: 'var(--text-muted)', background: 'none', border: 'none',
-                                        cursor: 'pointer', transition: 'color 0.2s',
-                                    }}
-                                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                                >
-                                    <MdUndo size={16} /> Undo last
-                                </button>
-                            )}
-
-                            {/* Hint */}
-                            <p style={{ marginTop: 20, fontSize: 12, color: 'var(--text-muted)', opacity: 0.6, textAlign: 'center' }}>
-                                Swipe right for Present · Swipe left for Absent
-                            </p>
-                        </>
-                    ) : (
-                        <AttendanceSummary
-                            records={records}
-                            students={students}
-                            presentCount={presentCount}
-                            absentCount={absentCount}
-                            onExportCSV={exportCSV}
-                            onReset={reset}
-                        />
-                    )}
-                </div>
-            )}
+                        )}
+                    </div>
+                )}
             </>)}
 
             {/* Mark Staff Attendance Mode */}
             {mode === 'mark-staff' && (<>
-            {/* Info Banner */}
-            <div className="card glass" style={{ padding: '16px 20px', marginBottom: 24, background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>👨‍🏫</span>
-                    <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Staff Attendance</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                            Absent staff will be automatically added to the leave section
+                {/* Info Banner */}
+                <div className="card glass" style={{ padding: '16px 20px', marginBottom: 24, background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>👨‍🏫</span>
+                        <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Staff Attendance</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                Absent staff will be automatically added to the leave section
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Loading State */}
-            {staffLoading ? (
-                <div className="loading-spinner"><div className="spinner" /></div>
-            ) : totalStudents === 0 ? (
-                <div className="card glass">
-                    <div className="empty-state">
-                        <div className="empty-state-icon">👨‍🏫</div>
-                        <h3>No Staff Found</h3>
-                        <p>No active staff members found for {academicYear}.</p>
+                {/* Loading State */}
+                {staffLoading ? (
+                    <div className="loading-spinner"><div className="spinner" /></div>
+                ) : totalStudents === 0 ? (
+                    <div className="card glass">
+                        <div className="empty-state">
+                            <div className="empty-state-icon">👨‍🏫</div>
+                            <h3>No Staff Found</h3>
+                            <p>No active staff members found for {academicYear}.</p>
+                        </div>
                     </div>
-                </div>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {!isComplete ? (
-                        <>
-                            {/* Progress */}
-                            <div style={{ width: '100%', marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
-                                    <span>{markedCount} of {totalStudents} {entityLabel}</span>
-                                    <span>{totalStudents > 0 ? Math.round((markedCount / totalStudents) * 100) : 0}%</span>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        {!isComplete ? (
+                            <>
+                                {/* Progress */}
+                                <div style={{ width: '100%', marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                                        <span>{markedCount} of {totalStudents} {entityLabel}</span>
+                                        <span>{totalStudents > 0 ? Math.round((markedCount / totalStudents) * 100) : 0}%</span>
+                                    </div>
+                                    <div style={{ height: 8, borderRadius: 99, background: 'var(--bg-primary)', overflow: 'hidden' }}>
+                                        <div style={{
+                                            height: '100%', borderRadius: 99,
+                                            background: 'linear-gradient(90deg, #7c3aed, #a855f7)',
+                                            width: `${totalStudents > 0 ? (markedCount / totalStudents) * 100 : 0}%`,
+                                            transition: 'width 0.3s ease',
+                                        }} />
+                                    </div>
                                 </div>
-                                <div style={{ height: 8, borderRadius: 99, background: 'var(--bg-primary)', overflow: 'hidden' }}>
-                                    <div style={{
-                                        height: '100%', borderRadius: 99,
-                                        background: 'linear-gradient(90deg, #7c3aed, #a855f7)',
-                                        width: `${totalStudents > 0 ? (markedCount / totalStudents) * 100 : 0}%`,
-                                        transition: 'width 0.3s ease',
-                                    }} />
-                                </div>
-                            </div>
 
-                            {/* Swipe Area */}
-                            <div style={{
-                                position: 'relative', height: 400, width: '100%', maxWidth: 360,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
-                            }}>
-                                {currentStudent && (
-                                    <SwipeCard
-                                        key={currentStudent._id}
-                                        student={currentStudent}
-                                        onSwipe={markAttendance}
-                                    />
+                                {/* Swipe Area */}
+                                <div style={{
+                                    position: 'relative', height: 400, width: '100%', maxWidth: 360,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+                                }}>
+                                    {currentStudent && (
+                                        <SwipeCard
+                                            key={currentStudent._id}
+                                            student={currentStudent}
+                                            onSwipe={markAttendance}
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Action Buttons */}
+                                <SwipeActions
+                                    onPresent={() => markAttendance('present')}
+                                    onAbsent={() => markAttendance('absent')}
+                                />
+
+                                {/* Undo */}
+                                {markedCount > 0 && (
+                                    <button
+                                        onClick={undo}
+                                        style={{
+                                            marginTop: 16, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
+                                            fontWeight: 600, color: 'var(--text-muted)', background: 'none', border: 'none',
+                                            cursor: 'pointer', transition: 'color 0.2s',
+                                        }}
+                                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                                    >
+                                        <MdUndo size={16} /> Undo last
+                                    </button>
                                 )}
-                            </div>
 
-                            {/* Action Buttons */}
-                            <SwipeActions
-                                onPresent={() => markAttendance('present')}
-                                onAbsent={() => markAttendance('absent')}
+                                {/* Hint */}
+                                <p style={{ marginTop: 20, fontSize: 12, color: 'var(--text-muted)', opacity: 0.6, textAlign: 'center' }}>
+                                    Swipe right for Present · Swipe left for Absent
+                                </p>
+                            </>
+                        ) : (
+                            <AttendanceSummary
+                                records={records}
+                                students={staffMembers}
+                                presentCount={presentCount}
+                                absentCount={absentCount}
+                                onExportCSV={exportCSV}
+                                onReset={reset}
                             />
-
-                            {/* Undo */}
-                            {markedCount > 0 && (
-                                <button
-                                    onClick={undo}
-                                    style={{
-                                        marginTop: 16, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
-                                        fontWeight: 600, color: 'var(--text-muted)', background: 'none', border: 'none',
-                                        cursor: 'pointer', transition: 'color 0.2s',
-                                    }}
-                                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                                >
-                                    <MdUndo size={16} /> Undo last
-                                </button>
-                            )}
-
-                            {/* Hint */}
-                            <p style={{ marginTop: 20, fontSize: 12, color: 'var(--text-muted)', opacity: 0.6, textAlign: 'center' }}>
-                                Swipe right for Present · Swipe left for Absent
-                            </p>
-                        </>
-                    ) : (
-                        <AttendanceSummary
-                            records={records}
-                            students={staffMembers}
-                            presentCount={presentCount}
-                            absentCount={absentCount}
-                            onExportCSV={exportCSV}
-                            onReset={reset}
-                        />
-                    )}
-                </div>
-            )}
+                        )}
+                    </div>
+                )}
             </>)}
         </motion.div>
     );

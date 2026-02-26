@@ -18,7 +18,7 @@ exports.getStaff = async (req, res) => {
         }
 
         const staff = await Staff.find(query)
-            .sort({ name: 1 })
+            .sort({ staffId: 1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
 

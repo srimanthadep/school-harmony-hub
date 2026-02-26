@@ -19,6 +19,7 @@ const TABS = [
 export default function ReportsPage() {
     const [activeTab, setActiveTab] = useState('classwise');
     const [classFilter, setClassFilter] = useState('');
+    const [page, setPage] = useState(1);
 
     const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
@@ -34,11 +35,19 @@ export default function ReportsPage() {
 
     // Report data with TanStack Query
     const { data: reportData, isLoading: loading } = useQuery({
-        queryKey: ['report', activeTab, classFilter],
+        queryKey: ['report', activeTab, classFilter, page],
         queryFn: async () => {
             let res;
             if (activeTab === 'classwise') res = await API.get('/reports/classwise-fees');
-            else if (activeTab === 'pending') res = await API.get('/reports/pending-fees', { params: classFilter ? { class: classFilter } : {} });
+            else if (activeTab === 'pending') {
+                res = await API.get('/reports/pending-fees', {
+                    params: {
+                        class: classFilter || undefined,
+                        page,
+                        limit: 50
+                    }
+                });
+            }
             else if (activeTab === 'monthly') res = await API.get('/reports/monthly');
             else if (activeTab === 'salary') res = await API.get('/reports/salary');
             return res.data;
@@ -182,7 +191,10 @@ export default function ReportsPage() {
                     <div className="search-bar glass" style={{ width: 200, padding: '4px 12px' }}>
                         <MdFilterList style={{ color: '#64748b' }} />
                         <select className="form-control" style={{ border: 'none', background: 'transparent' }} value={classFilter}
-                            onChange={e => setClassFilter(e.target.value)}>
+                            onChange={e => {
+                                setClassFilter(e.target.value);
+                                setPage(1);
+                            }}>
                             <option value="">All Classes</option>
                             {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -201,8 +213,7 @@ export default function ReportsPage() {
                                 {(data.pendingStudents || []).map((s, idx) => (
                                     <motion.tr
                                         key={s._id}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
+                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                                         transition={{ delay: idx * 0.02 }}
                                         className="hover-lift"
                                     >
@@ -225,6 +236,13 @@ export default function ReportsPage() {
                             </tbody>
                         </table>
                     </div>
+                    {data.pages > 1 && (
+                        <div className="pagination" style={{ marginTop: 20, display: 'flex', justifyContent: 'center', gap: 10, paddingBottom: 15 }}>
+                            <button className="btn btn-sm btn-ghost" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</button>
+                            <span style={{ fontSize: 13, fontWeight: 600, alignSelf: 'center' }}>Page {page} of {data.pages}</span>
+                            <button className="btn btn-sm btn-ghost" disabled={page === data.pages} onClick={() => setPage(p => Math.min(data.pages, p + 1))}>Next</button>
+                        </div>
+                    )}
                 </div>
             </motion.div>
         );
@@ -232,7 +250,7 @@ export default function ReportsPage() {
 
     const renderMonthly = () => {
         if (!data?.report) return null;
-        const chartData = data.report.map(r => ({ ...r, profit: r.income - r.expense }));
+        const chartData = [...data.report].reverse().map(r => ({ ...r, profit: r.income - r.expense }));
 
         return (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

@@ -106,7 +106,7 @@ export default function StudentTable({
                         <th onClick={() => toggleSort('studentId')}>ID <SortArrow field="studentId" /></th>
                         <th onClick={() => toggleSort('name')}>Name <SortArrow field="name" /></th>
                         <th onClick={() => toggleSort('class')}>Class <SortArrow field="class" /></th>
-                        <th>Roll No</th>
+                        <th onClick={() => toggleSort('rollNo')}>Roll No <SortArrow field="rollNo" /></th>
                         <th>Parent</th>
                         <th onClick={() => toggleSort('totalFee')}>Tuition Fee <SortArrow field="totalFee" /></th>
                         <th onClick={() => toggleSort('tuitionStatus')} style={{ cursor: 'pointer', textAlign: 'center' }}>Tuition Status <SortArrow field="tuitionStatus" /></th>
@@ -161,8 +161,8 @@ export default function StudentTable({
                                 </div>
                             </td>
                             <td data-label="Tuition Status" style={{ textAlign: 'center' }}>
-                                <span className={`badge ${STATUS_BADGE[s.paymentStatus || 'unpaid']}`}>
-                                    {s.paymentStatus}
+                                <span className={`badge ${STATUS_BADGE[s.tuitionStatus || 'unpaid']}`}>
+                                    {s.tuitionStatus || 'unpaid'}
                                 </span>
                             </td>
                             <td data-label="Book's Fee" style={{ minWidth: 90 }}>
