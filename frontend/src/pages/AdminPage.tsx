@@ -242,7 +242,7 @@ export default function AdminPage() {
     // Activity Logs state
     const [activityLogs, setActivityLogs] = useState([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
-    const [logFilters, setLogFilters] = useState({ action: '', module: '', startDate: '', endDate: '' });
+    const [logFilters, setLogFilters] = useState({ action: '', module: '', startDate: '', endDate: '', search: '' });
     const [logPage, setLogPage] = useState(1);
     const [logTotal, setLogTotal] = useState(0);
     const [logView, setLogView] = useState<'table' | 'timeline'>('table');
@@ -283,6 +283,7 @@ export default function AdminPage() {
             const params = new URLSearchParams({ page: String(page), limit: String(LOG_LIMIT) });
             if (filters.action) params.append('action', filters.action);
             if (filters.module) params.append('module', filters.module);
+            if (filters.search) params.append('search', filters.search);
             if (filters.startDate) params.append('startDate', filters.startDate);
             if (filters.endDate) params.append('endDate', filters.endDate);
             const res = await API.get(`/activity-logs?${params.toString()}`);
@@ -297,6 +298,7 @@ export default function AdminPage() {
             const params = new URLSearchParams();
             if (logFilters.action) params.append('action', logFilters.action);
             if (logFilters.module) params.append('module', logFilters.module);
+            if (logFilters.search) params.append('search', logFilters.search);
             if (logFilters.startDate) params.append('startDate', logFilters.startDate);
             if (logFilters.endDate) params.append('endDate', logFilters.endDate);
             const token = localStorage.getItem('sfm_token');
@@ -681,6 +683,12 @@ export default function AdminPage() {
                         <div style={{ padding: '12px 20px', borderBottom: '1px solid #edf2f7', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
                             <MdFilterList color="#8996a4" size={18} />
                             <input
+                                placeholder="Search by description / student..."
+                                style={{ ...S.input, width: 250, padding: '6px 10px', fontSize: 12, border: '1px solid #7267ef' }}
+                                value={logFilters.search}
+                                onChange={e => setLogFilters(f => ({ ...f, search: e.target.value }))}
+                            />
+                            <input
                                 placeholder="Filter by action (e.g. LOGIN)"
                                 style={{ ...S.input, width: 200, padding: '6px 10px', fontSize: 12 }}
                                 value={logFilters.action}
@@ -705,7 +713,7 @@ export default function AdminPage() {
                                 Apply
                             </button>
                             <button style={S.btnSecondary} onClick={() => {
-                                const reset = { action: '', module: '', startDate: '', endDate: '' };
+                                const reset = { action: '', module: '', startDate: '', endDate: '', search: '' };
                                 setLogFilters(reset); setLogPage(1); fetchActivityLogs(1, reset);
                             }}>Clear</button>
                         </div>
@@ -792,43 +800,43 @@ export default function AdminPage() {
                                         <tbody>
                                             {activityLogs.map(log => (
                                                 <React.Fragment key={log._id}>
-                                                <tr
-                                                    tabIndex={0}
-                                                    onMouseEnter={() => setHoveredRow(log._id)}
-                                                    onMouseLeave={() => setHoveredRow(null)}
-                                                    style={{ background: hoveredRow === log._id ? '#f8f9fc' : 'transparent', transition: 'background 0.15s', cursor: 'pointer' }}
-                                                    onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
-                                                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedLogId(expandedLogId === log._id ? null : log._id); } }}>
-                                                    <td style={{ ...S.td, whiteSpace: 'nowrap', color: '#8996a4', fontSize: 12 }}>
-                                                        {new Date(log.createdAt).toLocaleString()}
-                                                    </td>
-                                                    <td style={S.td}>
-                                                        {log.performedBy ? (
-                                                            <>
-                                                                <div style={{ fontWeight: 600, fontSize: 13 }}>{log.performedBy.name}</div>
-                                                                <div style={{ fontSize: 11, color: '#8996a4' }}>{log.performedBy.email}</div>
-                                                            </>
-                                                        ) : <span style={{ color: '#8996a4' }}>—</span>}
-                                                    </td>
-                                                    <td style={S.td}>
-                                                        <span style={S.pill(...getActionColors(log.action))}>
-                                                            {log.action}
-                                                        </span>
-                                                    </td>
-                                                    <td style={{ ...S.td, fontSize: 12 }}>{log.module}</td>
-                                                    <td style={{ ...S.td, fontSize: 12, maxWidth: 300 }}>{log.description || '—'}</td>
-                                                    <td style={{ ...S.td, fontSize: 12, color: '#8996a4' }}>{log.ipAddress || '—'}</td>
-                                                    <td style={{ ...S.td, fontSize: 12, color: '#7267ef', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                                        {expandedLogId === log._id ? '▲ Hide' : '▼ Details'}
-                                                    </td>
-                                                </tr>
-                                                {expandedLogId === log._id && (
-                                                    <tr>
-                                                        <td colSpan={7} style={{ padding: '12px 20px', background: '#f8f9fc', borderBottom: '1px solid #edf2f7' }}>
-                                                            {renderLogDetails(log)}
+                                                    <tr
+                                                        tabIndex={0}
+                                                        onMouseEnter={() => setHoveredRow(log._id)}
+                                                        onMouseLeave={() => setHoveredRow(null)}
+                                                        style={{ background: hoveredRow === log._id ? '#f8f9fc' : 'transparent', transition: 'background 0.15s', cursor: 'pointer' }}
+                                                        onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
+                                                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedLogId(expandedLogId === log._id ? null : log._id); } }}>
+                                                        <td style={{ ...S.td, whiteSpace: 'nowrap', color: '#8996a4', fontSize: 12 }}>
+                                                            {new Date(log.createdAt).toLocaleString()}
+                                                        </td>
+                                                        <td style={S.td}>
+                                                            {log.performedBy ? (
+                                                                <>
+                                                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{log.performedBy.name}</div>
+                                                                    <div style={{ fontSize: 11, color: '#8996a4' }}>{log.performedBy.email}</div>
+                                                                </>
+                                                            ) : <span style={{ color: '#8996a4' }}>—</span>}
+                                                        </td>
+                                                        <td style={S.td}>
+                                                            <span style={S.pill(...getActionColors(log.action))}>
+                                                                {log.action}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ ...S.td, fontSize: 12 }}>{log.module}</td>
+                                                        <td style={{ ...S.td, fontSize: 12, maxWidth: 300 }}>{log.description || '—'}</td>
+                                                        <td style={{ ...S.td, fontSize: 12, color: '#8996a4' }}>{log.ipAddress || '—'}</td>
+                                                        <td style={{ ...S.td, fontSize: 12, color: '#7267ef', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                                            {expandedLogId === log._id ? '▲ Hide' : '▼ Details'}
                                                         </td>
                                                     </tr>
-                                                )}
+                                                    {expandedLogId === log._id && (
+                                                        <tr>
+                                                            <td colSpan={7} style={{ padding: '12px 20px', background: '#f8f9fc', borderBottom: '1px solid #edf2f7' }}>
+                                                                {renderLogDetails(log)}
+                                                            </td>
+                                                        </tr>
+                                                    )}
                                                 </React.Fragment>
                                             ))}
                                         </tbody>

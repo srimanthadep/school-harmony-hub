@@ -5,12 +5,15 @@ const asyncHandler = require('../utils/asyncHandler');
 // @route   GET /api/activity-logs
 // @access  Admin / Super Admin
 exports.getActivityLogs = asyncHandler(async (req, res) => {
-    const { action, module: mod, startDate, endDate, page = 1, limit = 50 } = req.query;
+    const { action, module: mod, startDate, endDate, search, page = 1, limit = 50 } = req.query;
 
     const query = {};
 
     if (action) query.action = { $regex: action, $options: 'i' };
     if (mod) query.module = mod.toUpperCase();
+    if (search) {
+        query.description = { $regex: search, $options: 'i' };
+    }
     if (startDate || endDate) {
         query.createdAt = {};
         if (startDate) query.createdAt.$gte = new Date(startDate);
@@ -41,11 +44,14 @@ exports.getActivityLogs = asyncHandler(async (req, res) => {
 // @route   GET /api/activity-logs/export
 // @access  Admin / Super Admin
 exports.exportActivityLogs = asyncHandler(async (req, res) => {
-    const { action, module: mod, startDate, endDate } = req.query;
+    const { action, module: mod, startDate, endDate, search } = req.query;
 
     const query = {};
     if (action) query.action = { $regex: action, $options: 'i' };
     if (mod) query.module = mod.toUpperCase();
+    if (search) {
+        query.description = { $regex: search, $options: 'i' };
+    }
     if (startDate || endDate) {
         query.createdAt = {};
         if (startDate) query.createdAt.$gte = new Date(startDate);
