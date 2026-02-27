@@ -13,7 +13,7 @@ function getNormalizedUri() {
     }
 
     const isProd = process.env.NODE_ENV === 'production';
-    const dbName = isProd ? 'school_prod' : 'school_dev';
+    const dbName = isProd ? 'school_fee_management' : 'school_dev';
 
     if (mongoUri.includes('.net/')) {
         // Cluster URI (Atlas)
