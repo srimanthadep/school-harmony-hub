@@ -85,12 +85,18 @@ const sendBackupEmail = async (attachments, subject) => {
     const pass = process.env.BACKUP_EMAIL_PASS || '';
     console.log(`📡 Preparing email: User=${process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com'}, PassLen=${pass.length}`);
 
-    // Use the official 'gmail' service shortcut (it handles the optimal ports and protocols automatically)
+    // Direct SMTP with Hard IPv4 force
+    const dns = require('dns');
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // Use STARTTLS
         auth: {
             user: process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com',
             pass: pass.trim()
+        },
+        lookup: (hostname, options, callback) => {
+            dns.lookup(hostname, { family: 4 }, callback);
         },
         connectionTimeout: 60000,
         greetingTimeout: 60000,
@@ -99,7 +105,7 @@ const sendBackupEmail = async (attachments, subject) => {
         logger: true
     });
 
-    console.log('🔌 Verifying SMTP connection via Gmail Service...');
+    console.log('🔌 Verifying SMTP (Forced IPv4 Port 587)...');
     try {
         await transporter.verify();
         console.log('⭐ SMTP Connection Verified!');
