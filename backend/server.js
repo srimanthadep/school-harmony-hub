@@ -11,9 +11,9 @@ require('dotenv').config();
 
 const compression = require('compression');
 const { initBackupService } = require('./services/backupService');
-initBackupService();
 
 const app = express();
+console.log('🏁 Server Initializing...');
 
 // Performance and Security middleware
 app.use(compression());
@@ -190,20 +190,24 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 // ... after routes
 app.use(errorHandler);
 
-const { connectDB } = require('./utils/db');
+console.log('📡 Starting server listener...');
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 
-const PORT = process.env.PORT || 5000;
-
-connectDB()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+  // Connect to DB in background
+  const { connectDB } = require('./utils/db');
+  console.log('🔗 Connecting to MongoDB...');
+  connectDB()
+    .then(() => {
+      console.log('🛰️ Database link established.');
+      // Initialize backup schedule AFTER DB is ready
+      initBackupService();
+      console.log('⏰ Backup scheduler activated.');
+    })
+    .catch(err => {
+      console.error('❌ MongoDB initialization failed:', err.message);
     });
-  })
-  .catch(err => {
-    console.error('❌ MongoDB connection failed:', err.message);
-    process.exit(1);
-  });
+});
 
 module.exports = app;
