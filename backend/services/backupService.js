@@ -81,33 +81,31 @@ const performFullBackup = async () => {
 };
 
 const sendBackupEmail = async (attachments, subject) => {
-    // --- DIAGNOSTIC LOGS ---
-    const pass = process.env.BACKUP_EMAIL_PASS || '';
-    console.log(`📡 Preparing email: User=${process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com'}, PassLen=${pass.length}`);
+    // --- FINAL ROBUST CONFIG ---
+    const pass = (process.env.BACKUP_EMAIL_PASS || '').trim();
 
-    // Use POOLING and explicit SSL on Port 465
+    // Use Port 587 (STARTTLS) and Force IPv4 at the Socket levels
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // SSL
-        pool: true,   // Use pooling for better reliability
+        port: 587,
+        secure: false, // Use STARTTLS
         auth: {
-            user: process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com',
-            pass: pass.trim()
+            user: (process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com').trim(),
+            pass: pass
         },
+        // MAGIC FIX: Force binding to IPv4 to prevent IPv6 routing errors
+        localAddress: '0.0.0.0',
         connectionTimeout: 60000,
         greetingTimeout: 60000,
-        socketTimeout: 90000,
-        debug: true,
-        logger: true
+        socketTimeout: 90000
     });
 
-    console.log('🔌 Verifying SMTP via Pooled SSL (465)...');
+    console.log('🔌 Verifying final SMTP connection (IPv4-Forced)...');
     try {
         await transporter.verify();
-        console.log('⭐ SMTP Connection Verified!');
+        console.log('⭐ SUCCESS: Email Connection Ready!');
     } catch (vErr) {
-        console.error('❌ SMTP Verification FAILED:', vErr.message);
+        console.error('❌ FINAL FAIL: Render is blocking all SMTP ports. Message:', vErr.message);
         throw vErr;
     }
 

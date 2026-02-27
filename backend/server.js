@@ -1,5 +1,4 @@
 const dns = require('dns');
-// Let Render handle DNS servers, but keep IPv4 preference to avoid ENETUNREACH
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
@@ -15,7 +14,7 @@ const compression = require('compression');
 const { initBackupService } = require('./services/backupService');
 
 const app = express();
-app.set('trust proxy', 1); // Required for Render/Vercel proxies
+app.set('trust proxy', 1); // Enable Render/Vercel proxy trust
 console.log('🏁 Server Initializing...');
 
 // Performance and Security middleware
