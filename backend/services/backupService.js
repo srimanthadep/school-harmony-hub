@@ -81,13 +81,18 @@ const performFullBackup = async () => {
 };
 
 const sendBackupEmail = async (attachments, subject) => {
-    // These should ideally be in .env
+    // Use explicit SMTP settings for better reliability on cloud providers
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true, // use SSL
         auth: {
             user: process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com',
-            pass: process.env.BACKUP_EMAIL_PASS // App password needed
-        }
+            pass: process.env.BACKUP_EMAIL_PASS
+        },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 30000
     });
 
     const mailOptions = {

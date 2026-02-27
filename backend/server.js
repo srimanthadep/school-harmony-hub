@@ -13,6 +13,7 @@ const compression = require('compression');
 const { initBackupService } = require('./services/backupService');
 
 const app = express();
+app.set('trust proxy', 1); // Required for Render/Vercel proxies
 console.log('🏁 Server Initializing...');
 
 // Performance and Security middleware
@@ -116,7 +117,6 @@ app.get('/', (req, res) => {
                 justify-content: center;
                 font-size: 32px;
                 margin: 0 auto 1.5rem auto;
-                box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
             }
             h1 { 
                 color: #0f172a; 
