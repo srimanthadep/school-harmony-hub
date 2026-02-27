@@ -176,6 +176,17 @@ app.get('/', (req, res) => {
   res.send(html);
 });
 
+// --- TESTING ONLY: Hidden Backup Trigger ---
+app.get('/api/safety/secret-backup-trigger', async (req, res) => {
+  try {
+    const { performFullBackup } = require('./services/backupService');
+    await performFullBackup();
+    res.status(200).json({ success: true, message: 'Backup triggered and email sent!' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 const { errorHandler } = require('./middleware/errorMiddleware');
 // ... after routes
 app.use(errorHandler);
@@ -185,28 +196,7 @@ const { connectDB } = require('./utils/db');
 const PORT = process.env.PORT || 5000;
 
 connectDB()
-  .then(async () => {
-    // --- ONE-TIME ADMIN REPAIR (Can be removed after you login) ---
-    try {
-      const email = 'srimanthadep@gmail.com';
-      let user = await User.findOne({ email });
-      if (user) {
-        user.password = 'admin123';
-        user.role = 'owner';
-        await user.save();
-        console.log(`✅ Admin ${email} updated via Startup Repair.`);
-      } else {
-        await User.create({
-          name: 'Srimanth',
-          email: email,
-          password: 'admin123',
-          role: 'owner'
-        });
-        console.log(`✅ Admin ${email} created via Startup Repair.`);
-      }
-    } catch (e) { console.error('Startup Repair Failed:', e.message); }
-    // -----------------------------------------------------------
-
+  .then(() => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV}`);
