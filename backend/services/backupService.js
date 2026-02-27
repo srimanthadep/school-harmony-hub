@@ -82,6 +82,8 @@ const performFullBackup = async () => {
 
 const sendBackupEmail = async (attachments, subject) => {
     // Use Port 587 with STARTTLS for better cloud compatibility
+    // Explicitly force IPv4 for DNS lookup to prevent ENETUNREACH on Render
+    const dns = require('dns');
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
@@ -90,9 +92,16 @@ const sendBackupEmail = async (attachments, subject) => {
             user: process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com',
             pass: process.env.BACKUP_EMAIL_PASS
         },
+        lookup: (hostname, options, callback) => {
+            dns.lookup(hostname, { family: 4 }, callback);
+        },
         tls: {
-            rejectUnauthorized: false
-        }
+            rejectUnauthorized: false,
+            minVersion: 'TLSv1.2'
+        },
+        connectionTimeout: 20000, // 20 seconds
+        greetingTimeout: 20000,
+        socketTimeout: 30000
     });
 
     const mailOptions = {
