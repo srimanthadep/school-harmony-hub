@@ -15,7 +15,10 @@ const BACKUP_DIR = 'C:\\Users\\srima\\Downloads\\school-fee-management\\backup';
 const STAFF_CSV = path.join(BACKUP_DIR, 'staff.csv');
 const ACTIVITY_CSV = path.join(BACKUP_DIR, 'activity-logs.csv');
 
+const { protectProduction } = require('./utils/safety');
+
 async function masterReconstruction() {
+    await protectProduction();
     try {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('✅ Connected to MongoDB Atlas');

@@ -179,12 +179,12 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 // ... after routes
 app.use(errorHandler);
 
-// Connect to MongoDB and start server
+const { connectDB } = require('./utils/db');
+
 const PORT = process.env.PORT || 5000;
 
-mongoose.connect(process.env.MONGODB_URI)
+connectDB()
   .then(() => {
-    console.log('✅ MongoDB Connected Successfully');
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV}`);

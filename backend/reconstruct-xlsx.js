@@ -37,17 +37,17 @@ const CLASS_NAME_MAP = {
     '10th': '10th', 'x': '10th', '10': '10th'
 };
 
+const { protectProduction } = require('./utils/safety');
+
 async function reconstruct() {
     console.log('🚀 Starting Full Master Data Reconstruction (XLSX + Activity Log)...');
 
-    if (process.env.NODE_ENV === 'production' && !ALLOW_PROD) {
-        console.error('❌ ERROR: This script is restricted in production. Use --allow-prod to override.');
-        process.exit(1);
-    }
+    // Enforce Rule 2 & 7
+    await protectProduction();
 
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
-        console.log('✅ Connected to MongoDB');
+        const { connectDB } = require('./utils/db');
+        await connectDB();
 
         const studentMap = new Map(); // Key: name|class
         const feeStructures = [];
@@ -244,6 +244,37 @@ async function reconstruct() {
                             }
                         }
                     } catch (e) { }
+                }
+            }
+        }
+
+        // --- 2.5 VALIDATE UNIQUE CONSTRAINTS (Rule 10) ---
+        const rollCheck = new Map(); // Key: class|roll|year, Value: [names]
+        const duplicates = [];
+        for (const s of studentMap.values()) {
+            const key = `${s.class}|${s.rollNo}|${s.academicYear || '2025-26'}`;
+            if (!rollCheck.has(key)) rollCheck.set(key, []);
+            rollCheck.get(key).push(s.name);
+        }
+
+        for (const [key, names] of rollCheck.entries()) {
+            if (names.length > 1) {
+                duplicates.push(`${key} -> [${names.join(', ')}]`);
+            }
+        }
+
+        if (duplicates.length > 0) {
+            console.warn(`\n⚠️  CRITICAL: Found ${duplicates.length} Roll Number collisions (Rule 10).`);
+            console.warn('   To prevent database failure, collisions from the activity log will be dropped.');
+
+            const finalRollCheck = new Set();
+            for (const [key, student] of studentMap.entries()) {
+                const rollKey = `${student.class}|${student.rollNo}|${student.academicYear || '2025-26'}`;
+                if (finalRollCheck.has(rollKey)) {
+                    console.warn(`   🗑️  Dropping duplicate record: ${student.name} (Roll ${student.rollNo} already taken)`);
+                    studentMap.delete(key);
+                } else {
+                    finalRollCheck.add(rollKey);
                 }
             }
         }

@@ -10,7 +10,10 @@ const ActivityLog = require('./models/ActivityLog');
 
 const STUDENTS_CSV = 'C:\\Users\\srima\\Downloads\\students.csv';
 
+const { protectProduction } = require('./utils/safety');
+
 async function startRecovery() {
+    await protectProduction();
     try {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('✅ Connected to MongoDB Atlas');

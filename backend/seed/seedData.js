@@ -127,9 +127,13 @@ function loadStudentsFromCSVs(studentsDir) {
     return students;
 }
 
+const { protectProduction } = require('../utils/safety');
+const { connectDB } = require('../utils/db');
+
 async function seedData() {
+    await protectProduction();
     try {
-        await mongoose.connect(MONGODB_URI);
+        await connectDB();
         console.log('✅ Connected to MongoDB');
 
         // Clear ALL existing data

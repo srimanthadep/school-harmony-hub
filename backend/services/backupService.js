@@ -7,91 +7,80 @@ const Student = require('../models/Student');
 const Staff = require('../models/Staff');
 
 /**
- * Weekly Backup Service
- * Runs every Sunday at Midnight
+ * Daily Institutional Backup Service
+ * Runs every night at Midnight
  */
 const initBackupService = () => {
-    // Schedule: 0 0 * * 0 (Sunday Midnight)
-    // For testing you can use: * * * * * (Every minute)
-    cron.schedule('0 0 * * 0', async () => {
-        console.log('📦 Starting weekly automated backup...');
-        await performBackup();
+    // Schedule: 0 0 * * * (Every night at Midnight)
+    cron.schedule('0 0 * * *', async () => {
+        console.log('📦 Starting daily automated institutional backup...');
+        await performFullBackup();
     });
 };
 
-const performBackup = async () => {
-    const backupDir = path.join(__dirname, '../temp_backups');
-    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
+const performFullBackup = async () => {
+    const backupDir = path.join(__dirname, '../backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
-    const dateStr = new Date().toISOString().split('T')[0];
-    const studentFile = path.join(backupDir, `students_backup_${dateStr}.csv`);
-    const paymentFile = path.join(backupDir, `payments_backup_${dateStr}.csv`);
+    const mongoose = require('mongoose');
+    const archiver = require('archiver');
+    const tempDir = path.join(backupDir, `temp_${Date.now()}`);
 
     try {
-        // 1. Export Students
-        const students = await Student.find().lean();
-        const studentCsvWriter = createCsvWriter({
-            path: studentFile,
-            header: [
-                { id: 'studentId', title: 'Student ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'class', title: 'Class' },
-                { id: 'parentName', title: 'Parent' },
-                { id: 'parentPhone', title: 'Phone' },
-                { id: 'totalFee', title: 'Total Fee' },
-                { id: 'status', title: 'Status' }
-            ]
-        });
-        await studentCsvWriter.writeRecords(students);
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-        // 2. Export Fee Payments (extracted from Students)
-        const allFeePayments = [];
-        students.forEach(student => {
-            if (student.feePayments && student.feePayments.length > 0) {
-                student.feePayments.forEach(payment => {
-                    allFeePayments.push({
-                        receiptNo: payment.receiptNo || 'N/A',
-                        studentName: student.name,
-                        studentId: student.studentId,
-                        amount: payment.amount,
-                        date: payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A',
-                        mode: payment.paymentMode,
-                        type: payment.feeType
-                    });
-                });
-            }
-        });
+        // 1. Export all collections to JSON
+        const db = mongoose.connection.db;
+        if (!db) return console.error('❌ Backup failed: No DB connection');
 
-        const paymentCsvWriter = createCsvWriter({
-            path: paymentFile,
-            header: [
-                { id: 'receiptNo', title: 'Receipt No' },
-                { id: 'studentName', title: 'Student Name' },
-                { id: 'studentId', title: 'Student ID' },
-                { id: 'amount', title: 'Amount' },
-                { id: 'date', title: 'Date' },
-                { id: 'mode', title: 'Mode' },
-                { id: 'type', title: 'Type' }
-            ]
-        });
-        await paymentCsvWriter.writeRecords(allFeePayments);
+        const collections = await db.listCollections().toArray();
+        for (const col of collections) {
+            const data = await db.collection(col.name).find({}).toArray();
+            fs.writeFileSync(path.join(tempDir, `${col.name}.json`), JSON.stringify(data, null, 2));
+        }
 
-        // 3. Email Backups
-        await sendBackupEmail([studentFile, paymentFile]);
+        // 2. ZIP the files
+        const dateStr = new Date().toISOString().split('T')[0];
+        const zipFile = path.join(backupDir, `full_db_backup_${dateStr}.zip`);
+        const output = fs.createWriteStream(zipFile);
+        const archive = archiver('zip', { zlib: { level: 9 } });
 
-        // 4. Cleanup
-        setTimeout(() => {
-            if (fs.existsSync(studentFile)) fs.unlinkSync(studentFile);
-            if (fs.existsSync(paymentFile)) fs.unlinkSync(paymentFile);
-        }, 60000); // Wait a minute before delete
+        archive.pipe(output);
+        archive.directory(tempDir, false);
+        await archive.finalize();
 
-        console.log('✅ Weekly backup completed and emailed.');
+        // 3. Email Backup (3-2-1 rule: Email is the off-site copy)
+        try {
+            await sendBackupEmail([zipFile], `DAILY Institutional Backup - ${dateStr}`);
+        } catch (emailErr) {
+            console.error('⚠️ Backup ZIP created but email failed to send:', emailErr.message);
+        }
+
+        console.log(`✅ Daily institutional backup completed: ${zipFile}`);
     } catch (err) {
-        console.error('❌ Backup Failed:', err);
+        console.error('❌ Daily Backup Failed:', err);
+    } finally {
+        // 4. Cleanup temp folders
+        if (tempDir && fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+
+        // 5. ROTATE local backups (Keep last 7 days)
+        const backupDir = path.join(__dirname, '../backups');
+        if (fs.existsSync(backupDir)) {
+            const allBackups = fs.readdirSync(backupDir)
+                .filter(f => f.startsWith('full_db_backup_'))
+                .sort();
+
+            while (allBackups.length > 7) {
+                const oldFile = allBackups.shift();
+                fs.unlinkSync(path.join(backupDir, oldFile));
+            }
+        }
     }
 };
 
-const sendBackupEmail = async (attachments) => {
+const sendBackupEmail = async (attachments, subject) => {
     // These should ideally be in .env
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -104,8 +93,8 @@ const sendBackupEmail = async (attachments) => {
     const mailOptions = {
         from: '"Oxford School Backup" <noreply@oxfordschool.cc>',
         to: 'srimanthadep@gmail.com',
-        subject: `Weekly School Data Backup - ${new Date().toDateString()}`,
-        text: 'Please find the attached weekly backup of student records and payment history.',
+        subject: subject || `Weekly School Data Backup - ${new Date().toDateString()}`,
+        text: 'Please find the attached backup of school data.',
         attachments: attachments.map(file => ({
             filename: path.basename(file),
             path: file
@@ -119,4 +108,4 @@ const sendBackupEmail = async (attachments) => {
     }
 };
 
-module.exports = { initBackupService, performBackup };
+module.exports = { initBackupService, performFullBackup };

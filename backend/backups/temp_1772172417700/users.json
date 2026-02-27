@@ -1,0 +1,12 @@
+[
+  {
+    "_id": "69a132aa0f9d80d5e43152e2",
+    "name": "School Admin",
+    "email": "admin@school.edu",
+    "password": "$2a$10$LGQ.3rZ35KfgrXrUN2xxCu9Oqk2oq6hjLslahdKnNkEQieHmUxeja",
+    "role": "admin",
+    "isActive": true,
+    "createdAt": "2026-02-27T05:59:06.961Z",
+    "__v": 0
+  }
+]

@@ -145,7 +145,8 @@ studentSchema.pre('save', async function (next) {
     next();
 });
 
-// Index for faster queries
+// Index for faster queries & Data Integrity (Rule 10)
+studentSchema.index({ class: 1, rollNo: 1, academicYear: 1 }, { unique: true }); // Prevent duplicate roll numbers in same class/year
 studentSchema.index({
     name: 'text',
     studentId: 'text',
@@ -153,6 +154,7 @@ studentSchema.index({
     parentPhone: 'text'
 });
 studentSchema.index({ isActive: 1 });
+studentSchema.index({ academicYear: 1 });
 studentSchema.index({ 'feePayments.paymentDate': -1 });
 
 module.exports = mongoose.model('Student', studentSchema);

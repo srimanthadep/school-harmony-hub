@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "69a132aa0f9d80d5e43152be",
+    "schoolName": "Oxford School",
+    "schoolAddress": "Oxford Campus, Education Street - 500001",
+    "schoolPhone": "+91 98765 43210",
+    "schoolEmail": "info@oxfordschool.edu.in",
+    "principalName": "Dr. Rajesh Kumar",
+    "academicYear": "2024-25",
+    "currency": "₹",
+    "receiptPrefix": "RCPT",
+    "salarySlipPrefix": "SAL",
+    "lastReceiptNo": 1000,
+    "lastSlipNo": 1000,
+    "createdAt": "2026-02-27T05:59:06.482Z",
+    "updatedAt": "2026-02-27T05:59:06.482Z",
+    "__v": 0
+  }
+]
