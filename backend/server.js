@@ -1,6 +1,8 @@
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '8.8.4.4']);
-dns.setDefaultResultOrder('ipv4first'); // FORCE IPv4 to prevent ENETUNREACH errors on Render/Cloud
+// Let Render handle DNS servers, but keep IPv4 preference to avoid ENETUNREACH
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 const express = require('express');
 const mongoose = require('mongoose');
