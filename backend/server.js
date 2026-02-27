@@ -175,15 +175,27 @@ app.get('/', (req, res) => {
   res.send(html);
 });
 
-// --- TESTING ONLY: Hidden Backup Trigger ---
-app.get('/api/safety/secret-backup-trigger', async (req, res) => {
-  try {
-    const { performFullBackup } = require('./services/backupService');
-    await performFullBackup();
-    res.status(200).json({ success: true, message: 'Backup triggered and email sent!' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+// --- TESTING ONLY: Hidden Backup Trigger (Non-Blocking) ---
+app.get('/api/safety/secret-backup-trigger', (req, res) => {
+  console.log('🎯 Manual Backup Triggered via URL...');
+
+  // Respond immediately so browser doesn't hang
+  res.status(202).json({
+    success: true,
+    message: 'Backup process started in the background. Check your email and Render logs in 1-2 minutes.'
+  });
+
+  // Run the heavy work in the background
+  (async () => {
+    try {
+      console.log('🚀 Background Backup: Initializing...');
+      const { performFullBackup } = require('./services/backupService');
+      await performFullBackup();
+      console.log('✅ Background Backup: Successfully finished and emailed.');
+    } catch (err) {
+      console.error('❌ Background Backup: FAILED -', err.message);
+    }
+  })();
 });
 
 const { errorHandler } = require('./middleware/errorMiddleware');
