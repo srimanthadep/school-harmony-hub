@@ -1,6 +1,6 @@
-// Force Google DNS to resolve MongoDB Atlas SRV records (local dev fix)
 const dns = require('dns');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setDefaultResultOrder('ipv4first'); // FORCE IPv4 to prevent ENETUNREACH errors on Render/Cloud
 
 const express = require('express');
 const mongoose = require('mongoose');

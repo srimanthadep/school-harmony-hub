@@ -81,18 +81,18 @@ const performFullBackup = async () => {
 };
 
 const sendBackupEmail = async (attachments, subject) => {
-    // Use explicit SMTP settings for better reliability on cloud providers
+    // Use Port 587 with STARTTLS for better cloud compatibility
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // use SSL
+        port: 587,
+        secure: false, // Use STARTTLS
         auth: {
             user: process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com',
             pass: process.env.BACKUP_EMAIL_PASS
         },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 30000
+        tls: {
+            rejectUnauthorized: false
+        }
     });
 
     const mailOptions = {
