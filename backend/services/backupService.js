@@ -81,28 +81,39 @@ const performFullBackup = async () => {
 };
 
 const sendBackupEmail = async (attachments, subject) => {
-    // Use Port 587 with STARTTLS for better cloud compatibility
-    // Explicitly force IPv4 for DNS lookup to prevent ENETUNREACH on Render
+    // --- DIAGNOSTIC LOGS ---
+    const pass = process.env.BACKUP_EMAIL_PASS || '';
+    console.log(`📡 Preparing email: User=${process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com'}, PassLen=${pass.length}`);
+    if (pass.length < 5) console.warn('⚠️ WARNING: BACKUP_EMAIL_PASS looks too short or is missing!');
+
+    // Use Port 465 (SSL) - often more reliable on some cloud NATs than 587
     const dns = require('dns');
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // Use STARTTLS
+        port: 465,
+        secure: true,
         auth: {
             user: process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com',
-            pass: process.env.BACKUP_EMAIL_PASS
+            pass: pass.trim()
         },
         lookup: (hostname, options, callback) => {
             dns.lookup(hostname, { family: 4 }, callback);
         },
-        tls: {
-            rejectUnauthorized: false,
-            minVersion: 'TLSv1.2'
-        },
-        connectionTimeout: 20000, // 20 seconds
-        greetingTimeout: 20000,
-        socketTimeout: 30000
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
+        socketTimeout: 45000,
+        debug: true,
+        logger: true
     });
+
+    console.log('🔌 Verifying SMTP connection...');
+    try {
+        await transporter.verify();
+        console.log('⭐ SMTP Connection Verified!');
+    } catch (vErr) {
+        console.error('❌ SMTP Verification FAILED:', vErr.message);
+        throw vErr; // Stop here if we can't even connect
+    }
 
     const mailOptions = {
         from: '"Oxford School Backup" <noreply@oxfordschool.cc>',
