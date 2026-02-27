@@ -84,35 +84,28 @@ const sendBackupEmail = async (attachments, subject) => {
     // --- DIAGNOSTIC LOGS ---
     const pass = process.env.BACKUP_EMAIL_PASS || '';
     console.log(`📡 Preparing email: User=${process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com'}, PassLen=${pass.length}`);
-    if (pass.length < 5) console.warn('⚠️ WARNING: BACKUP_EMAIL_PASS looks too short or is missing!');
 
-    // Use Port 465 (SSL) - often more reliable on some cloud NATs than 587
-    const dns = require('dns');
+    // Use the official 'gmail' service shortcut (it handles the optimal ports and protocols automatically)
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
+        service: 'gmail',
         auth: {
             user: process.env.BACKUP_EMAIL_USER || 'srimanthadep@gmail.com',
             pass: pass.trim()
         },
-        lookup: (hostname, options, callback) => {
-            dns.lookup(hostname, { family: 4 }, callback);
-        },
-        connectionTimeout: 30000,
-        greetingTimeout: 30000,
-        socketTimeout: 45000,
+        connectionTimeout: 60000,
+        greetingTimeout: 60000,
+        socketTimeout: 90000,
         debug: true,
         logger: true
     });
 
-    console.log('🔌 Verifying SMTP connection...');
+    console.log('🔌 Verifying SMTP connection via Gmail Service...');
     try {
         await transporter.verify();
         console.log('⭐ SMTP Connection Verified!');
     } catch (vErr) {
         console.error('❌ SMTP Verification FAILED:', vErr.message);
-        throw vErr; // Stop here if we can't even connect
+        throw vErr;
     }
 
     const mailOptions = {
