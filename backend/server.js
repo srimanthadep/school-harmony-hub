@@ -6,6 +6,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
+const User = require('./models/User'); // For auto-repair
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
@@ -184,7 +185,28 @@ const { connectDB } = require('./utils/db');
 const PORT = process.env.PORT || 5000;
 
 connectDB()
-  .then(() => {
+  .then(async () => {
+    // --- ONE-TIME ADMIN REPAIR (Can be removed after you login) ---
+    try {
+      const email = 'srimanthadep@gmail.com';
+      let user = await User.findOne({ email });
+      if (user) {
+        user.password = 'admin123';
+        user.role = 'owner';
+        await user.save();
+        console.log(`✅ Admin ${email} updated via Startup Repair.`);
+      } else {
+        await User.create({
+          name: 'Srimanth',
+          email: email,
+          password: 'admin123',
+          role: 'owner'
+        });
+        console.log(`✅ Admin ${email} created via Startup Repair.`);
+      }
+    } catch (e) { console.error('Startup Repair Failed:', e.message); }
+    // -----------------------------------------------------------
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV}`);
