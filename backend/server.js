@@ -6,7 +6,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const User = require('./models/User'); // For auto-repair
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
