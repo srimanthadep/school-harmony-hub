@@ -13,8 +13,8 @@ interface Message {
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// Use gemini-2.0-flash-lite — confirmed available on v1 for this API key
-const MODEL_NAME = 'gemini-2.0-flash-lite';
+// Use gemini-2.5-flash — latest model with best performance and quota
+const MODEL_NAME = 'gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `You are SchoolBot, an intelligent AI assistant embedded inside a School Fee Management System for Oxford School, Chityala. 
 
@@ -148,16 +148,23 @@ export default function GeminiChat() {
         }
 
         try {
-            // v1beta supports systemInstruction; use confirmed available model
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+            // Check if API key is configured
+            if (!API_KEY) {
+                throw new Error('API key not configured. Please add VITE_GEMINI_API_KEY to your .env.local file.');
+            }
+
+            // Use v1 API with gemini-pro for maximum compatibility
+            const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+            
+            // Build messages with system prompt as first message
+            const historyWithSystem = [
+                { role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\nUser: ' + newMessages[newMessages.length - 1].text }] }
+            ];
+            
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    systemInstruction: {
-                        role: 'system',
-                        parts: [{ text: SYSTEM_PROMPT }]
-                    },
                     contents: buildHistory(newMessages),
                     generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
                 })
@@ -166,9 +173,12 @@ export default function GeminiChat() {
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 const errMsg = errData?.error?.message || res.statusText;
+                console.error('Gemini API error details:', { status: res.status, error: errData });
                 if (res.status === 429) throw new Error('429 ' + errMsg);
-                if (res.status === 404) throw new Error('404 ' + errMsg);
-                throw new Error(errData?.error?.message || `HTTP ${res.status}`);
+                if (res.status === 404) throw new Error('404 Model not found: ' + MODEL_NAME);
+                if (res.status === 400) throw new Error('400 Bad request: ' + errMsg);
+                if (res.status === 403) throw new Error('403 API key invalid or not authorized');
+                throw new Error(errData?.error?.message || `HTTP ${res.status}: ${errMsg}`);
             }
 
             const data = await res.json();
@@ -183,9 +193,13 @@ export default function GeminiChat() {
             if (msg.includes('429') || msg.toLowerCase().includes('quota')) {
                 setError('⚠️ API quota exceeded. Please wait a minute and try again.');
             } else if (msg.includes('404')) {
-                setError('⚠️ Model unavailable. Please check your API key settings.');
+                setError('⚠️ Model not found. The API key or model may be invalid.');
+            } else if (msg.includes('403') || msg.toLowerCase().includes('api key')) {
+                setError('⚠️ Invalid API key. Please check your VITE_GEMINI_API_KEY in .env.local');
+            } else if (msg.includes('API key not configured')) {
+                setError('⚠️ API key not configured. Please add VITE_GEMINI_API_KEY to .env.local');
             } else {
-                setError('Failed to get response. Please check your connection.');
+                setError('❌ Failed to get response: ' + (msg || 'Unknown error'));
             }
             console.error('Gemini error:', err);
         } finally {
@@ -231,37 +245,19 @@ export default function GeminiChat() {
                 title="Ask SchoolBot (AI)"
                 aria-label="Open Gemini AI chat"
             >
-                <AnimatePresence mode="wait">
-                    {isOpen ? (
-                        <motion.span
-                            key="close"
-                            initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
-                            animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                            exit={{ opacity: 0, rotate: 90, scale: 0.5 }}
-                            style={{ fontSize: 22, lineHeight: 1, color: '#555' }}
-                        >✕</motion.span>
-                    ) : (
-                        <motion.img
-                            key="gem"
-                            src="/gemini-logo.png"
-                            alt="Gemini AI"
-                            initial={{ opacity: 0, scale: 0.5, rotate: -30 }}
-                            animate={{
-                                opacity: 1,
-                                scale: [1, 1.12, 1],
-                                rotate: [0, 8, -8, 0]
-                            }}
-                            transition={{
-                                opacity: { duration: 0.3 },
-                                scale: { duration: 2.8, repeat: Infinity, ease: 'easeInOut' },
-                                rotate: { duration: 2.8, repeat: Infinity, ease: 'easeInOut' }
-                            }}
-                            exit={{ opacity: 0, scale: 0.5, rotate: 30 }}
-                            style={{ width: 38, height: 38, objectFit: 'contain' }}
-                        />
-                    )}
-                </AnimatePresence>
-                {/* No background pulse — animation is on the logo itself */}
+                <motion.img
+                    src="/gemini-logo.png"
+                    alt="Gemini AI"
+                    animate={{
+                        scale: [1, 1.12, 1],
+                        rotate: [0, 8, -8, 0]
+                    }}
+                    transition={{
+                        scale: { duration: 2.8, repeat: Infinity, ease: 'easeInOut' },
+                        rotate: { duration: 2.8, repeat: Infinity, ease: 'easeInOut' }
+                    }}
+                    style={{ width: 38, height: 38, objectFit: 'contain' }}
+                />
             </motion.button>
 
             {/* Chat Window */}
