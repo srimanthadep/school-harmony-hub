@@ -8,7 +8,7 @@ const feeStructureSchema = new mongoose.Schema({
     },
     academicYear: {
         type: String,
-        default: '2024-25'
+        default: '2025-26'
     },
     tuitionFee: { type: Number, default: 0 },
     admissionFee: { type: Number, default: 0 },
@@ -26,5 +26,8 @@ feeStructureSchema.pre('save', function (next) {
         this.libraryFee + this.sportsFee + this.transportFee + this.miscFee;
     next();
 });
+
+// Prevent duplicate fee structures for the same class and year
+feeStructureSchema.index({ class: 1, academicYear: 1 }, { unique: true });
 
 module.exports = mongoose.model('FeeStructure', feeStructureSchema);

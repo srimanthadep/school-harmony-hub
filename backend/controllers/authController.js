@@ -64,7 +64,7 @@ exports.login = async (req, res) => {
 
         if (!user.isActive) {
             // Auto-reactivate specific super admin email if deactivated
-            if (user.email === 'srimanthadep@gmail.com') {
+            if (user.email === process.env.SUPER_ADMIN_EMAIL) {
                 user.isActive = true;
                 await user.save({ validateBeforeSave: false });
                 console.log(`Super Admin ${user.email} auto-reactivated on login attempt.`);
@@ -132,6 +132,7 @@ exports.changePassword = async (req, res) => {
         }
 
         user.password = newPassword;
+        user.passwordChangedAt = new Date(); // Fix #5: invalidate old JWTs
         await user.save();
 
         res.json({ success: true, message: 'Password changed successfully' });
@@ -163,7 +164,7 @@ exports.updateUserStatus = async (req, res) => {
         }
 
         // Prevent deactivating an owner/super admin
-        if ((user.role === 'owner' || user.email === 'srimanthadep@gmail.com') && req.body.isActive === false) {
+        if ((user.role === 'owner' || user.email === process.env.SUPER_ADMIN_EMAIL) && req.body.isActive === false) {
             return res.status(400).json({
                 success: false,
                 message: 'Super Admin accounts cannot be deactivated to prevent lockout'
@@ -205,7 +206,7 @@ exports.updateUserRole = async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
         // Prevent changing role of an owner/super admin
-        if ((user.role === 'owner' || user.email === 'srimanthadep@gmail.com') && req.body.role !== 'owner') {
+        if ((user.role === 'owner' || user.email === process.env.SUPER_ADMIN_EMAIL) && req.body.role !== 'owner') {
             return res.status(400).json({ success: false, message: 'Super Admin role cannot be changed to prevent loss of access' });
         }
 
@@ -276,7 +277,7 @@ exports.adminDeleteUser = async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
         // Prevent deleting an owner/super admin
-        if (user.role === 'owner' || user.email === 'srimanthadep@gmail.com') {
+        if (user.role === 'owner' || user.email === process.env.SUPER_ADMIN_EMAIL) {
             return res.status(400).json({ success: false, message: 'Super Admin accounts cannot be deleted' });
         }
 

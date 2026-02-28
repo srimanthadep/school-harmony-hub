@@ -33,19 +33,20 @@ exports.saveAttendance = async (req, res) => {
             const absentRecords = records.filter(r => r.status === 'absent');
             for (const record of absentRecords) {
                 try {
-                    const staff = await Staff.findById(record.studentId);
-                    if (staff) {
+                    // Fix #16: record.studentId here is actually the staffId (ObjectId of the staff member)
+                    const staffMember = await Staff.findById(record.studentId);
+                    if (staffMember) {
                         const leaveDate = new Date(date + 'T00:00:00.000Z');
-                        const alreadyHasLeave = staff.leaves.some(
+                        const alreadyHasLeave = staffMember.leaves.some(
                             l => new Date(l.date).toISOString().split('T')[0] === date
                         );
                         if (!alreadyHasLeave) {
-                            staff.leaves.push({
+                            staffMember.leaves.push({
                                 date: leaveDate,
                                 reason: 'Absent (auto-recorded from attendance)',
                                 status: 'approved'
                             });
-                            await staff.save({ validateModifiedOnly: true });
+                            await staffMember.save({ validateModifiedOnly: true });
                         }
                     }
                 } catch (leaveErr) {

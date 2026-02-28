@@ -89,7 +89,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </NavLink>
                         </motion.div>
                     ))}
-                    {user?.email === 'srimanthadep@gmail.com' && (
+                    {/* Fix #25: Show Admin Panel for any 'owner' role, not just one hardcoded email */}
+                    {user?.role === 'owner' && (
                         <motion.div
                             initial={{ x: -20, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
@@ -304,6 +305,8 @@ function AppRoutes() {
                 <Route path="/expenses" element={<ExpensePage />} />
                 <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                {/* Fix #28 & #33: Add /admin route to regular domain for owner users */}
+                <Route path="/admin" element={<AdminPage />} />
             </Route>
 
             <Route path="/portal/staff" element={

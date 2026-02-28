@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import API from '../utils/api';
 import { User, AuthContextType } from '../types';
 
@@ -19,7 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const token = localStorage.getItem('sfm_token');
         if (token) {
             API.get('/auth/me')
-                .then(res => {
+                .then((res: { data: { user: User } }) => {
                     setUser(res.data.user);
                     localStorage.setItem('sfm_user', JSON.stringify(res.data.user));
                 })
@@ -32,6 +32,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
             setLoading(false);
         }
+    }, []);
+
+    // Fix #21: Listen for the auth:logout event dispatched by the API interceptor
+    useEffect(() => {
+        const handleAuthLogout = () => {
+            setUser(null);
+            // Navigate to /login via React Router — see App.tsx for how this is handled
+            window.location.href = '/login'; // fallback since we can't access navigate() here
+        };
+        window.addEventListener('auth:logout', handleAuthLogout);
+        return () => window.removeEventListener('auth:logout', handleAuthLogout);
     }, []);
 
     const login = async (email: string, password: string): Promise<User> => {
@@ -49,11 +60,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
     };
 
+    // Fix #26: refreshUser re-fetches user data from API, fixing stale data after profile updates
+    const refreshUser = useCallback(async () => {
+        try {
+            const res = await API.get('/auth/me');
+            const freshUser = res.data.user;
+            setUser(freshUser);
+            localStorage.setItem('sfm_user', JSON.stringify(freshUser));
+        } catch {
+            // Silently fail — don't log out user just because refresh failed
+        }
+    }, []);
+
     const value: AuthContextType = {
         user,
         loading,
         login,
         logout,
+        refreshUser, // Fix #26
         isAdmin: (user?.role === 'admin' || user?.role === 'owner') || false,
         isOwner: (user?.role === 'owner') || false,
         isStudent: (user?.role === 'student') || false,

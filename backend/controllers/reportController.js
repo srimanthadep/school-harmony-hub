@@ -14,18 +14,40 @@ exports.getDashboard = async (req, res) => {
             monthlySalaryStats,
             recentFeePayments
         ] = await Promise.all([
-            // 1. Overall Student Stats
+            // 1. Overall Student Stats — tuition vs book fees separated correctly
             Student.aggregate([
                 { $match: { isActive: true } },
                 {
                     $addFields: {
-                        currentTotalPaid: { $sum: "$feePayments.amount" },
-                        libraryPaidAmount: {
+                        // Sum payments where feeType is 'tuition' or missing (legacy)
+                        tuitionPaid: {
                             $sum: {
                                 $map: {
-                                    input: { $filter: { input: "$feePayments", as: "p", cond: { $eq: ["$$p.feeType", "book"] } } },
-                                    as: "b",
-                                    in: "$$b.amount"
+                                    input: { $ifNull: ['$feePayments', []] },
+                                    as: 'fp',
+                                    in: {
+                                        $cond: [
+                                            { $in: ['$$fp.feeType', ['tuition', null]] },
+                                            '$$fp.amount',
+                                            0
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        // Sum payments where feeType is 'book'
+                        bookPaid: {
+                            $sum: {
+                                $map: {
+                                    input: { $ifNull: ['$feePayments', []] },
+                                    as: 'fp',
+                                    in: {
+                                        $cond: [
+                                            { $eq: ['$$fp.feeType', 'book'] },
+                                            '$$fp.amount',
+                                            0
+                                        ]
+                                    }
                                 }
                             }
                         }
@@ -36,13 +58,22 @@ exports.getDashboard = async (req, res) => {
                         _id: null,
                         totalStudents: { $sum: 1 },
                         totalFeesExpected: {
-                            $sum: { $add: ["$totalFee", { $ifNull: ["$totalBookFee", 0] }] }
+                            $sum: { $add: ['$totalFee', { $ifNull: ['$totalBookFee', 0] }] }
                         },
-                        totalFeesCollected: { $sum: "$currentTotalPaid" },
-                        libraryExpected: { $sum: { $ifNull: ["$totalBookFee", 0] } },
-                        libraryCollected: { $sum: "$libraryPaidAmount" },
+                        totalFeesCollected: { $sum: '$tuitionPaid' },
+                        libraryExpected: { $sum: { $ifNull: ['$totalBookFee', 0] } },
+                        libraryCollected: { $sum: '$bookPaid' },
                         studentsFullyPaid: {
-                            $sum: { $cond: [{ $gte: ["$currentTotalPaid", { $add: ["$totalFee", { $ifNull: ["$totalBookFee", 0] }] }] }, 1, 0] }
+                            $sum: {
+                                $cond: [
+                                    {
+                                        $and: [
+                                            { $gte: ['$tuitionPaid', '$totalFee'] },
+                                            { $gte: ['$bookPaid', { $ifNull: ['$totalBookFee', 0] }] }
+                                        ]
+                                    }, 1, 0
+                                ]
+                            }
                         }
                     }
                 },
@@ -53,9 +84,9 @@ exports.getDashboard = async (req, res) => {
                         totalFeesExpected: 1,
                         totalFeesCollected: 1,
                         studentsFullyPaid: 1,
-                        totalFeesPending: { $subtract: ["$totalFeesExpected", "$totalFeesCollected"] },
+                        totalFeesPending: { $subtract: ['$totalFeesExpected', { $add: ['$totalFeesCollected', '$libraryCollected'] }] },
                         libraryCollected: 1,
-                        libraryPending: { $subtract: ["$libraryExpected", "$libraryCollected"] }
+                        libraryPending: { $subtract: ['$libraryExpected', '$libraryCollected'] }
                     }
                 }
             ]),
@@ -225,104 +256,74 @@ exports.getPendingFees = async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
         const limitNum = parseInt(limit);
 
-        const [pendingStudents, totalCountResult] = await Promise.all([
+        // Fix #17: Use $facet to combine into a single aggregation (avoids duplicate pipeline)
+        const [facetResult] = await Promise.all([
             Student.aggregate([
                 { $match: match },
                 {
                     $addFields: {
-                        totalPaid: {
+                        tuitionPaidSum: {
                             $sum: {
-                                $filter: {
-                                    input: { $ifNull: ["$feePayments", []] },
-                                    as: "p",
-                                    cond: { $or: [{ $eq: ["$$p.feeType", "tuition"] }, { $not: ["$$p.feeType"] }] }
+                                $map: {
+                                    input: { $ifNull: ['$feePayments', []] },
+                                    as: 'fp',
+                                    in: {
+                                        $cond: [
+                                            { $in: ['$$fp.feeType', ['tuition', null]] },
+                                            '$$fp.amount',
+                                            0
+                                        ]
+                                    }
                                 }
                             }
                         }
                     }
                 },
-                {
-                    $addFields: {
-                        // totalPaid is now just a filtered array, need to sum the amounts
-                        tuitionPaidSum: {
-                            $reduce: {
-                                input: {
-                                    $filter: {
-                                        input: { $ifNull: ["$feePayments", []] },
-                                        as: "p",
-                                        cond: { $or: [{ $eq: ["$$p.feeType", "tuition"] }, { $not: ["$$p.feeType"] }] }
-                                    }
-                                },
-                                initialValue: 0,
-                                in: { $add: ["$$value", "$$p.amount"] }
-                            }
-                        }
-                    }
-                },
-                {
-                    $addFields: {
-                        pendingAmount: { $subtract: ["$totalFee", "$tuitionPaidSum"] }
-                    }
-                },
+                { $addFields: { pendingAmount: { $subtract: ['$totalFee', '$tuitionPaidSum'] } } },
                 { $match: { pendingAmount: { $gt: 0 } } },
                 {
                     $addFields: {
                         classOrder: {
                             $indexOfArray: [
                                 ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'],
-                                "$class"
+                                '$class'
                             ]
                         }
                     }
                 },
                 { $sort: { classOrder: 1, rollNo: 1 } },
-                { $skip: skip },
-                { $limit: limitNum },
                 {
-                    $project: {
-                        _id: 1,
-                        studentId: 1,
-                        name: 1,
-                        class: 1,
-                        rollNo: 1,
-                        parentPhone: 1,
-                        totalFee: 1,
-                        totalPaid: "$tuitionPaidSum",
-                        pendingAmount: 1,
-                        paymentStatus: {
-                            $cond: [
-                                { $eq: ["$tuitionPaidSum", 0] }, "unpaid", "partial"
-                            ]
-                        }
+                    $facet: {
+                        data: [
+                            { $skip: skip },
+                            { $limit: limitNum },
+                            {
+                                $project: {
+                                    _id: 1,
+                                    studentId: 1,
+                                    name: 1,
+                                    class: 1,
+                                    rollNo: 1,
+                                    parentPhone: 1,
+                                    totalFee: 1,
+                                    totalPaid: '$tuitionPaidSum',
+                                    pendingAmount: 1,
+                                    paymentStatus: {
+                                        $cond: [{ $eq: ['$tuitionPaidSum', 0] }, 'unpaid', 'partial']
+                                    }
+                                }
+                            }
+                        ],
+                        totals: [
+                            { $group: { _id: null, count: { $sum: 1 }, totalPending: { $sum: '$pendingAmount' } } }
+                        ]
                     }
                 }
-            ]),
-            Student.aggregate([
-                { $match: match },
-                {
-                    $addFields: {
-                        tuitionPaidSum: {
-                            $reduce: {
-                                input: {
-                                    $filter: {
-                                        input: { $ifNull: ["$feePayments", []] },
-                                        as: "p",
-                                        cond: { $or: [{ $eq: ["$$p.feeType", "tuition"] }, { $not: ["$$p.feeType"] }] }
-                                    }
-                                },
-                                initialValue: 0,
-                                in: { $add: ["$$value", "$$p.amount"] }
-                            }
-                        }
-                    }
-                },
-                { $addFields: { pendingAmount: { $subtract: ["$totalFee", "$tuitionPaidSum"] } } },
-                { $match: { pendingAmount: { $gt: 0 } } },
-                { $group: { _id: null, count: { $sum: 1 }, totalPending: { $sum: "$pendingAmount" } } }
             ])
         ]);
 
-        const totalData = totalCountResult[0] || { count: 0, totalPending: 0 };
+        const pendingStudents = facetResult.data;
+        const totalData = facetResult.totals[0] || { count: 0, totalPending: 0 };
 
         res.json({
             success: true,

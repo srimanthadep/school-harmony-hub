@@ -40,6 +40,7 @@ const userSchema = new mongoose.Schema({
         default: true
     },
     lastLogin: Date,
+    passwordChangedAt: Date,
     createdAt: {
         type: Date,
         default: Date.now

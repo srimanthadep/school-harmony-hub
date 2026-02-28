@@ -40,7 +40,8 @@ export const formatDate = (date) => {
 // ── Fee Receipt PDF ──────────────────────────────────────────────────
 export const generateFeeReceiptPDF = async (student, payment, settings = {}) => {
     const doc = new jsPDF({ format: 'a5', unit: 'mm' });
-    const schoolName = 'Oxford School Chityala';
+    // Fix #24: Use settings.schoolName like the export functions do, falling back to constant
+    const schoolName = settings.schoolName || SCHOOL_NAME;
     const pageW = doc.internal.pageSize.getWidth();
 
     // Try load logo
@@ -188,7 +189,8 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
 // ── Salary Slip PDF ──────────────────────────────────────────────────
 export const generateSalarySlipPDF = async (staff, payment, settings = {}) => {
     const doc = new jsPDF({ format: 'a5', unit: 'mm' });
-    const schoolName = 'Oxford School Chityala';
+    // Fix #24: Use settings.schoolName like the export functions do, falling back to constant
+    const schoolName = settings.schoolName || SCHOOL_NAME;
     const pageW = doc.internal.pageSize.getWidth();
 
     const logoBase64 = await getLogoBase64();

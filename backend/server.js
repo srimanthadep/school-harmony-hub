@@ -21,7 +21,12 @@ console.log('🏁 Server Initializing...');
 app.use(compression());
 app.use(helmet());
 
-const whitelist = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.0.184:5174', 'http://localhost:8080', 'https://oxfordschool.cc', 'https://www.oxfordschool.cc', 'https://admin.oxfordschool.cc'];
+// Fix #7: In production, if FRONTEND_URL is not set, allow nothing (fail safe)
+const whitelist = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map(u => u.trim())
+  : (process.env.NODE_ENV === 'production'
+    ? [] // no fallback in prod — block everything
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://192.168.0.184:5174', 'http://localhost:8080']);
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || whitelist.indexOf(origin) !== -1) {

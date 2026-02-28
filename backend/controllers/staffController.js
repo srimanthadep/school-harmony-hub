@@ -2,6 +2,7 @@ const Staff = require('../models/Staff');
 const User = require('../models/User');
 const DeletedRecord = require('../models/DeletedRecord');
 const Settings = require('../models/Settings');
+const { staffSchema } = require('../validations/staffValidation'); // Fix #22
 
 // @desc    Get all staff
 // @route   GET /api/staff
@@ -55,10 +56,12 @@ exports.getStaffMember = async (req, res) => {
 // @access  Admin
 exports.createStaff = async (req, res) => {
     try {
-        const staff = await Staff.create(req.body);
+        // Fix #22: Validate input with Zod schema
+        const validatedData = staffSchema.parse(req.body);
+        const staff = await Staff.create(validatedData);
 
         // Create login account
-        if (req.body.email) {
+        if (validatedData.email) {
             const defaultPassword = `${staff.name.split(' ')[0].toLowerCase()}@${staff.staffId}`;
             const user = await User.create({
                 name: staff.name,
@@ -87,7 +90,9 @@ exports.createStaff = async (req, res) => {
 // @access  Admin
 exports.updateStaff = async (req, res) => {
     try {
-        const staff = await Staff.findByIdAndUpdate(req.params.id, req.body, {
+        // Fix #22: Validate partial update with Zod schema
+        const validatedData = staffSchema.partial().parse(req.body);
+        const staff = await Staff.findByIdAndUpdate(req.params.id, validatedData, {
             new: true,
             runValidators: true
         });
@@ -138,12 +143,19 @@ exports.recordSalaryPayment = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Staff not found' });
         }
 
+        // Fix #4b: Use atomic $inc to prevent race conditions in salary slip number generation
         const settings = await Settings.findOne();
-        const slipNo = settings
-            ? `${settings.salarySlipPrefix || 'SAL'}${++settings.lastSlipNo}`
-            : `SAL${Date.now()}`;
-
-        if (settings) await settings.save();
+        let slipNo;
+        if (settings) {
+            const updatedSettings = await Settings.findOneAndUpdate(
+                {},
+                { $inc: { lastSlipNo: 1 } },
+                { new: true }
+            );
+            slipNo = `${updatedSettings.salarySlipPrefix || 'SAL'}${updatedSettings.lastSlipNo}`;
+        } else {
+            slipNo = `SAL${Date.now()}`;
+        }
 
         const payment = {
             month: req.body.month,
@@ -358,14 +370,28 @@ exports.editLeave = async (req, res) => {
 // @access  Admin
 exports.getStaffStats = async (req, res) => {
     try {
-        const staff = await Staff.find({ isActive: true });
-        const totalStaff = staff.length;
-        const totalMonthlySalary = staff.reduce((s, st) => s + st.monthlySalary, 0);
-        const totalSalaryPaid = staff.reduce((s, st) => s + st.totalSalaryPaid, 0);
+        // Fix #18: Use aggregation instead of loading all staff into memory
+        const result = await Staff.aggregate([
+            { $match: { isActive: true } },
+            {
+                $group: {
+                    _id: null,
+                    totalStaff: { $sum: 1 },
+                    totalMonthlySalary: { $sum: '$monthlySalary' },
+                    totalSalaryPaid: { $sum: { $sum: '$salaryPayments.amount' } }
+                }
+            }
+        ]);
+
+        const stats = result[0] || { totalStaff: 0, totalMonthlySalary: 0, totalSalaryPaid: 0 };
 
         res.json({
             success: true,
-            stats: { totalStaff, totalMonthlySalary, totalSalaryPaid }
+            stats: {
+                totalStaff: stats.totalStaff,
+                totalMonthlySalary: stats.totalMonthlySalary,
+                totalSalaryPaid: stats.totalSalaryPaid
+            }
         });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });

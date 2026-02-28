@@ -24,7 +24,7 @@ const settingsSchema = new mongoose.Schema({
     },
     academicYear: {
         type: String,
-        default: '2024-25'
+        default: '2025-26'
     },
     currency: {
         type: String,
@@ -46,7 +46,13 @@ const settingsSchema = new mongoose.Schema({
         type: Number,
         default: 1000
     },
-    logoUrl: String
+    logoUrl: String,
+    // Singleton enforcement — only one settings document allowed
+    _singleton: {
+        type: String,
+        default: 'singleton',
+        unique: true
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);

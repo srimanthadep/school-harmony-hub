@@ -14,16 +14,16 @@ API.interceptors.request.use(config => {
 }, error => Promise.reject(error));
 
 // Response interceptor - handle auth errors
+// Response interceptor — handle 401 errors by dispatching a logout event
+// Fix #21: Use a custom event instead of window.location.href to avoid bypassing React Router
 API.interceptors.response.use(
-    response => response,
-    error => {
-        if (error.response?.status === 401) {
-            // If it's not a login request, clear data and redirect
-            if (!error.config.url.includes('/auth/login')) {
-                localStorage.removeItem('sfm_token');
-                localStorage.removeItem('sfm_user');
-                window.location.href = '/login';
-            }
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && !error.config.url.includes('/auth/login')) {
+            localStorage.removeItem('sfm_token');
+            localStorage.removeItem('sfm_user');
+            // Dispatch a custom event so AuthContext/React can handle the logout cleanly
+            window.dispatchEvent(new CustomEvent('auth:logout'));
         }
         return Promise.reject(error);
     }

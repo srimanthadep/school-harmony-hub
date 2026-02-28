@@ -85,12 +85,13 @@ exports.getStudents = asyncHandler(async (req, res) => {
     });
 
     const total = await Student.countDocuments(query);
+    const limitNum = parseInt(limit); // Fix #19: parse as integer
 
     res.json({
         success: true,
         count: studentsWithVirtuals.length,
         total,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / limitNum),
         students: studentsWithVirtuals
     });
 });
@@ -172,7 +173,7 @@ exports.updateStudent = asyncHandler(async (req, res) => {
     );
     const changesText = changedFields.length
         ? changedFields.slice(0, 5).map(k => `${k}: "${oldPicked[k] ?? ''}" → "${validatedData[k] ?? ''}"`).join(', ')
-            + (changedFields.length > 5 ? ` ...and ${changedFields.length - 5} more` : '')
+        + (changedFields.length > 5 ? ` ...and ${changedFields.length - 5} more` : '')
         : 'no field changes detected';
 
     // Activity Log
@@ -222,15 +223,29 @@ exports.recordPayment = asyncHandler(async (req, res) => {
         throw new Error('Student not found');
     }
 
+    // Fix #4: Use atomic $inc to prevent race conditions in receipt number generation
     const settings = await Settings.findOne();
-    const receiptNo = settings
-        ? `${settings.receiptPrefix || 'RCPT'}${++settings.lastReceiptNo}`
-        : `RCPT${Date.now()}`;
+    let receiptNo;
+    if (settings) {
+        const updatedSettings = await Settings.findOneAndUpdate(
+            {},
+            { $inc: { lastReceiptNo: 1 } },
+            { new: true }
+        );
+        receiptNo = `${updatedSettings.receiptPrefix || 'RCPT'}${updatedSettings.lastReceiptNo}`;
+    } else {
+        receiptNo = `RCPT${Date.now()}`;
+    }
 
-    if (settings) await settings.save();
+    // Fix #23: Reject zero or negative payment amounts
+    const amount = Math.round(Number(req.body.amount || 0));
+    if (!amount || amount <= 0) {
+        res.status(400);
+        throw new Error('Payment amount must be greater than 0');
+    }
 
     const payment = {
-        amount: Math.round(Number(req.body.amount || 0)),
+        amount,
         paymentDate: req.body.paymentDate || new Date(),
         paymentMode: req.body.paymentMode || 'cash',
         feeType: req.body.feeType || 'tuition',
@@ -388,9 +403,15 @@ exports.promoteStudents = asyncHandler(async (req, res) => {
     }
 
     const FeeStructure = require('../models/FeeStructure');
+    const BookFeeStructure = require('../models/BookFeeStructure');
     const feeStructures = await FeeStructure.find({ academicYear: toYear });
     const feeMap = {};
     feeStructures.forEach(f => { feeMap[f.class] = f.totalFee; });
+
+    // Fix #10: Also load book fee structures for the new year
+    const bookFeeStructures = await BookFeeStructure.find();
+    const bookFeeMap = {};
+    bookFeeStructures.forEach(f => { bookFeeMap[f.class] = f.totalFee; });
 
     let promoted = 0, graduated = 0, skipped = 0;
 
@@ -408,6 +429,12 @@ exports.promoteStudents = asyncHandler(async (req, res) => {
             student.feePayments = [];
             if (feeMap[nextClass]) {
                 student.totalFee = feeMap[nextClass];
+            }
+            // Fix #10: Reset book fee for the new class
+            if (bookFeeMap[nextClass] !== undefined) {
+                student.totalBookFee = bookFeeMap[nextClass];
+            } else {
+                student.totalBookFee = 0; // reset to 0 if no structure found
             }
             promoted++;
         }
@@ -435,11 +462,12 @@ exports.bulkImportStudents = asyncHandler(async (req, res) => {
         throw new Error('Please upload a file (.csv, .xlsx)');
     }
 
-    // Priority: 1. User selected in UI (req.body), 2. Filename, 3. Default "Nursery"
+    // Fix #12: Read academic year from Settings instead of hardcoding
+    const importSettings = await Settings.findOne();
     const fileName = req.file.originalname.split('.')[0];
     const fileDefaultClass = fileName.replace(/class/gi, '').trim();
     const finalDefaultClass = req.body.class || fileDefaultClass || 'Nursery';
-    const finalDefaultYear = req.body.academicYear || '2025-26';
+    const finalDefaultYear = req.body.academicYear || importSettings?.academicYear || '2025-26';
 
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];

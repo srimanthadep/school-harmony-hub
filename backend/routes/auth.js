@@ -8,7 +8,8 @@ const {
 const { protect, authorize } = require('../middleware/auth');
 
 const authorizeSuperAdmin = (req, res, next) => {
-    const authorizedEmails = ['srimanthadep@gmail.com', 'superadmin@school.edu'];
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+    const authorizedEmails = [superAdminEmail, 'superadmin@school.edu'].filter(Boolean);
     if (req.user && authorizedEmails.includes(req.user.email)) {
         return next();
     }
@@ -16,7 +17,14 @@ const authorizeSuperAdmin = (req, res, next) => {
 };
 
 router.post('/login', login);
-router.post('/register', register); // Used during seeding; restrict in production
+
+// Fix #1: Disabled in production — only allow during seeding in development
+router.post('/register', (req, res, next) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ success: false, message: 'Registration endpoint is disabled in production.' });
+    }
+    next();
+}, register);
 
 router.use(protect); // All routes below require auth
 router.get('/me', getMe);

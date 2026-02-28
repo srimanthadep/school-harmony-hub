@@ -29,4 +29,7 @@ bookFeeStructureSchema.pre('save', function (next) {
     next();
 });
 
+// Prevent duplicate book fee structures for the same class
+bookFeeStructureSchema.index({ class: 1 }, { unique: true });
+
 module.exports = mongoose.model('BookFeeStructure', bookFeeStructureSchema);

@@ -23,6 +23,14 @@ exports.protect = async (req, res, next) => {
             return res.status(401).json({ success: false, message: 'Account deactivated' });
         }
 
+        // Reject tokens issued before the last password change (Fix #5)
+        if (req.user.passwordChangedAt) {
+            const changedAtTimestamp = parseInt(req.user.passwordChangedAt.getTime() / 1000, 10);
+            if (decoded.iat < changedAtTimestamp) {
+                return res.status(401).json({ success: false, message: 'Password recently changed. Please log in again.' });
+            }
+        }
+
         next();
     } catch (err) {
         return res.status(401).json({ success: false, message: 'Not authorized, invalid token' });

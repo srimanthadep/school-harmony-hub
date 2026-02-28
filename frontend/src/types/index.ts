@@ -94,6 +94,7 @@ export interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<User>;
     logout: () => void;
+    refreshUser: () => Promise<void>; // Fix #26: refresh user data from server
     isAdmin: boolean;
     isOwner: boolean;
     isStaff: boolean;
