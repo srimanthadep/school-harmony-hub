@@ -1,12 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { motion, AnimatePresence } from 'framer-motion';
+import API from '../utils/api';
 
 // --- Types ---
 interface Message {
     role: 'user' | 'model';
     text: string;
     timestamp: Date;
+}
+
+interface GeminiContext {
+    studentData?: any;
+    staffData?: any;
+    attendanceData?: any;
+    financialSummary?: any;
 }
 
 // --- Gemini Initialization ---
@@ -16,18 +24,22 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 // Use gemini-2.5-flash — latest model with best performance and quota
 const MODEL_NAME = 'gemini-2.5-flash';
 
-const SYSTEM_PROMPT = `You are SchoolBot, an intelligent AI assistant embedded inside a School Fee Management System for Oxford School, Chityala. 
+const BASE_SYSTEM_PROMPT = `You are SchoolBot, an intelligent AI assistant for Oxford School, Chityala's Fee Management System.
 
-You help school administrators, owners, and staff with:
-- Understanding fee collections, pending dues, and payment history
-- Answering questions about student management and promotions
-- Explaining salary slips, staff attendance, and payroll
-- Helping with reports and data interpretation
-- Providing guidance on settings and system usage
-- General educational administration advice
+IMPORTANT: Answer ONLY based on the REAL SCHOOL DATA provided below. Do NOT make up or imagine any data.
+- If data is not provided or you don't have information, say "I don't have this information in the system"
+- Always cite specific numbers, names, and facts from the provided data
+- Be accurate and honest about what data is available in the system
 
-Keep your answers concise, helpful, and professional. Use bullet points and formatting where it helps clarity. 
-If asked about specific student or staff data you don't have access to, explain that you can help guide them to the right section of the app.
+You help with:
+- Fee collections, pending dues, and payment history
+- Student information and management
+- Staff and salary information
+- Attendance tracking
+- Reports and data analysis
+- System usage guidance
+
+Keep answers concise, helpful, and professional. Use bullet points where helpful.
 Always be friendly and supportive.`;
 
 // --- Gemini Logo SVG ---
@@ -110,8 +122,23 @@ export default function GeminiChat() {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [geminiContext, setGeminiContext] = useState<GeminiContext | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    // Fetch real data from backend when component mounts
+    useEffect(() => {
+        const fetchContext = async () => {
+            try {
+                const response = await API.get('/gemini/context');
+                setGeminiContext(response.data);
+            } catch (err: any) {
+                console.error('Error fetching Gemini context:', err);
+                // Non-critical error, chat can still work without context
+            }
+        };
+        fetchContext();
+    }, []);
 
     // Auto-scroll to bottom on new messages
     useEffect(() => {
@@ -153,19 +180,63 @@ export default function GeminiChat() {
                 throw new Error('API key not configured. Please add VITE_GEMINI_API_KEY to your .env.local file.');
             }
 
-            // Use v1 API with gemini-pro for maximum compatibility
+            // Build system prompt with real school data
+            let systemPrompt = BASE_SYSTEM_PROMPT;
+            
+            if (geminiContext) {
+                systemPrompt += `\n\n===== REAL SCHOOL DATA (Current) =====\n`;
+                
+                if (geminiContext.studentData) {
+                    systemPrompt += `\nSTUDENT DATA:\n`;
+                    systemPrompt += `- Total Students: ${geminiContext.studentData.total}\n`;
+                    systemPrompt += `- Fee Status: Paid (${geminiContext.studentData.byFeeStatus?.paid || 0}), Partial (${geminiContext.studentData.byFeeStatus?.partial || 0}), Unpaid (${geminiContext.studentData.byFeeStatus?.unpaid || 0}), Zero Fee (${geminiContext.studentData.byFeeStatus?.zero || 0})\n`;
+                    
+                    if (geminiContext.studentData.studentsWithZeroFee?.length > 0) {
+                        systemPrompt += `- Students with Zero Tuition Fee (${geminiContext.studentData.studentsWithZeroFee.length}): ${geminiContext.studentData.studentsWithZeroFee.map((s: any) => s.name).join(', ')}\n`;
+                    }
+                }
+                
+                if (geminiContext.financialSummary) {
+                    systemPrompt += `\nFINANCIAL SUMMARY:\n`;
+                    systemPrompt += `- Total Fee Collected: ₹${geminiContext.financialSummary.totalFeeCollected || 0}\n`;
+                    systemPrompt += `- Total Fee Pending: ₹${geminiContext.financialSummary.totalFeePending || 0}\n`;
+                    systemPrompt += `- Collection Rate: ${geminiContext.financialSummary.percentageCollected || 0}%\n`;
+                }
+                
+                if (geminiContext.staffData) {
+                    systemPrompt += `\nSTAFF DATA:\n`;
+                    systemPrompt += `- Total Staff: ${geminiContext.staffData.total}\n`;
+                    if (geminiContext.staffData.list?.length > 0) {
+                        systemPrompt += `- Staff: ${geminiContext.staffData.list.map((s: any) => `${s.name} (${s.role})`).join(', ')}\n`;
+                    }
+                }
+                
+                if (geminiContext.attendanceData?.today) {
+                    systemPrompt += `\nTODAY'S ATTENDANCE:\n`;
+                    systemPrompt += `- Students Present: ${geminiContext.attendanceData.today.studentPresent}\n`;
+                    systemPrompt += `- Students Absent: ${geminiContext.attendanceData.today.studentAbsent}\n`;
+                    systemPrompt += `- Staff Present: ${geminiContext.attendanceData.today.staffPresent}\n`;
+                }
+                
+                systemPrompt += `\n=====================================\n`;
+            }
+
+            // Use v1 API with gemini-2.5-flash
             const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
             
-            // Build messages with system prompt as first message
-            const historyWithSystem = [
-                { role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\nUser: ' + newMessages[newMessages.length - 1].text }] }
+            const contents = [
+                {
+                    role: 'user',
+                    parts: [{ text: systemPrompt + '\n\nUser Question: ' + newMessages[newMessages.length - 1].text }]
+                },
+                ...buildHistory(newMessages.slice(0, -1))
             ];
             
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: buildHistory(newMessages),
+                    contents: contents,
                     generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
                 })
             });

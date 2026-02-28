@@ -75,6 +75,7 @@ app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/staff-attendance', require('./routes/staffAttendance'));
 app.use('/api/backup', require('./routes/backup'));
+app.use('/api/gemini', require('./routes/gemini'));
 
 // Health check
 app.get('/api/health', (req, res) => {
