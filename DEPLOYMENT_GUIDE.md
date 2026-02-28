@@ -20,13 +20,14 @@ These must be added in **Project Settings > Environment Variables** on the Verce
 
 | Key | Example Value | Description |
 | :--- | :--- | :--- |
-| `VITE_API_URL` | `https://your-backend.onrender.com/api` | Backend API base URL consumed by the frontend |
+| `VITE_API_URL` | `https://your-backend.herokuapp.com/api` | Backend API base URL consumed by the frontend |
+| `VITE_GEMINI_API_KEY` | `AIzaSy...` | Gemini AI API key for chat feature (get from https://aistudio.google.com/app/apikey) |
 | `NODE_ENV` | `production` | Tells the app it is running in production mode |
 
 ---
 
-## 3. Backend Environment Variables (Render.com)
-These must be added in your Render.com service **Environment** settings.
+## 3. Backend Environment Variables (Heroku)
+These must be added in your Heroku app **Settings > Config Vars**.
 
 | Key | Example Value | Description |
 | :--- | :--- | :--- |
@@ -35,7 +36,7 @@ These must be added in your Render.com service **Environment** settings.
 | `JWT_EXPIRE` | `7d` | Token expiry duration (e.g. `1d`, `7d`, `30d`) |
 | `NODE_ENV` | `production` | Tells the app it is running in production mode |
 | `FRONTEND_URL` | `https://oxfordschool.cc,https://www.oxfordschool.cc,https://admin.oxfordschool.cc` | Comma-separated list of allowed CORS origins (overrides default whitelist) |
-| `PORT` | `5000` | Port the server listens on (Render sets this automatically) |
+| `PORT` | (leave blank) | Port the server listens on (Heroku sets this automatically) |
 
 ---
 
@@ -60,10 +61,19 @@ If you need to run the project locally again:
 ---
 
 ## 6. Deployment Instructions (Step-by-Step)
-1.  Push all local files to GitHub (ensure `vercel.json` is in the root).
-2.  Deploy the **backend** to Render.com; add all **Backend Environment Variables** listed above.
-3.  Import the GitHub Repository into Vercel for the **frontend**; add all **Frontend Environment Variables**.
-4.  Ensure **Root Directory** settings are correct.
-5.  Deploy.
+
+### Backend (Heroku):
+1.  Create a new Heroku app: `heroku create your-app-name`
+2.  Connect to your GitHub repository or use Heroku CLI
+3.  Add all **Backend Environment Variables** in Settings > Config Vars
+4.  Deploy: `git push heroku main` or enable automatic deploys from GitHub
+5.  The `Procfile` in the root will automatically start the backend
+
+### Frontend (Vercel):
+1.  Push all local files to GitHub (ensure `vercel.json` is in the root)
+2.  Import the GitHub Repository into Vercel
+3.  Add all **Frontend Environment Variables** (including `VITE_GEMINI_API_KEY`)
+4.  Ensure **Root Directory** settings are correct
+5.  Deploy
 
 > ⚠️ **Migration note**: The password hashing algorithm was changed from SHA-256+JWT_SECRET to bcryptjs. All existing hashed passwords in the database are now invalid. Re-run `npm run seed` (or reset each password via the Admin Panel) after deploying.
