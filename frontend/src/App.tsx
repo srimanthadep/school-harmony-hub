@@ -338,6 +338,12 @@ const queryClient = new QueryClient({
     },
 });
 
+// Wrapper component to conditionally show Gemini chat only when logged in
+function AuthenticatedGeminiChat() {
+    const { user } = useAuth();
+    return user ? <GeminiChat /> : null;
+}
+
 export default function App() {
     return (
         <QueryClientProvider client={queryClient}>
@@ -346,7 +352,7 @@ export default function App() {
                     <BrowserRouter>
                         <Suspense fallback={<div className="loading-spinner"><div className="spinner" /></div>}>
                             <AppRoutes />
-                            <GeminiChat />
+                            <AuthenticatedGeminiChat />
                         </Suspense>
                         <Toaster
                             position="top-right"
