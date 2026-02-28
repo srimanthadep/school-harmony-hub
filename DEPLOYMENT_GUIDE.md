@@ -22,6 +22,7 @@ These must be added in **Project Settings > Environment Variables** on the Verce
 | :--- | :--- | :--- |
 | `VITE_API_URL` | `https://your-backend.herokuapp.com/api` | Backend API base URL consumed by the frontend |
 | `VITE_GEMINI_API_KEY` | `AIzaSy...` | Gemini AI API key for chat feature (get from https://aistudio.google.com/app/apikey) |
+| `VITE_OPENAI_API_KEY` | `sk-proj-...` | OpenAI / ChatGPT API key for chat feature (get from https://platform.openai.com/api-keys) |
 | `NODE_ENV` | `production` | Tells the app it is running in production mode |
 
 ---
