@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../utils/api';
 
@@ -17,9 +17,14 @@ interface GeminiContext {
     financialSummary?: any;
 }
 
-// --- Gemini Initialization ---
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
+// --- Gemini API Key ---
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+
+// --- OpenAI Initialization ---
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
+const openaiClient = OPENAI_API_KEY
+    ? new OpenAI({ apiKey: OPENAI_API_KEY, dangerouslyAllowBrowser: true })
+    : null;
 
 // Use gemini-2.5-flash — latest model with best performance and quota
 const MODEL_NAME = 'gemini-2.5-flash';
@@ -54,6 +59,15 @@ function GeminiLogo({ size = 24 }: { size?: number }) {
                     <stop offset="100%" stopColor="#D96570" />
                 </linearGradient>
             </defs>
+        </svg>
+    );
+}
+
+// --- ChatGPT Logo SVG ---
+function ChatGPTLogo({ size = 24 }: { size?: number }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 41 41" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M37.532 16.87a9.963 9.963 0 0 0-.856-8.184 10.078 10.078 0 0 0-10.855-4.835A9.964 9.964 0 0 0 18.306.5a10.079 10.079 0 0 0-9.614 6.977 9.967 9.967 0 0 0-6.664 4.834 10.08 10.08 0 0 0 1.24 11.817 9.965 9.965 0 0 0 .856 8.185 10.079 10.079 0 0 0 10.855 4.835 9.965 9.965 0 0 0 7.516 3.35 10.078 10.078 0 0 0 9.617-6.981 9.967 9.967 0 0 0 6.663-4.834 10.079 10.079 0 0 0-1.243-11.813zM22.498 37.886a7.474 7.474 0 0 1-4.799-1.735c.061-.033.168-.091.237-.134l7.964-4.6a1.294 1.294 0 0 0 .655-1.134V19.054l3.366 1.944a.12.12 0 0 1 .066.092v9.299a7.505 7.505 0 0 1-7.49 7.496zM6.392 31.006a7.471 7.471 0 0 1-.894-5.023c.06.036.162.099.237.141l7.964 4.6a1.297 1.297 0 0 0 1.308 0l9.724-5.614v3.888a.12.12 0 0 1-.048.103l-8.051 4.649a7.504 7.504 0 0 1-10.24-2.744zM4.297 13.62A7.469 7.469 0 0 1 8.2 10.333c0 .068-.004.19-.004.274v9.201a1.294 1.294 0 0 0 .654 1.132l9.723 5.614-3.366 1.944a.12.12 0 0 1-.114.012L7.044 23.86a7.504 7.504 0 0 1-2.747-10.24zm27.658 6.437l-9.724-5.615 3.367-1.943a.121.121 0 0 1 .114-.012l8.048 4.648a7.498 7.498 0 0 1-1.158 13.528v-9.476a1.293 1.293 0 0 0-.647-1.13zm3.35-5.043c-.059-.037-.162-.099-.236-.141l-7.965-4.6a1.298 1.298 0 0 0-1.308 0l-9.723 5.614v-3.888a.12.12 0 0 1 .048-.103l8.05-4.645a7.497 7.497 0 0 1 11.135 7.763zm-21.063 6.929l-3.367-1.944a.12.12 0 0 1-.065-.092v-9.299a7.497 7.497 0 0 1 12.293-5.756 6.94 6.94 0 0 0-.236.134l-7.965 4.6a1.294 1.294 0 0 0-.654 1.132l-.006 11.225zm1.829-3.943l4.33-2.501 4.332 2.5v4.999l-4.331 2.5-4.331-2.5V18z" fill="currentColor"/>
         </svg>
     );
 }
@@ -112,6 +126,7 @@ function renderInline(text: string): React.ReactNode {
 // --- Main Chat Component ---
 export default function GeminiChat() {
     const [isOpen, setIsOpen] = useState(false);
+    const [aiProvider, setAiProvider] = useState<'gemini' | 'chatgpt'>('gemini');
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'model',
@@ -152,11 +167,53 @@ export default function GeminiChat() {
         }
     }, [isOpen]);
 
-    // Build conversation history for multi-turn context
+    // Build conversation history for multi-turn context (Gemini format)
     const buildHistory = (msgs: Message[]) => msgs.map(m => ({
         role: m.role === 'model' ? 'model' : 'user',
         parts: [{ text: m.text }]
     }));
+
+    // Build system prompt enriched with real school data
+    const buildSystemPromptWithContext = () => {
+        let prompt = BASE_SYSTEM_PROMPT;
+        if (!geminiContext) return prompt;
+
+        prompt += `\n\n===== REAL SCHOOL DATA (Current) =====\n`;
+
+        if (geminiContext.studentData) {
+            prompt += `\nSTUDENT DATA:\n`;
+            prompt += `- Total Students: ${geminiContext.studentData.total}\n`;
+            prompt += `- Fee Status: Paid (${geminiContext.studentData.byFeeStatus?.paid || 0}), Partial (${geminiContext.studentData.byFeeStatus?.partial || 0}), Unpaid (${geminiContext.studentData.byFeeStatus?.unpaid || 0}), Zero Fee (${geminiContext.studentData.byFeeStatus?.zero || 0})\n`;
+            if (geminiContext.studentData.studentsWithZeroFee?.length > 0) {
+                prompt += `- Students with Zero Tuition Fee (${geminiContext.studentData.studentsWithZeroFee.length}): ${geminiContext.studentData.studentsWithZeroFee.map((s: any) => s.name).join(', ')}\n`;
+            }
+        }
+
+        if (geminiContext.financialSummary) {
+            prompt += `\nFINANCIAL SUMMARY:\n`;
+            prompt += `- Total Fee Collected: ₹${geminiContext.financialSummary.totalFeeCollected || 0}\n`;
+            prompt += `- Total Fee Pending: ₹${geminiContext.financialSummary.totalFeePending || 0}\n`;
+            prompt += `- Collection Rate: ${geminiContext.financialSummary.percentageCollected || 0}%\n`;
+        }
+
+        if (geminiContext.staffData) {
+            prompt += `\nSTAFF DATA:\n`;
+            prompt += `- Total Staff: ${geminiContext.staffData.total}\n`;
+            if (geminiContext.staffData.list?.length > 0) {
+                prompt += `- Staff: ${geminiContext.staffData.list.map((s: any) => `${s.name} (${s.role})`).join(', ')}\n`;
+            }
+        }
+
+        if (geminiContext.attendanceData?.today) {
+            prompt += `\nTODAY'S ATTENDANCE:\n`;
+            prompt += `- Students Present: ${geminiContext.attendanceData.today.studentPresent}\n`;
+            prompt += `- Students Absent: ${geminiContext.attendanceData.today.studentAbsent}\n`;
+            prompt += `- Staff Present: ${geminiContext.attendanceData.today.staffPresent}\n`;
+        }
+
+        prompt += `\n=====================================\n`;
+        return prompt;
+    };
 
     const sendMessage = async () => {
         const trimmed = input.trim();
@@ -175,90 +232,72 @@ export default function GeminiChat() {
         }
 
         try {
-            // Check if API key is configured
-            if (!API_KEY) {
-                throw new Error('API key not configured. Please add VITE_GEMINI_API_KEY to your .env.local file.');
+            const systemPrompt = buildSystemPromptWithContext();
+
+            if (aiProvider === 'chatgpt') {
+                // --- ChatGPT / OpenAI ---
+                if (!OPENAI_API_KEY || !openaiClient) {
+                    throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env.local file.');
+                }
+
+                const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+                    { role: 'system', content: systemPrompt },
+                    ...newMessages.map(m => ({
+                        role: m.role === 'model' ? 'assistant' as const : 'user' as const,
+                        content: m.text
+                    }))
+                ];
+
+                const completion = await openaiClient.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: openaiMessages,
+                    max_tokens: 1024,
+                    temperature: 0.7
+                });
+
+                const responseText = completion.choices[0]?.message?.content || 'No response received.';
+                setMessages(prev => [...prev, { role: 'model', text: responseText, timestamp: new Date() }]);
+            } else {
+                // --- Gemini ---
+                if (!GEMINI_API_KEY) {
+                    throw new Error('API key not configured. Please add VITE_GEMINI_API_KEY to your .env.local file.');
+                }
+
+                // Use v1 API with gemini-2.5-flash
+                const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
+
+                const contents = [
+                    {
+                        role: 'user',
+                        parts: [{ text: systemPrompt + '\n\nUser Question: ' + newMessages[newMessages.length - 1].text }]
+                    },
+                    ...buildHistory(newMessages.slice(0, -1))
+                ];
+
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: contents,
+                        generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
+                    })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    const errMsg = errData?.error?.message || res.statusText;
+                    console.error('Gemini API error details:', { status: res.status, error: errData });
+                    if (res.status === 429) throw new Error('429 ' + errMsg);
+                    if (res.status === 404) throw new Error('404 Model not found: ' + MODEL_NAME);
+                    if (res.status === 400) throw new Error('400 Bad request: ' + errMsg);
+                    if (res.status === 403) throw new Error('403 API key invalid or not authorized');
+                    throw new Error(errData?.error?.message || `HTTP ${res.status}: ${errMsg}`);
+                }
+
+                const data = await res.json();
+                const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
+                setMessages(prev => [...prev, { role: 'model', text: responseText, timestamp: new Date() }]);
             }
-
-            // Build system prompt with real school data
-            let systemPrompt = BASE_SYSTEM_PROMPT;
-            
-            if (geminiContext) {
-                systemPrompt += `\n\n===== REAL SCHOOL DATA (Current) =====\n`;
-                
-                if (geminiContext.studentData) {
-                    systemPrompt += `\nSTUDENT DATA:\n`;
-                    systemPrompt += `- Total Students: ${geminiContext.studentData.total}\n`;
-                    systemPrompt += `- Fee Status: Paid (${geminiContext.studentData.byFeeStatus?.paid || 0}), Partial (${geminiContext.studentData.byFeeStatus?.partial || 0}), Unpaid (${geminiContext.studentData.byFeeStatus?.unpaid || 0}), Zero Fee (${geminiContext.studentData.byFeeStatus?.zero || 0})\n`;
-                    
-                    if (geminiContext.studentData.studentsWithZeroFee?.length > 0) {
-                        systemPrompt += `- Students with Zero Tuition Fee (${geminiContext.studentData.studentsWithZeroFee.length}): ${geminiContext.studentData.studentsWithZeroFee.map((s: any) => s.name).join(', ')}\n`;
-                    }
-                }
-                
-                if (geminiContext.financialSummary) {
-                    systemPrompt += `\nFINANCIAL SUMMARY:\n`;
-                    systemPrompt += `- Total Fee Collected: ₹${geminiContext.financialSummary.totalFeeCollected || 0}\n`;
-                    systemPrompt += `- Total Fee Pending: ₹${geminiContext.financialSummary.totalFeePending || 0}\n`;
-                    systemPrompt += `- Collection Rate: ${geminiContext.financialSummary.percentageCollected || 0}%\n`;
-                }
-                
-                if (geminiContext.staffData) {
-                    systemPrompt += `\nSTAFF DATA:\n`;
-                    systemPrompt += `- Total Staff: ${geminiContext.staffData.total}\n`;
-                    if (geminiContext.staffData.list?.length > 0) {
-                        systemPrompt += `- Staff: ${geminiContext.staffData.list.map((s: any) => `${s.name} (${s.role})`).join(', ')}\n`;
-                    }
-                }
-                
-                if (geminiContext.attendanceData?.today) {
-                    systemPrompt += `\nTODAY'S ATTENDANCE:\n`;
-                    systemPrompt += `- Students Present: ${geminiContext.attendanceData.today.studentPresent}\n`;
-                    systemPrompt += `- Students Absent: ${geminiContext.attendanceData.today.studentAbsent}\n`;
-                    systemPrompt += `- Staff Present: ${geminiContext.attendanceData.today.staffPresent}\n`;
-                }
-                
-                systemPrompt += `\n=====================================\n`;
-            }
-
-            // Use v1 API with gemini-2.5-flash
-            const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-            
-            const contents = [
-                {
-                    role: 'user',
-                    parts: [{ text: systemPrompt + '\n\nUser Question: ' + newMessages[newMessages.length - 1].text }]
-                },
-                ...buildHistory(newMessages.slice(0, -1))
-            ];
-            
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: contents,
-                    generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
-                })
-            });
-
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                const errMsg = errData?.error?.message || res.statusText;
-                console.error('Gemini API error details:', { status: res.status, error: errData });
-                if (res.status === 429) throw new Error('429 ' + errMsg);
-                if (res.status === 404) throw new Error('404 Model not found: ' + MODEL_NAME);
-                if (res.status === 400) throw new Error('400 Bad request: ' + errMsg);
-                if (res.status === 403) throw new Error('403 API key invalid or not authorized');
-                throw new Error(errData?.error?.message || `HTTP ${res.status}: ${errMsg}`);
-            }
-
-            const data = await res.json();
-            const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
-            setMessages(prev => [...prev, {
-                role: 'model',
-                text: responseText,
-                timestamp: new Date()
-            }]);
         } catch (err: any) {
             const msg = err?.message || '';
             if (msg.includes('429') || msg.toLowerCase().includes('quota')) {
@@ -266,13 +305,17 @@ export default function GeminiChat() {
             } else if (msg.includes('404')) {
                 setError('⚠️ Model not found. The API key or model may be invalid.');
             } else if (msg.includes('403') || msg.toLowerCase().includes('api key')) {
-                setError('⚠️ Invalid API key. Please check your VITE_GEMINI_API_KEY in .env.local');
+                setError(aiProvider === 'chatgpt'
+                    ? '⚠️ Invalid API key. Please check your VITE_OPENAI_API_KEY in .env.local'
+                    : '⚠️ Invalid API key. Please check your VITE_GEMINI_API_KEY in .env.local');
             } else if (msg.includes('API key not configured')) {
-                setError('⚠️ API key not configured. Please add VITE_GEMINI_API_KEY to .env.local');
+                setError(aiProvider === 'chatgpt'
+                    ? '⚠️ API key not configured. Please add VITE_OPENAI_API_KEY to .env.local'
+                    : '⚠️ API key not configured. Please add VITE_GEMINI_API_KEY to .env.local');
             } else {
                 setError('❌ Failed to get response: ' + (msg || 'Unknown error'));
             }
-            console.error('Gemini error:', err);
+            console.error('AI chat error:', err);
         } finally {
             setLoading(false);
         }
@@ -345,17 +388,36 @@ export default function GeminiChat() {
                         <div className="gemini-header">
                             <div className="gemini-header-info">
                                 <div className="gemini-header-logo">
-                                    <GeminiLogo size={20} />
+                                    {aiProvider === 'chatgpt' ? <ChatGPTLogo size={20} /> : <GeminiLogo size={20} />}
                                 </div>
                                 <div>
                                     <div className="gemini-header-title">SchoolBot</div>
                                     <div className="gemini-header-sub">
                                         <span className="gemini-dot" />
-                                        Powered by Gemini AI
+                                        {aiProvider === 'chatgpt' ? 'Powered by ChatGPT' : 'Powered by Gemini AI'}
                                     </div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                {/* AI Provider Toggle */}
+                                <div className="ai-provider-toggle" title="Switch AI provider">
+                                    <button
+                                        className={`ai-provider-btn${aiProvider === 'gemini' ? ' ai-provider-btn--active' : ''}`}
+                                        onClick={() => setAiProvider('gemini')}
+                                        aria-label="Switch to Gemini"
+                                    >
+                                        <GeminiLogo size={13} />
+                                        <span>Gemini</span>
+                                    </button>
+                                    <button
+                                        className={`ai-provider-btn${aiProvider === 'chatgpt' ? ' ai-provider-btn--active' : ''}`}
+                                        onClick={() => setAiProvider('chatgpt')}
+                                        aria-label="Switch to ChatGPT"
+                                    >
+                                        <ChatGPTLogo size={13} />
+                                        <span>ChatGPT</span>
+                                    </button>
+                                </div>
                                 <button
                                     className="gemini-icon-btn"
                                     onClick={clearChat}
@@ -383,7 +445,7 @@ export default function GeminiChat() {
                                 >
                                     {msg.role === 'model' && (
                                         <div className="gemini-avatar">
-                                            <GeminiLogo size={14} />
+                                            {aiProvider === 'chatgpt' ? <ChatGPTLogo size={14} /> : <GeminiLogo size={14} />}
                                         </div>
                                     )}
                                     <div className="gemini-bubble">
@@ -402,7 +464,9 @@ export default function GeminiChat() {
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                 >
-                                    <div className="gemini-avatar"><GeminiLogo size={14} /></div>
+                                    <div className="gemini-avatar">
+                                            {aiProvider === 'chatgpt' ? <ChatGPTLogo size={14} /> : <GeminiLogo size={14} />}
+                                        </div>
                                     <div className="gemini-bubble">
                                         <div className="gemini-typing">
                                             <span /><span /><span />
@@ -471,7 +535,7 @@ export default function GeminiChat() {
                                 </motion.button>
                             </div>
                         </div>
-                        <div className="gemini-footer">Gemini may make mistakes. Always verify critical data.</div>
+                        <div className="gemini-footer">{aiProvider === 'chatgpt' ? 'ChatGPT' : 'Gemini'} may make mistakes. Always verify critical data.</div>
                     </motion.div>
                 )}
             </AnimatePresence>
