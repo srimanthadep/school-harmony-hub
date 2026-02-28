@@ -20,6 +20,7 @@ const StaffPortal = lazy(() => import('./pages/StaffPortal'));
 const StudentPortal = lazy(() => import('./pages/StudentPortal'));
 const ExpensePage = lazy(() => import('./pages/ExpensePage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
+const GeminiChat = lazy(() => import('./components/GeminiChat'));
 
 // Icons
 import {
@@ -345,6 +346,7 @@ export default function App() {
                     <BrowserRouter>
                         <Suspense fallback={<div className="loading-spinner"><div className="spinner" /></div>}>
                             <AppRoutes />
+                            <GeminiChat />
                         </Suspense>
                         <Toaster
                             position="top-right"
