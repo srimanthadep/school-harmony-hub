@@ -165,20 +165,19 @@ function AdminLayoutWrapper() {
                         </div>
                     </div>
                     <div className="topbar-actions">
-                        {/* Environment Badge */}
-                        <div style={{
-                            padding: '4px 10px',
-                            borderRadius: 8,
-                            fontSize: 10,
-                            fontWeight: 800,
-                            letterSpacing: '0.5px',
-                            background: import.meta.env.MODE === 'production' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                            color: import.meta.env.MODE === 'production' ? '#ef4444' : '#10b981',
-                            border: `1px solid ${import.meta.env.MODE === 'production' ? '#ef4444' : '#10b981'}`,
-                            marginRight: 10
-                        }}>
-                            {import.meta.env.MODE === 'production' ? '🔴 PRODUCTION' : '🟢 DEVELOPMENT'}
-                        </div>
+                        {/* Environment Indicator Dot */}
+                        <div
+                            title={import.meta.env.MODE === 'production' ? 'Production' : 'Development'}
+                            style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: '50%',
+                                background: import.meta.env.MODE === 'production' ? '#10b981' : '#ef4444',
+                                boxShadow: `0 0 6px ${import.meta.env.MODE === 'production' ? '#10b981' : '#ef4444'}`,
+                                marginRight: 10,
+                                flexShrink: 0,
+                            }}
+                        />
                         {/* Dark Mode Toggle */}
                         <motion.button
                             whileTap={{ scale: 0.9 }}
