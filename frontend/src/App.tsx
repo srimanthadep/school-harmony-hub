@@ -165,19 +165,6 @@ function AdminLayoutWrapper() {
                         </div>
                     </div>
                     <div className="topbar-actions">
-                        {/* Environment Indicator Dot */}
-                        <div
-                            title={import.meta.env.MODE === 'production' ? 'Production' : 'Development'}
-                            style={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: '50%',
-                                background: import.meta.env.MODE === 'production' ? '#10b981' : '#ef4444',
-                                boxShadow: `0 0 6px ${import.meta.env.MODE === 'production' ? '#10b981' : '#ef4444'}`,
-                                marginRight: 10,
-                                flexShrink: 0,
-                            }}
-                        />
                         {/* Dark Mode Toggle */}
                         <motion.button
                             whileTap={{ scale: 0.9 }}
