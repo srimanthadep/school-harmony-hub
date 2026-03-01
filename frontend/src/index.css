@@ -1974,6 +1974,22 @@ input[type="number"] {
     padding: 12px !important;
   }
 
+  /* Dashboard action buttons */
+  .dashboard-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px !important;
+    width: 100%;
+  }
+
+  .dashboard-action-buttons .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+    justify-content: center;
+  }
+
   /* Search & Filters */
   .search-bar {
     min-width: 100% !important;
@@ -2353,9 +2369,12 @@ input[type="number"] {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    z-index: 999 !important;
+    z-index: 1000 !important;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    will-change: transform;
   }
 
   .bottom-nav a,
