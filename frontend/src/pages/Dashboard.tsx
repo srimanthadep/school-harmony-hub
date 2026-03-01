@@ -101,7 +101,7 @@ export default function Dashboard() {
                     <h1 style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.5px' }}>School Analytics</h1>
                     <p style={{ color: '#64748b', fontSize: 13 }}>Real-time institution overview</p>
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div className="dashboard-action-buttons" style={{ display: 'flex', gap: 12 }}>
                     <button
                         className="btn btn-secondary hover-lift"
                         onClick={handleBackup}
