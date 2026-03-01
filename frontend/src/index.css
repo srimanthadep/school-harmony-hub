@@ -2877,7 +2877,7 @@ input[type="number"] {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 13.5px;
+  font-size: 16px;
   font-family: 'Inter', sans-serif;
   color: var(--text-primary);
   resize: none;
