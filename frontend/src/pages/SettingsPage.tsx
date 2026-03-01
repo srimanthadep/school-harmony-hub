@@ -5,6 +5,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { getCurrentAcademicYear } from '../utils/academicYear';
 import { MdSave, MdSettings, MdAccountBalance, MdMenuBook, MdLockOutline, MdUpload } from 'react-icons/md';
 import { Settings, FeeStructure, BookFeeStructure } from '../types';
+import { useZoom } from '../hooks/useZoom';
 
 const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
@@ -24,6 +25,9 @@ export default function SettingsPage() {
     const [bookFeeForm, setBookFeeForm] = useState<any>({});
     const [logoUploading, setLogoUploading] = useState(false);
     const logoInputRef = useRef<HTMLInputElement>(null);
+
+    // Zoom toggle – persisted in localStorage and applied to the viewport meta tag
+    const { zoomEnabled, toggleZoom } = useZoom();
 
     useEffect(() => {
         Promise.all([
@@ -318,6 +322,52 @@ export default function SettingsPage() {
                                         onChange={e => setSettings({ ...settings, salarySlipPrefix: e.target.value })} />
                                 </div>
                             </div>
+
+                            <div className="form-section-title">Display</div>
+                            {/* Zoom toggle — affects viewport meta tag on web/PWA.
+                                Android and iOS native layers are also notified via postMessage. */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                                <div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Enable Zoom</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        Allow pinch-to-zoom on touch devices (web, PWA, Android and iOS)
+                                    </div>
+                                </div>
+                                {/* Accessible toggle switch – role="switch" per WAI-ARIA */}
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={zoomEnabled}
+                                    aria-label="Enable Zoom"
+                                    onClick={toggleZoom}
+                                    style={{
+                                        position: 'relative',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        width: 44,
+                                        height: 24,
+                                        borderRadius: 12,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: zoomEnabled ? 'var(--primary, #1a237e)' : '#d1d5db',
+                                        transition: 'background 0.2s',
+                                        flexShrink: 0,
+                                        padding: 0,
+                                    }}
+                                >
+                                    <span style={{
+                                        position: 'absolute',
+                                        left: zoomEnabled ? 22 : 2,
+                                        width: 20,
+                                        height: 20,
+                                        borderRadius: '50%',
+                                        background: '#fff',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                        transition: 'left 0.2s',
+                                    }} />
+                                </button>
+                            </div>
+
                         </div>
                         <div className="modal-footer" style={{ padding: '16px 24px' }}>
                             <button type="submit" className="btn btn-primary" disabled={saving}>
