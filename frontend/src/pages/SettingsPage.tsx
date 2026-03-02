@@ -3,9 +3,10 @@ import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useNotifications } from '../context/NotificationContext';
 import { getCurrentAcademicYear } from '../utils/academicYear';
-import { MdSave, MdSettings, MdAccountBalance, MdMenuBook, MdLockOutline, MdUpload } from 'react-icons/md';
+import { MdSave, MdSettings, MdAccountBalance, MdMenuBook, MdLockOutline, MdUpload, MdPalette } from 'react-icons/md';
 import { Settings, FeeStructure, BookFeeStructure } from '../types';
 import { useZoom } from '../hooks/useZoom';
+import { useTheme, THEME_PRESETS, buildSidebarGradient, type ThemeColors } from '../hooks/useTheme';
 
 const CLASSES = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
@@ -28,6 +29,9 @@ export default function SettingsPage() {
 
     // Zoom toggle – persisted in localStorage and applied to the viewport meta tag
     const { zoomEnabled, toggleZoom } = useZoom();
+
+    // Theme switcher
+    const { themeId, selectTheme, customColors, updateCustomColors, isCustom } = useTheme();
 
     useEffect(() => {
         Promise.all([
@@ -224,6 +228,8 @@ export default function SettingsPage() {
                 <div style={{ display: 'flex', gap: 8, padding: '16px 20px', minWidth: 'max-content' }}>
                     <button className={`btn ${activeTab === 'general' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                         onClick={() => setActiveTab('general')}>⚙️ School Settings</button>
+                    <button className={`btn ${activeTab === 'appearance' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setActiveTab('appearance')}>🎨 Appearance</button>
                     <button className={`btn ${activeTab === 'fees' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                         onClick={() => setActiveTab('fees')}>💰 Tuition Fee Structures</button>
                     <button className={`btn ${activeTab === 'books' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
@@ -375,6 +381,194 @@ export default function SettingsPage() {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {activeTab === 'appearance' && (
+                <div>
+                    {/* Prebuilt Themes */}
+                    <div className="card" style={{ marginBottom: 20 }}>
+                        <div className="card-header">
+                            <h2><MdPalette /> Theme Presets</h2>
+                            {themeId !== 'oxford-navy' && (
+                                <button className="btn btn-secondary btn-sm" onClick={() => selectTheme('oxford-navy')}>
+                                    Reset to Default
+                                </button>
+                            )}
+                        </div>
+                        <div className="card-body">
+                            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+                                Choose a prebuilt theme to instantly change the look of the entire application.
+                            </p>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                                {THEME_PRESETS.map(preset => {
+                                    const isActive = themeId === preset.id;
+                                    return (
+                                        <button
+                                            key={preset.id}
+                                            onClick={() => selectTheme(preset.id)}
+                                            style={{
+                                                position: 'relative',
+                                                padding: 16,
+                                                borderRadius: 14,
+                                                border: isActive ? `2.5px solid ${preset.colors.primary}` : '2px solid var(--border)',
+                                                background: isActive ? `${preset.colors.primary}0d` : 'var(--bg-secondary)',
+                                                cursor: 'pointer',
+                                                textAlign: 'left',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: isActive ? `0 4px 16px ${preset.colors.primary}30` : 'var(--shadow-sm)',
+                                            }}
+                                        >
+                                            {/* Active checkmark */}
+                                            {isActive && (
+                                                <div style={{
+                                                    position: 'absolute', top: 8, right: 8,
+                                                    width: 22, height: 22, borderRadius: '50%',
+                                                    background: preset.colors.primary,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: '#fff', fontSize: 12, fontWeight: 700
+                                                }}>✓</div>
+                                            )}
+                                            {/* Color swatches */}
+                                            <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+                                                <div style={{ width: 28, height: 28, borderRadius: 8, background: preset.colors.primary, border: '2px solid rgba(255,255,255,0.3)', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }} />
+                                                <div style={{ width: 28, height: 28, borderRadius: 8, background: preset.colors.primaryLight }} />
+                                                <div style={{ width: 28, height: 28, borderRadius: 8, background: preset.colors.secondary }} />
+                                                <div style={{ width: 28, height: 28, borderRadius: 8, background: preset.colors.accent }} />
+                                            </div>
+                                            {/* Name */}
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                                                {preset.emoji} {preset.name}
+                                            </div>
+                                            {/* Sidebar preview bar */}
+                                            <div style={{
+                                                marginTop: 8, height: 6, borderRadius: 3,
+                                                background: preset.sidebarGradient,
+                                                opacity: 0.85
+                                            }} />
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Custom Color Picker */}
+                    <div className="card">
+                        <div className="card-header">
+                            <h2>🎯 Custom Colors</h2>
+                            {isCustom && (
+                                <span className="badge badge-paid" style={{ fontSize: 11 }}>ACTIVE</span>
+                            )}
+                        </div>
+                        <div className="card-body">
+                            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+                                Pick your own colors for a fully personalized experience. Changes apply instantly.
+                            </p>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+                                {[
+                                    { key: 'primary', label: 'Primary', desc: 'Sidebar, buttons, headers' },
+                                    { key: 'primaryLight', label: 'Primary Light', desc: 'Hover states, accents' },
+                                    { key: 'primaryDark', label: 'Primary Dark', desc: 'Deep sidebar tones' },
+                                    { key: 'secondary', label: 'Secondary', desc: 'Highlights, badges, gold accents' },
+                                    { key: 'secondaryLight', label: 'Secondary Light', desc: 'Secondary hover' },
+                                    { key: 'accent', label: 'Accent', desc: 'Links, success, teal accents' },
+                                    { key: 'accentLight', label: 'Accent Light', desc: 'Accent hover states' },
+                                ].map(item => (
+                                    <div key={item.key} style={{
+                                        padding: 14, borderRadius: 12,
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--bg-secondary)',
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                                            <label
+                                                style={{
+                                                    position: 'relative',
+                                                    width: 36, height: 36,
+                                                    borderRadius: 10,
+                                                    background: customColors[item.key as keyof ThemeColors],
+                                                    border: '2px solid rgba(0,0,0,0.1)',
+                                                    cursor: 'pointer',
+                                                    display: 'block',
+                                                    overflow: 'hidden',
+                                                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                <input
+                                                    type="color"
+                                                    value={customColors[item.key as keyof ThemeColors]}
+                                                    onChange={e => updateCustomColors({ [item.key]: e.target.value })}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        inset: 0,
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        opacity: 0,
+                                                        cursor: 'pointer',
+                                                        border: 'none',
+                                                    }}
+                                                />
+                                            </label>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.desc}</div>
+                                            </div>
+                                        </div>
+                                        <div style={{
+                                            fontSize: 11, fontFamily: 'monospace',
+                                            color: 'var(--text-secondary)',
+                                            background: 'var(--bg-primary)',
+                                            padding: '4px 8px', borderRadius: 6, marginTop: 4,
+                                            textTransform: 'uppercase'
+                                        }}>
+                                            {customColors[item.key as keyof ThemeColors]}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {/* Live Preview */}
+                            <div style={{ marginTop: 20 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: 'var(--text-primary)' }}>Live Preview</div>
+                                <div style={{
+                                    display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center',
+                                    padding: 16, borderRadius: 12, border: '1px solid var(--border)',
+                                    background: 'var(--bg-primary)',
+                                }}>
+                                    {/* Mini sidebar preview */}
+                                    <div style={{
+                                        width: 50, height: 80, borderRadius: 10,
+                                        background: isCustom
+                                            ? buildSidebarGradient(customColors.primaryDark, customColors.primary, customColors.primaryLight)
+                                            : 'var(--bg-sidebar)',
+                                        flexShrink: 0,
+                                    }} />
+                                    <div style={{
+                                        padding: '8px 18px', borderRadius: 8,
+                                        background: `linear-gradient(135deg, ${isCustom ? customColors.primary : 'var(--primary)'}, ${isCustom ? customColors.primaryLight : 'var(--primary-light)'})`,
+                                        color: '#fff', fontWeight: 600, fontSize: 12,
+                                    }}>Primary Button</div>
+                                    <div style={{
+                                        padding: '8px 18px', borderRadius: 8,
+                                        background: `linear-gradient(135deg, ${isCustom ? customColors.secondary : 'var(--secondary)'}, ${isCustom ? customColors.secondaryLight : 'var(--secondary-light)'})`,
+                                        color: '#1a1f36', fontWeight: 600, fontSize: 12,
+                                    }}>Secondary</div>
+                                    <div style={{
+                                        padding: '8px 18px', borderRadius: 8,
+                                        background: `linear-gradient(135deg, ${isCustom ? customColors.accent : 'var(--accent)'}, ${isCustom ? customColors.accentLight : 'var(--accent-light)'})`,
+                                        color: '#fff', fontWeight: 600, fontSize: 12,
+                                    }}>Accent</div>
+                                    <div style={{
+                                        padding: '5px 12px', borderRadius: 50,
+                                        background: isCustom ? `${customColors.secondary}25` : 'rgba(249, 168, 37, 0.15)',
+                                        color: isCustom ? customColors.secondary : 'var(--secondary)',
+                                        fontWeight: 600, fontSize: 11, textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                    }}>Badge</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 

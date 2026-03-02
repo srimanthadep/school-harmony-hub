@@ -6,6 +6,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDarkMode } from './hooks/useDarkMode';
+import { useTheme } from './hooks/useTheme';
 import NotificationBell from './components/NotificationBell';
 
 // Lazy Loaded Pages
@@ -128,6 +129,7 @@ function AdminLayoutWrapper() {
     const { user } = useAuth();
     const location = useLocation();
     const { isDark, toggle } = useDarkMode();
+    useTheme(); // Apply persisted theme on mount
 
     // Mapping of paths to titles
     const routeInfo: Record<string, { title: string; subtitle: string }> = {
