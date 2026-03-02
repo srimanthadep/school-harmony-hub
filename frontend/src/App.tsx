@@ -193,8 +193,18 @@ function AdminLayoutWrapper() {
                         <NotificationBell />
                         <motion.div
                             whileHover={{ scale: 1.02 }}
-                            className="user-badge glass shadow-sm"
-                            style={{ padding: '6px 12px', borderRadius: 12 }}
+                            className="user-badge shadow-sm"
+                            style={{
+                                padding: '6px 12px',
+                                borderRadius: 12,
+                                backgroundColor: import.meta.env.PROD ? '#22c55e33' : '#ef444433', // Subtle green/red with alpha
+                                border: `1px solid ${import.meta.env.PROD ? '#22c55e' : '#ef4444'}`,
+                                backdropFilter: 'blur(12px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                cursor: 'pointer'
+                            }}
                         >
                             <img src="/logo.png" alt="logo"
                                 style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
