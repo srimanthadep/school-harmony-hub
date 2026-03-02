@@ -838,7 +838,7 @@ tbody td {
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
-  z-index: 200;
+  z-index: 1100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2363,7 +2363,7 @@ input[type="number"] {
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
-    height: 60px;
+    height: calc(60px + env(safe-area-inset-bottom, 0));
     background: var(--bg-secondary, #fff) !important;
     border-top: 1px solid var(--border, #e2e8f0);
     display: flex;
@@ -2371,7 +2371,7 @@ input[type="number"] {
     align-items: center;
     z-index: 1000 !important;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0);
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
     will-change: transform;
@@ -2405,7 +2405,7 @@ input[type="number"] {
 
   /* Add bottom padding to main content for bottom nav */
   .content-area {
-    padding-bottom: 72px !important;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0)) !important;
   }
 }
 
