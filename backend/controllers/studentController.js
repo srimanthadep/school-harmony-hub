@@ -223,20 +223,6 @@ exports.recordPayment = asyncHandler(async (req, res) => {
         throw new Error('Student not found');
     }
 
-    // Fix #4: Use atomic $inc to prevent race conditions in receipt number generation
-    const settings = await Settings.findOne();
-    let receiptNo;
-    if (settings) {
-        const updatedSettings = await Settings.findOneAndUpdate(
-            {},
-            { $inc: { lastReceiptNo: 1 } },
-            { new: true }
-        );
-        receiptNo = `${updatedSettings.receiptPrefix || 'RCPT'}${updatedSettings.lastReceiptNo}`;
-    } else {
-        receiptNo = `RCPT${Date.now()}`;
-    }
-
     // Fix #23: Reject zero or negative payment amounts
     const amount = Math.round(Number(req.body.amount || 0));
     if (!amount || amount <= 0) {
@@ -244,41 +230,103 @@ exports.recordPayment = asyncHandler(async (req, res) => {
         throw new Error('Payment amount must be greater than 0');
     }
 
-    const payment = {
-        amount,
-        paymentDate: req.body.paymentDate || new Date(),
-        paymentMode: req.body.paymentMode || 'cash',
-        feeType: req.body.feeType || 'tuition',
-        receiptNo,
-        remarks: req.body.remarks,
-        recordedBy: req.user.id
-    };
+    // Generate receipt number with retry logic for duplicate key collisions
+    const MAX_RETRIES = 5;
+    let receiptNo;
+    let savedStudent;
 
-    student.feePayments.push(payment);
-    await student.save();
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+            const settings = await Settings.findOne();
+            if (settings) {
+                // On first attempt, check if counter is behind actual max receipt number
+                if (attempt === 0) {
+                    const prefix = settings.receiptPrefix || 'RCPT';
+                    const allStudents = await Student.find(
+                        { 'feePayments.receiptNo': { $regex: `^${prefix}\\d+$` } },
+                        { 'feePayments.receiptNo': 1 }
+                    ).lean();
 
-    await ActivityLog.create({
-        action: 'RECORD_PAYMENT',
-        module: 'FINANCE',
-        description: `Recorded payment of ₹${payment.amount} for ${student.name} (${student.studentId || student._id}), Class: ${student.class}, Receipt: ${receiptNo}, Mode: ${payment.paymentMode}, Type: ${payment.feeType}`,
-        performedBy: req.user.id,
-        targetId: student._id,
-        newData: {
-            ...payment,
-            studentName: student.name,
-            studentId: student.studentId,
-            class: student.class,
-            rollNo: student.rollNo,
-            parentName: student.parentName,
-            parentPhone: student.parentPhone
+                    let maxExisting = settings.lastReceiptNo;
+                    for (const s of allStudents) {
+                        for (const p of (s.feePayments || [])) {
+                            if (p.receiptNo && p.receiptNo.startsWith(prefix)) {
+                                const num = parseInt(p.receiptNo.replace(prefix, ''), 10);
+                                if (!isNaN(num) && num > maxExisting) {
+                                    maxExisting = num;
+                                }
+                            }
+                        }
+                    }
+
+                    // Sync counter if it's behind
+                    if (maxExisting > settings.lastReceiptNo) {
+                        await Settings.findOneAndUpdate(
+                            {},
+                            { $set: { lastReceiptNo: maxExisting } }
+                        );
+                    }
+                }
+
+                const updatedSettings = await Settings.findOneAndUpdate(
+                    {},
+                    { $inc: { lastReceiptNo: 1 } },
+                    { new: true }
+                );
+                receiptNo = `${updatedSettings.receiptPrefix || 'RCPT'}${updatedSettings.lastReceiptNo}`;
+            } else {
+                receiptNo = `RCPT${Date.now()}`;
+            }
+
+            const payment = {
+                amount,
+                paymentDate: req.body.paymentDate || new Date(),
+                paymentMode: req.body.paymentMode || 'cash',
+                feeType: req.body.feeType || 'tuition',
+                receiptNo,
+                remarks: req.body.remarks,
+                recordedBy: req.user.id
+            };
+
+            // Re-fetch student to avoid stale data on retries
+            const freshStudent = attempt === 0 ? student : await Student.findById(req.params.id);
+            freshStudent.feePayments.push(payment);
+            savedStudent = await freshStudent.save();
+
+            await ActivityLog.create({
+                action: 'RECORD_PAYMENT',
+                module: 'FINANCE',
+                description: `Recorded payment of ₹${payment.amount} for ${savedStudent.name} (${savedStudent.studentId || savedStudent._id}), Class: ${savedStudent.class}, Receipt: ${receiptNo}, Mode: ${payment.paymentMode}, Type: ${payment.feeType}`,
+                performedBy: req.user.id,
+                targetId: savedStudent._id,
+                newData: {
+                    ...payment,
+                    studentName: savedStudent.name,
+                    studentId: savedStudent.studentId,
+                    class: savedStudent.class,
+                    rollNo: savedStudent.rollNo,
+                    parentName: savedStudent.parentName,
+                    parentPhone: savedStudent.parentPhone
+                }
+            });
+
+            // Success — break out of retry loop
+            break;
+        } catch (err) {
+            // If it's a duplicate key error on receiptNo, retry with next number
+            if (err.code === 11000 && err.message.includes('receiptNo') && attempt < MAX_RETRIES - 1) {
+                console.warn(`Receipt number collision on ${receiptNo}, retrying (attempt ${attempt + 2}/${MAX_RETRIES})...`);
+                continue;
+            }
+            throw err; // Re-throw non-duplicate or exhausted retries
         }
-    });
+    }
 
     res.status(201).json({
         success: true,
         message: 'Payment recorded successfully',
-        payment,
-        student
+        payment: savedStudent.feePayments[savedStudent.feePayments.length - 1],
+        student: savedStudent
     });
 });
 
