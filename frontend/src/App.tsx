@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useTheme } from './hooks/useTheme';
 import NotificationBell from './components/NotificationBell';
+import InstallPromptBanner from './components/InstallPromptBanner';
 import { usePWA } from './hooks/usePWA';
 
 // Lazy Loaded Pages
@@ -372,6 +373,7 @@ export default function App() {
                             <AppRoutes />
                             <AuthenticatedGeminiChat />
                         </Suspense>
+                        <InstallPromptBanner />
                         <Toaster
                             position="top-right"
                             toastOptions={{
