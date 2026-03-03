@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useTheme } from './hooks/useTheme';
 import NotificationBell from './components/NotificationBell';
+import { usePWA } from './hooks/usePWA';
 
 // Lazy Loaded Pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -130,6 +131,7 @@ function AdminLayoutWrapper() {
     const location = useLocation();
     const { isDark, toggle } = useDarkMode();
     useTheme(); // Apply persisted theme on mount
+    const { isInstallable, installApp } = usePWA();
 
     // Mapping of paths to titles
     const routeInfo: Record<string, { title: string; subtitle: string }> = {
@@ -167,6 +169,24 @@ function AdminLayoutWrapper() {
                         </div>
                     </div>
                     <div className="topbar-actions">
+                        {/* PWA Install Button */}
+                        {isInstallable && (
+                            <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={installApp}
+                                title="Install App"
+                                style={{
+                                    padding: '6px 14px', borderRadius: 8,
+                                    border: '1px solid #1976d2', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: 6,
+                                    fontSize: 13, fontWeight: 600, color: '#1976d2',
+                                    background: 'rgba(25,118,210,0.08)',
+                                    transition: 'background 0.2s'
+                                }}
+                            >
+                                ⬇️ Install App
+                            </motion.button>
+                        )}
                         {/* Dark Mode Toggle */}
                         <motion.button
                             whileTap={{ scale: 0.9 }}
