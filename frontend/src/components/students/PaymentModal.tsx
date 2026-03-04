@@ -174,27 +174,27 @@ export default function PaymentModal({
                             </div>
                         </div>
 
-                        {/* ── Payment Date ── */}
-                        <div style={{ marginBottom: 20 }}>
-                            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
-                                Payment Date
-                            </label>
-                            <input type="date" className="form-control"
-                                style={{ height: 48, borderRadius: 12 }}
-                                value={paymentForm.paymentDate}
-                                onChange={e => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })} />
-                        </div>
-
-                        {/* ── Note / Receipt No. ── */}
-                        <div style={{ marginBottom: 20 }}>
-                            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
-                                Note / Receipt No.
-                            </label>
-                            <input className="form-control" 
-                                style={{ height: 48, borderRadius: 12 }}
-                                value={paymentForm.remarks}
-                                onChange={e => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
-                                placeholder="Optional" />
+                        {/* ── Date & Remarks ── */}
+                        <div className="form-grid" style={{ marginBottom: 4 }}>
+                            <div className="form-group" style={{ minWidth: 0 }}>
+                                <label className="form-label">Payment Date</label>
+                                <input
+                                    type="date"
+                                    className="form-control"
+                                    style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
+                                    value={paymentForm.paymentDate}
+                                    onChange={e => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group" style={{ minWidth: 0 }}>
+                                <label className="form-label">Note / Receipt No.</label>
+                                <input
+                                    className="form-control"
+                                    value={paymentForm.remarks}
+                                    onChange={e => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
+                                    placeholder="Optional"
+                                />
+                            </div>
                         </div>
 
                     </form>
