@@ -14,10 +14,60 @@ const TABS = [
     { key: 'pending', label: '⚠️ Pending Fees', icon: MdWarning },
     { key: 'monthly', label: '📈 Monthly Report', icon: MdTrendingUp },
     { key: 'salary', label: '💰 Salary Report', icon: MdPeople },
-];
+] as const;
+
+type TabKey = (typeof TABS)[number]['key'];
+
+interface ClasswiseReportItem {
+    class: string;
+    totalStudents: number;
+    totalFee: number;
+    totalCollected: number;
+    totalPending: number;
+    paidCount: number;
+    partialCount: number;
+    unpaidCount: number;
+}
+
+interface PendingStudent {
+    _id: string;
+    studentId: string;
+    name: string;
+    academicYear: string;
+    class: string;
+    rollNo: string;
+    parentPhone: string;
+    totalFee: number;
+    totalPaid: number;
+    pendingAmount: number;
+    paymentStatus: string;
+}
+
+interface MonthlyReportItem {
+    month: string;
+    income: number;
+    expense: number;
+    net: number;
+}
+
+interface StaffReportItem {
+    _id: string;
+    staffId: string;
+    name: string;
+    qualification: string;
+    role: string;
+    monthlySalary: number;
+    totalSalaryPaid: number;
+    payments: any[];
+}
+
+interface DashboardStats {
+    studentsFullyPaid: number;
+    collectionRate: number;
+}
 
 export default function ReportsPage() {
-    const [activeTab, setActiveTab] = useState('classwise');
+    const [activeTab, setActiveTab] = useState<TabKey>('classwise');
     const [classFilter, setClassFilter] = useState('');
     const [page, setPage] = useState(1);
 
@@ -50,6 +100,8 @@ export default function ReportsPage() {
             }
             else if (activeTab === 'monthly') res = await API.get('/reports/monthly');
             else if (activeTab === 'salary') res = await API.get('/reports/salary');
+
+            if (!res) return null;
             return res.data;
         }
     });
@@ -58,7 +110,7 @@ export default function ReportsPage() {
 
     const renderClasswise = () => {
         if (!data?.report) return null;
-        const chartData = data.report.map(r => ({
+        const chartData = (data.report as ClasswiseReportItem[]).map((r: ClasswiseReportItem) => ({
             class: r.class, collected: r.totalCollected, pending: r.totalPending, students: r.totalStudents
         }));
 
@@ -67,17 +119,17 @@ export default function ReportsPage() {
                 <div className="stats-grid" style={{ marginBottom: 24 }}>
                     <div className="stat-card glass-blue">
                         <div className="stat-icon"><MdSchool /></div>
-                        <div className="stat-value">{data.report.reduce((s, r) => s + r.totalStudents, 0)}</div>
+                        <div className="stat-value">{(data.report as ClasswiseReportItem[]).reduce((s: number, r: ClasswiseReportItem) => s + r.totalStudents, 0)}</div>
                         <div className="stat-label">Total Students</div>
                     </div>
                     <div className="stat-card glass-green">
                         <div className="stat-icon">💰</div>
-                        <div className="stat-value">{formatCurrency(data.report.reduce((s, r) => s + r.totalCollected, 0))}</div>
+                        <div className="stat-value">{formatCurrency((data.report as ClasswiseReportItem[]).reduce((s: number, r: ClasswiseReportItem) => s + r.totalCollected, 0))}</div>
                         <div className="stat-label">Total Collected</div>
                     </div>
                     <div className="stat-card glass-red">
                         <div className="stat-icon">⚠️</div>
-                        <div className="stat-value">{formatCurrency(data.report.reduce((s, r) => s + r.totalPending, 0))}</div>
+                        <div className="stat-value">{formatCurrency((data.report as ClasswiseReportItem[]).reduce((s: number, r: ClasswiseReportItem) => s + r.totalPending, 0))}</div>
                         <div className="stat-label">Total Pending</div>
                     </div>
                 </div>
@@ -131,7 +183,7 @@ export default function ReportsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {data.report.map((r, idx) => (
+                                {(data.report as ClasswiseReportItem[]).map((r: ClasswiseReportItem, idx: number) => (
                                     <tr key={r.class} className="hover-lift">
                                         <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{r.class}</td>
                                         <td>{r.totalStudents}</td>
@@ -210,7 +262,7 @@ export default function ReportsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {(data.pendingStudents || []).map((s, idx) => (
+                                {(data.pendingStudents as PendingStudent[] || []).map((s: PendingStudent, idx: number) => (
                                     <motion.tr
                                         key={s._id}
                                         initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -257,17 +309,17 @@ export default function ReportsPage() {
                 <div className="stats-grid" style={{ gap: 20, marginBottom: 24 }}>
                     <div className="stat-card glass-green">
                         <div className="stat-icon">📥</div>
-                        <div className="stat-value">{formatCurrency(data.report.reduce((s, r) => s + r.income, 0))}</div>
+                        <div className="stat-value">{formatCurrency((data.report as MonthlyReportItem[]).reduce((s: number, r: MonthlyReportItem) => s + r.income, 0))}</div>
                         <div className="stat-label">Total Fee Income</div>
                     </div>
                     <div className="stat-card glass-red">
                         <div className="stat-icon">📤</div>
-                        <div className="stat-value">{formatCurrency(data.report.reduce((s, r) => s + r.expense, 0))}</div>
+                        <div className="stat-value">{formatCurrency((data.report as MonthlyReportItem[]).reduce((s: number, r: MonthlyReportItem) => s + r.expense, 0))}</div>
                         <div className="stat-label">Total Salary Expense</div>
                     </div>
                     <div className="stat-card glass-blue">
                         <div className="stat-icon">🏦</div>
-                        <div className="stat-value">{formatCurrency(data.report.reduce((s, r) => s + r.net, 0))}</div>
+                        <div className="stat-value">{formatCurrency((data.report as MonthlyReportItem[]).reduce((s: number, r: MonthlyReportItem) => s + r.net, 0))}</div>
                         <div className="stat-label">Net Operating Balance</div>
                     </div>
                 </div>
@@ -313,7 +365,7 @@ export default function ReportsPage() {
                                 <tr><th>Month</th><th>Income (Received)</th><th>Expense (Paid)</th><th>Net Profit/Loss</th></tr>
                             </thead>
                             <tbody>
-                                {data.report.map((r, i) => (
+                                {(data.report as MonthlyReportItem[]).map((r: MonthlyReportItem, i: number) => (
                                     <tr key={i} className="hover-lift">
                                         <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{r.month}</td>
                                         <td style={{ color: '#10b981', fontWeight: 700 }}>{formatCurrency(r.income)}</td>
@@ -356,7 +408,7 @@ export default function ReportsPage() {
                                 <tr><th>ID</th><th>Staff Name</th><th>Designation</th><th>Monthly Salary</th><th>Total Paid</th><th>Slip Count</th></tr>
                             </thead>
                             <tbody>
-                                {(data.staff || []).map(s => (
+                                {(data.staff as StaffReportItem[] || []).map((s: StaffReportItem) => (
                                     <tr key={s._id} className="hover-lift">
                                         <td><code style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{s.staffId}</code></td>
                                         <td>
@@ -385,7 +437,12 @@ export default function ReportsPage() {
         );
     };
 
-    const renderers = { classwise: renderClasswise, pending: renderPending, monthly: renderMonthly, salary: renderSalary };
+    const renderers: Record<TabKey, () => React.ReactNode> = {
+        classwise: renderClasswise,
+        pending: renderPending,
+        monthly: renderMonthly,
+        salary: renderSalary
+    };
 
     return (
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>

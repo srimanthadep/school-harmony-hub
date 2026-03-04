@@ -2,21 +2,39 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
+// Extend jsPDF to include autoTable for TypeScript
+declare module 'jspdf' {
+    interface jsPDF {
+        autoTable: (options: any) => jsPDF;
+        lastAutoTable: {
+            finalY: number;
+        };
+    }
+}
+
 const SCHOOL_NAME = 'Oxford School Chityala';
 const SCHOOL_ADDRESS = 'Chityala, Nalgonda District, Telangana';
 const SCHOOL_PHONE = '+91 98765 43210';
 
+interface SchoolSettings {
+    schoolName?: string;
+    schoolAddress?: string;
+    schoolPhone?: string;
+    schoolEmail?: string;
+    academicYear?: string;
+}
+
 // PDF-safe currency format (jsPDF helvetica cannot render ₹ Unicode)
-const pdfRs = (amount) => `Rs. ${Number(amount || 0).toLocaleString('en-IN')}`;
+const pdfRs = (amount: number | string) => `Rs. ${Number(amount || 0).toLocaleString('en-IN')}`;
 
 // Load logo as base64 for PDF embedding
-async function getLogoBase64() {
+async function getLogoBase64(): Promise<string | null> {
     try {
         const response = await fetch('/logo.png');
         const blob = await response.blob();
         return new Promise((resolve) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
+            reader.onloadend = () => resolve(reader.result as string);
             reader.onerror = () => resolve(null);
             reader.readAsDataURL(blob);
         });
@@ -26,11 +44,11 @@ async function getLogoBase64() {
 }
 
 // ── Format currency ──────────────────────────────────────────────────
-export const formatCurrency = (amount) =>
+export const formatCurrency = (amount: number | string) =>
     `₹${Number(amount || 0).toLocaleString('en-IN')}`;
 
 // ── Format date ───────────────────────────────────────────────────────
-export const formatDate = (date) => {
+export const formatDate = (date: string | Date | undefined) => {
     if (!date) return '-';
     return new Date(date).toLocaleDateString('en-IN', {
         day: '2-digit', month: 'short', year: 'numeric'
@@ -38,7 +56,7 @@ export const formatDate = (date) => {
 };
 
 // ── Fee Receipt PDF ──────────────────────────────────────────────────
-export const generateFeeReceiptPDF = async (student, payment, settings = {}) => {
+export const generateFeeReceiptPDF = async (student: any, payment: any, settings: SchoolSettings = {}) => {
     const doc = new jsPDF({ format: 'a5', unit: 'mm' });
     // Fix #24: Use settings.schoolName like the export functions do, falling back to constant
     const schoolName = settings.schoolName || SCHOOL_NAME;
@@ -139,7 +157,7 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
         },
         margin: { left: 8, right: 8 },
         styles: { lineColor: [210, 220, 240], lineWidth: 0.2, font: 'helvetica' },
-        didParseCell: (data) => {
+        didParseCell: (data: any) => {
             // Highlight Balance row
             if (data.row.index === 3) {
                 data.cell.styles.textColor = data.column.index === 1
@@ -159,7 +177,7 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
 
     // Status badge
     const status = pendingAmt <= 0 ? 'FULLY PAID' : 'PARTIAL PAYMENT';
-    const statusColor = pendingAmt <= 0 ? [67, 160, 71] : [251, 140, 0];
+    const statusColor = (pendingAmt <= 0 ? [67, 160, 71] : [251, 140, 0]) as [number, number, number];
     doc.setFillColor(...statusColor);
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
@@ -187,7 +205,7 @@ export const generateFeeReceiptPDF = async (student, payment, settings = {}) => 
 };
 
 // ── Salary Slip PDF ──────────────────────────────────────────────────
-export const generateSalarySlipPDF = async (staff, payment, settings = {}) => {
+export const generateSalarySlipPDF = async (staff: any, payment: any, settings: SchoolSettings = {}) => {
     const doc = new jsPDF({ format: 'a5', unit: 'mm' });
     // Fix #24: Use settings.schoolName like the export functions do, falling back to constant
     const schoolName = settings.schoolName || SCHOOL_NAME;
@@ -282,9 +300,9 @@ export const generateSalarySlipPDF = async (staff, payment, settings = {}) => {
 };
 
 // ── Export Students Excel ────────────────────────────────────────────
-export const exportStudentsExcel = (students) => {
+export const exportStudentsExcel = (students: any[]) => {
     const data = students.map(s => {
-        const row = {
+        const row: any = {
             'Student ID': s.studentId,
             'Name': s.name,
             'Class': s.class,
@@ -301,13 +319,13 @@ export const exportStudentsExcel = (students) => {
         };
 
         if (s.feePayments && s.feePayments.length > 0) {
-            const sortedPayments = [...s.feePayments].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+            const sortedPayments = [...s.feePayments].sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
 
             row['Payment History (Concatenated)'] = sortedPayments
-                .map(p => `₹${p.amount} (${p.receiptNo})`)
+                .map((p: any) => `₹${p.amount} (${p.receiptNo})`)
                 .join('; ');
 
-            sortedPayments.slice(0, 15).forEach((p, idx) => {
+            sortedPayments.slice(0, 15).forEach((p: any, idx: number) => {
                 row[`Payment ${idx + 1}`] = `₹${p.amount} on ${formatDate(p.paymentDate)} [Ref: ${p.receiptNo}]`;
             });
         }
@@ -331,7 +349,7 @@ export const exportStudentsExcel = (students) => {
 };
 
 // ── Export Students PDF ──────────────────────────────────────────────
-export const exportStudentsPDF = (students, settings = {}) => {
+export const exportStudentsPDF = (students: any[], settings: SchoolSettings = {}) => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const schoolName = settings.schoolName || SCHOOL_NAME;
     const pageW = doc.internal.pageSize.getWidth();
@@ -354,9 +372,9 @@ export const exportStudentsPDF = (students, settings = {}) => {
         head: [['ID', 'Name', 'Class', 'Roll', 'Parent', 'Phone', 'Paid', 'Pending', 'Recent Payments']],
         body: students.map(s => {
             const lastThree = (s.feePayments || [])
-                .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
+                .sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
                 .slice(0, 3)
-                .map(p => `Rs.${p.amount} (${formatDate(p.paymentDate)})`)
+                .map((p: any) => `Rs.${p.amount} (${formatDate(p.paymentDate)})`)
                 .join('\n');
 
             return [
@@ -381,9 +399,9 @@ export const exportStudentsPDF = (students, settings = {}) => {
 };
 
 // ── Export Staff Excel ───────────────────────────────────────────────
-export const exportStaffExcel = (staff) => {
+export const exportStaffExcel = (staff: any[]) => {
     const data = staff.map(s => {
-        const row = {
+        const row: any = {
             'Staff ID': s.staffId,
             'Name': s.name,
             'Role': (s.role || '').replace('_', ' ').toUpperCase(),
@@ -397,15 +415,15 @@ export const exportStaffExcel = (staff) => {
 
         // Add detailed payment history
         if (s.salaryPayments && s.salaryPayments.length > 0) {
-            const sortedPayments = [...s.salaryPayments].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+            const sortedPayments = [...s.salaryPayments].sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
 
             // Add a summary string
             row['Payment History (Concatenated)'] = sortedPayments
-                .map(p => `${p.month}: ₹${p.amount}`)
+                .map((p: any) => `${p.month}: ₹${p.amount}`)
                 .join('; ');
 
             // Add last 12 payments as separate columns
-            sortedPayments.slice(0, 12).forEach((p, idx) => {
+            sortedPayments.slice(0, 12).forEach((p: any, idx: number) => {
                 row[`Payment ${idx + 1}`] = `${p.month}: ₹${p.amount} (${formatDate(p.paymentDate)})`;
             });
         }
@@ -430,7 +448,7 @@ export const exportStaffExcel = (staff) => {
 };
 
 // ── Export Staff PDF ─────────────────────────────────────────────────
-export const exportStaffPDF = (staff, settings = {}) => {
+export const exportStaffPDF = (staff: any[], settings: SchoolSettings = {}) => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const schoolName = settings.schoolName || SCHOOL_NAME;
     const pageW = doc.internal.pageSize.getWidth();
@@ -453,9 +471,9 @@ export const exportStaffPDF = (staff, settings = {}) => {
         head: [['ID', 'Name', 'Role', 'Phone', 'Monthly Sal', 'Total Paid', 'Session', 'Last 3 Payments']],
         body: staff.map(s => {
             const lastThreeSalaries = (s.salaryPayments || [])
-                .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
+                .sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
                 .slice(0, 3)
-                .map(p => `${p.month}: Rs.${p.amount}`)
+                .map((p: any) => `${p.month}: Rs.${p.amount}`)
                 .join('\n');
 
             return [
@@ -478,4 +496,5 @@ export const exportStaffPDF = (staff, settings = {}) => {
 
     doc.save(`Staff_Report_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.pdf`);
 };
+
 
