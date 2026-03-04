@@ -257,8 +257,7 @@ exports.getPendingFees = async (req, res) => {
         const limitNum = parseInt(limit);
 
         // Fix #17: Use $facet to combine into a single aggregation (avoids duplicate pipeline)
-        const [facetResult] = await Promise.all([
-            Student.aggregate([
+        const aggregateResult = await Student.aggregate([
                 { $match: match },
                 {
                     $addFields: {
@@ -319,11 +318,11 @@ exports.getPendingFees = async (req, res) => {
                         ]
                     }
                 }
-            ])
-        ]);
+            ]);
 
-        const pendingStudents = facetResult.data;
-        const totalData = facetResult.totals[0] || { count: 0, totalPending: 0 };
+        const facetResult = aggregateResult[0] || { data: [], totals: [] };
+        const pendingStudents = facetResult.data || [];
+        const totalData = (facetResult.totals && facetResult.totals[0]) || { count: 0, totalPending: 0 };
 
         res.json({
             success: true,

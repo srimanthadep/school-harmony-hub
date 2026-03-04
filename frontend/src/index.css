@@ -398,6 +398,42 @@ body {
   color: var(--text-secondary);
 }
 
+.user-menu-wrap {
+  position: relative;
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 170px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  z-index: 1200;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.user-menu-item:hover,
+.user-menu-item.active {
+  background: var(--bg-primary);
+}
+
 .content-area {
   flex: 1;
   padding: 28px 28px;
@@ -1905,6 +1941,11 @@ html.dark .status-filter-pill.active {
     display: none;
   }
 
+  .user-menu-dropdown {
+    right: -6px;
+    min-width: 150px;
+  }
+
   .topbar-title h1 {
     font-size: 16px;
   }
@@ -1917,6 +1958,14 @@ html.dark .status-filter-pill.active {
 @media (max-width: 480px) {
   .stats-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .reports-page .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .expense-page .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   .dashboard-stats-grid {
@@ -2504,6 +2553,12 @@ input[type="number"] {
     padding: 6px 10px !important;
   }
 
+  .btn-group .students-add-btn {
+    flex: 0 0 100%;
+    width: 100%;
+    justify-content: center;
+  }
+
   /* Mobile Table Scroll */
   .table-container {
     overflow-x: auto;
@@ -2638,6 +2693,11 @@ input[type="number"] {
     flex: 1;
     min-width: 0;
     text-align: center;
+  }
+
+  .btn-group .students-add-btn {
+    flex: 0 0 100%;
+    width: 100%;
   }
 
   .highlight-box {

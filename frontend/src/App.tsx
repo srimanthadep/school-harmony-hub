@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation, Outlet } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -128,6 +128,8 @@ interface AdminLayoutWrapperProps {
 
 function AdminLayoutWrapper() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const userMenuRef = useRef<HTMLDivElement | null>(null);
     const { user } = useAuth();
     const location = useLocation();
     const { isDark, toggle } = useDarkMode();
@@ -147,6 +149,22 @@ function AdminLayoutWrapper() {
     };
 
     const { title: pageTitle, subtitle: pageSubtitle } = routeInfo[location.pathname] || { title: 'Oxford School', subtitle: '' };
+    const bottomNavItems = NAV_ITEMS.filter(item => item.path !== '/reports' && item.path !== '/settings');
+
+    useEffect(() => {
+        setUserMenuOpen(false);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        const handleOutsideClick = (event: MouseEvent) => {
+            if (!userMenuRef.current) return;
+            if (!userMenuRef.current.contains(event.target as Node)) {
+                setUserMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
 
     return (
         <div className="app-layout">
@@ -196,9 +214,11 @@ function AdminLayoutWrapper() {
                         </motion.button>
                         {/* Notification Bell */}
                         <NotificationBell />
+                        <div className="user-menu-wrap" ref={userMenuRef}>
                         <motion.div
                             whileHover={{ scale: 1.02 }}
                             className="user-badge shadow-sm"
+                            onClick={() => setUserMenuOpen(prev => !prev)}
                             style={{
                                 padding: '6px 12px',
                                 borderRadius: 12,
@@ -218,6 +238,17 @@ function AdminLayoutWrapper() {
                                 <div className="user-role" style={{ fontSize: 10, color: '#64748b' }}>{user?.role === 'owner' ? '👑 Main Admin' : 'Staff Access'}</div>
                             </div>
                         </motion.div>
+                        {userMenuOpen && (
+                            <div className="user-menu-dropdown">
+                                <NavLink to="/reports" className="user-menu-item" onClick={() => setUserMenuOpen(false)}>
+                                    <MdBarChart /> Reports
+                                </NavLink>
+                                <NavLink to="/settings" className="user-menu-item" onClick={() => setUserMenuOpen(false)}>
+                                    <MdSettings /> Settings
+                                </NavLink>
+                            </div>
+                        )}
+                        </div>
                     </div>
                 </header>
                 <main className="content-area">
@@ -236,7 +267,7 @@ function AdminLayoutWrapper() {
             </div>
             {/* Mobile Bottom Nav */}
             <nav className="bottom-nav">
-                {NAV_ITEMS.map(item => (
+                {bottomNavItems.map(item => (
                     <NavLink key={item.path} to={item.path} className={({ isActive }) => isActive ? 'active' : ''}>
                         {item.icon}
                         {item.label}

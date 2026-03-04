@@ -445,7 +445,7 @@ export default function ReportsPage() {
     };
 
     return (
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <div className="reports-page" style={{ maxWidth: 1200, margin: '0 auto' }}>
             {dashboardStats && (
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="stats-grid" style={{ marginBottom: 24, gap: 20 }}>
                     <div className="stat-card glass-green">

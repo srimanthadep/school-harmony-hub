@@ -430,11 +430,11 @@ export default function StudentsPage() {
                                 🎓 Promote
                             </button>
                         )}
-                        <button className="btn btn-primary" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}>
-                            <MdAdd /> Add Student
-                        </button>
                         <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
                             Bulk Import
+                        </button>
+                        <button className="btn btn-primary students-add-btn" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}>
+                            <MdAdd /> Add Student
                         </button>
                     </div>
                 </div>

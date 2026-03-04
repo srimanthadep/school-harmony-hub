@@ -142,7 +142,7 @@ export default function ExpensePage() {
     if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
 
     return (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ maxWidth: 1100, margin: '0 auto' }}>
+        <motion.div className="expense-page" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ maxWidth: 1100, margin: '0 auto' }}>
             {/* Header */}
             <div className="card-header" style={{ marginBottom: 24, padding: 0, border: 'none', background: 'transparent' }}>
                 <div>
