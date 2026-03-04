@@ -15,6 +15,7 @@ import { motion } from 'framer-motion';
 import { Staff, SalaryPayment, StaffListResponse } from '../types';
 
 // Components
+import StaffCards from '../components/staff/StaffCards';
 import StaffTable from '../components/staff/StaffTable';
 import StaffForm from '../components/staff/StaffForm';
 import SalaryModal from '../components/staff/SalaryModal';
@@ -62,6 +63,7 @@ export default function StaffPage() {
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [yearFilter, setYearFilter] = useState(getCurrentAcademicYear());
+    const [statusFilter, setStatusFilter] = useState('');
     const [sortField, setSortField] = useState('staffId');
     const [sortDir, setSortDir] = useState(1);
 
@@ -161,9 +163,10 @@ export default function StaffPage() {
     }), [sortedStaff]);
 
     const filteredStaff: Staff[] = useMemo(() => {
-        if (!search) return sortedStaff;
-        return fuse.search(search).map(r => r.item);
-    }, [search, sortedStaff, fuse]);
+        let result = search ? fuse.search(search).map(r => r.item) : sortedStaff;
+        if (statusFilter) result = result.filter(s => getStatus(s) === statusFilter);
+        return result;
+    }, [search, sortedStaff, fuse, statusFilter]);
 
     // Derived states
     const showLeaves = useMemo(() => staff.find(s => s._id === showLeavesId) || null, [staff, showLeavesId]);
@@ -467,35 +470,77 @@ export default function StaffPage() {
                     Found <strong>{totalStaffCount}</strong> staff members •
                     Showing <strong>{staff.length}</strong> on this page
                 </div>
+                <div className="status-filter-pills" role="group" aria-label="Filter staff by salary status">
+                    {[
+                        { label: 'All Staff', value: '' },
+                        { label: 'Paid', value: 'paid' },
+                        { label: 'Due', value: 'unpaid' },
+                    ].map(opt => (
+                        <button
+                            key={opt.value}
+                            className={`status-filter-pill${statusFilter === opt.value ? ' active' : ''}`}
+                            aria-pressed={statusFilter === opt.value}
+                            onClick={() => { setStatusFilter(opt.value); setPage(1); }}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
             </motion.div >
 
-            {/* Table */}
+            {/* Table (desktop) / Cards (mobile) */}
             <div className="card">
-                <StaffTable
-                    staff={filteredStaff}
-                    isLoading={isLoading}
-                    onEdit={openEdit}
-                    onDelete={setShowDeleteConfirm}
-                    onPaySalary={(s) => {
-                        setShowSalaryId(s._id);
-                        setSalaryForm((f: any) => ({
-                            ...f,
-                            baseAmount: s.monthlySalary,
-                            cuttings: 0,
-                            amount: s.monthlySalary,
-                            month: CURRENT_MONTH,
-                            paymentDate: new Date().toISOString().split('T')[0]
-                        }));
-                    }}
-                    downloadLatestPayslip={downloadLatestPayslip}
-                    onViewHistory={openHistory}
-                    onViewLeaves={(s) => setShowLeavesId(s._id)}
-                    sortField={sortField}
-                    sortDir={sortDir}
-                    toggleSort={toggleSort}
-                    getStatus={getStatus}
-                    roleDisplay={ROLE_DISPLAY}
-                />
+                <div className="desktop-only">
+                    <StaffTable
+                        staff={filteredStaff}
+                        isLoading={isLoading}
+                        onEdit={openEdit}
+                        onDelete={setShowDeleteConfirm}
+                        onPaySalary={(s) => {
+                            setShowSalaryId(s._id);
+                            setSalaryForm((f: any) => ({
+                                ...f,
+                                baseAmount: s.monthlySalary,
+                                cuttings: 0,
+                                amount: s.monthlySalary,
+                                month: CURRENT_MONTH,
+                                paymentDate: new Date().toISOString().split('T')[0]
+                            }));
+                        }}
+                        downloadLatestPayslip={downloadLatestPayslip}
+                        onViewHistory={openHistory}
+                        onViewLeaves={(s) => setShowLeavesId(s._id)}
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        toggleSort={toggleSort}
+                        getStatus={getStatus}
+                        roleDisplay={ROLE_DISPLAY}
+                    />
+                </div>
+                <div className="mobile-only">
+                    <StaffCards
+                        staff={filteredStaff}
+                        isLoading={isLoading}
+                        onEdit={openEdit}
+                        onDelete={setShowDeleteConfirm}
+                        onPaySalary={(s) => {
+                            setShowSalaryId(s._id);
+                            setSalaryForm((f: any) => ({
+                                ...f,
+                                baseAmount: s.monthlySalary,
+                                cuttings: 0,
+                                amount: s.monthlySalary,
+                                month: CURRENT_MONTH,
+                                paymentDate: new Date().toISOString().split('T')[0]
+                            }));
+                        }}
+                        downloadLatestPayslip={downloadLatestPayslip}
+                        onViewHistory={openHistory}
+                        onViewLeaves={(s) => setShowLeavesId(s._id)}
+                        getStatus={getStatus}
+                        roleDisplay={ROLE_DISPLAY}
+                    />
+                </div>
 
                 {/* Pagination Controls */}
                 {!isLoading && totalPages > 1 && (

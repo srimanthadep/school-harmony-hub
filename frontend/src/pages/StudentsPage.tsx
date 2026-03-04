@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Sub-components
 import StudentTable from '../components/students/StudentTable';
+import StudentCards from '../components/students/StudentCards';
 import StudentForm from '../components/students/StudentForm';
 import PaymentModal from '../components/students/PaymentModal';
 import PaymentHistoryModal from '../components/students/PaymentHistoryModal';
@@ -102,6 +103,7 @@ export default function StudentsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [classFilter, setClassFilter] = useState('');
     const [yearFilter, setYearFilter] = useState(getCurrentAcademicYear());
+    const [statusFilter, setStatusFilter] = useState('');
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [sortField, setSortField] = useState('rollNo');
     const [sortDir, setSortDir] = useState(1);
@@ -121,12 +123,13 @@ export default function StudentsPage() {
 
     // Data Fetching
     const { data, isLoading } = useQuery<StudentListResponse>({
-        queryKey: ['students', page, classFilter, yearFilter, search],
+        queryKey: ['students', page, classFilter, yearFilter, search, statusFilter],
         queryFn: async () => {
             const params: any = { page, limit: 50 };
             if (classFilter) params.class = classFilter;
             if (yearFilter) params.academicYear = yearFilter;
             if (search) params.search = search;
+            if (statusFilter) params.tuitionStatus = statusFilter;
             const res = await API.get('/students', { params });
             return res.data;
         }
@@ -165,6 +168,20 @@ export default function StudentsPage() {
     const toggleSort = (field: string) => {
         if (sortField === field) setSortDir(d => -d);
         else { setSortField(field); setSortDir(1); }
+    };
+
+    const handleSelect = (id: string) => {
+        setSelectedStudents(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const handleSelectAll = () => {
+        if (selectedStudents.length === sortedStudents.length && sortedStudents.length > 0) {
+            setSelectedStudents([]);
+        } else {
+            setSelectedStudents(sortedStudents.map(s => s._id));
+        }
     };
 
     const handleFormSubmit = async (e: React.FormEvent) => {
@@ -424,25 +441,56 @@ export default function StudentsPage() {
                 <div style={{ padding: '8px 24px', fontSize: 13, color: '#6b7280' }}>
                     Showing <strong>{(page - 1) * 50 + 1} - {(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong> students
                 </div>
+                <div className="status-filter-pills" role="group" aria-label="Filter students by payment status">
+                    {[
+                        { label: 'All Students', value: '' },
+                        { label: 'Paid', value: 'paid' },
+                        { label: 'Partial', value: 'partial' },
+                        { label: 'Unpaid', value: 'unpaid' },
+                    ].map(opt => (
+                        <button
+                            key={opt.value}
+                            className={`status-filter-pill${statusFilter === opt.value ? ' active' : ''}`}
+                            aria-pressed={statusFilter === opt.value}
+                            onClick={() => { setStatusFilter(opt.value); setPage(1); }}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="card">
-                <StudentTable
-                    students={sortedStudents}
-                    isLoading={isLoading}
-                    selectedStudents={selectedStudents}
-                    onSelect={(id) => setSelectedStudents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                    onSelectAll={() => setSelectedStudents(selectedStudents.length === students.length ? [] : students.map(s => s._id))}
-                    onEdit={(s) => { setEditStudent(s); setFormData({ ...s as any }); setShowForm(true); }}
-                    onDelete={(s) => setShowDeleteConfirm(s)}
-                    onRecordPayment={(s) => setShowPayment(s)}
-                    onViewHistory={openHistory}
-                    onViewProfile={(s) => setShowProfileStudent(s)}
-                    onWhatsApp={handleWhatsApp}
-                    sortField={sortField}
-                    sortDir={sortDir}
-                    toggleSort={toggleSort}
-                />
+                <div className="desktop-only">
+                    <StudentTable
+                        students={sortedStudents}
+                        isLoading={isLoading}
+                        selectedStudents={selectedStudents}
+                        onSelect={handleSelect}
+                        onSelectAll={handleSelectAll}
+                        onEdit={(s) => { setEditStudent(s); setFormData({ ...s as any }); setShowForm(true); }}
+                        onDelete={(s) => setShowDeleteConfirm(s)}
+                        onRecordPayment={(s) => setShowPayment(s)}
+                        onViewHistory={openHistory}
+                        onViewProfile={(s) => setShowProfileStudent(s)}
+                        onWhatsApp={handleWhatsApp}
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        toggleSort={toggleSort}
+                    />
+                </div>
+                <div className="mobile-only">
+                    <StudentCards
+                        students={sortedStudents}
+                        isLoading={isLoading}
+                        onEdit={(s) => { setEditStudent(s); setFormData({ ...s as any }); setShowForm(true); }}
+                        onDelete={(s) => setShowDeleteConfirm(s)}
+                        onRecordPayment={(s) => setShowPayment(s)}
+                        onViewHistory={openHistory}
+                        onViewProfile={(s) => setShowProfileStudent(s)}
+                        onWhatsApp={handleWhatsApp}
+                    />
+                </div>
 
                 {totalPages > 1 && (
                     <div className="pagination">

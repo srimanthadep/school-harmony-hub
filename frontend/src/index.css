@@ -952,7 +952,494 @@ tbody td {
   text-decoration: underline dotted;
 }
 
-/* ===== SEARCH & FILTERS ===== */
+/* ===== BOTTOM SHEET ===== */
+.bottom-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+.bottom-sheet {
+  background: var(--bg-secondary);
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUpSheet 0.28s ease;
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.bottom-sheet-handle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.bottom-sheet-handle {
+  width: 48px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--border);
+}
+
+.bottom-sheet-scroll {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.bottom-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.bottom-sheet-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bottom-sheet-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bottom-sheet-footer {
+  padding: 16px 24px 24px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-block {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Staff member card inside salary modal */
+.salary-staff-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.salary-staff-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(26, 35, 126, 0.1);
+  border: 1.5px solid rgba(26, 35, 126, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.salary-staff-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.salary-staff-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Net Pay calculation box */
+.net-pay-box {
+  background: rgba(26, 35, 126, 0.04);
+  border: 1px solid rgba(26, 35, 126, 0.15);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.net-pay-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.net-pay-value {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.net-pay-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2px 0;
+}
+
+.net-pay-total {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.net-pay-amount {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+html.dark .bottom-sheet {
+  background: #1a1d27;
+}
+
+html.dark .bottom-sheet-header {
+  border-color: #2d3149;
+}
+
+html.dark .bottom-sheet-footer {
+  border-color: #2d3149;
+}
+
+html.dark .salary-staff-card {
+  background: #111525;
+  border-color: #2d3149;
+}
+
+html.dark .net-pay-box {
+  background: rgba(26, 35, 126, 0.12);
+  border-color: rgba(26, 35, 126, 0.3);
+}
+
+html.dark .net-pay-divider {
+  border-color: #2d3149;
+}
+
+/* ===== STUDENT CARDS ===== */
+.student-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+.student-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s;
+}
+
+.student-card:hover {
+  box-shadow: var(--shadow);
+}
+
+.student-card-top {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  align-items: flex-start;
+}
+
+.student-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(26, 35, 126, 0.1);
+  border: 1.5px solid rgba(26, 35, 126, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.student-avatar span {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.student-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.student-card-name-block {
+  min-width: 0;
+}
+
+.student-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.student-card-name:hover {
+  color: var(--primary);
+}
+
+.student-card-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.student-card-class {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.student-card-bottom {
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.student-card-parent-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.student-card-parent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-card-profile-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.student-card-profile-btn:hover {
+  text-decoration: underline;
+}
+
+.student-card-fee-row {
+  display: flex;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+
+.student-card-fee-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-right: 1px solid var(--border-light);
+}
+
+.student-card-fee-item:last-child {
+  border-right: none;
+}
+
+.fee-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.fee-value {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fee-neutral {
+  color: var(--text-primary);
+}
+
+.fee-paid {
+  color: var(--success);
+}
+
+.fee-pending {
+  color: var(--danger);
+}
+
+.student-card-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* ===== STATUS FILTER PILLS ===== */
+.status-filter-pills {
+  display: flex;
+  gap: 8px;
+  padding: 0 24px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.status-filter-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.status-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.status-filter-pill:hover {
+  background: var(--border);
+}
+
+.status-filter-pill.active {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+html.dark .student-card {
+  background: #1a1d27;
+  border-color: #2d3149;
+}
+
+html.dark .student-card-bottom {
+  background: #111525;
+  border-color: #222640;
+}
+
+html.dark .student-card-fee-row {
+  background: rgba(255,255,255,0.03);
+  border-color: #222640;
+}
+
+html.dark .student-card-fee-item {
+  border-color: #222640;
+}
+
+html.dark .student-card-name {
+  color: #e8eaf6;
+}
+
+html.dark .status-filter-pill {
+  background: #1a1d27;
+  color: #9ca3af;
+  border: 1px solid #2d3149;
+}
+
+html.dark .status-filter-pill:hover {
+  background: #252840;
+}
+
+html.dark .status-filter-pill.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .student-cards-grid {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .status-filter-pills {
+    padding: 0 12px 10px;
+  }
+}
+
+
+/* ===== RESPONSIVE LAYOUT HELPERS ===== */
+.desktop-only { display: block; }
+.mobile-only  { display: none; }
+
+@media (max-width: 768px) {
+  .desktop-only { display: none; }
+  .mobile-only  { display: block; }
+}
+
 .search-bar {
   display: flex;
   align-items: center;
