@@ -56,55 +56,50 @@ export default function PaymentModal({
     };
 
     return (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-            <div className="modal" style={{ maxWidth: 480, padding: 0, overflow: 'hidden' }}>
-
-                {/* ── Top Bar ── */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '16px 20px 12px', borderBottom: '1px solid var(--border-light)',
-                    background: 'var(--bg-secondary)',
-                }}>
-                    <button className="btn-close" onClick={onClose} style={{ marginLeft: 0 }}>
-                        <MdClose size={20} />
-                    </button>
-                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', flex: 1, textAlign: 'center' }}>
-                        Record Fee Payment
-                    </h3>
-                    <div style={{ width: 32 }} />
-                </div>
-
-                <div style={{ padding: '0 20px 20px', overflowY: 'auto', maxHeight: 'calc(90vh - 140px)' }}>
-
-                    {/* ── Student Profile ── */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0 12px' }}>
-                        <div style={{
-                            width: 72, height: 72, borderRadius: '50%',
-                            background: 'rgba(26,35,126,0.1)', border: '3px solid var(--bg-secondary)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                            <span style={{ fontSize: 26, fontWeight: 700, color: 'var(--primary)' }}>{initials}</span>
-                        </div>
-                        <p style={{ margin: '10px 0 2px', fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>{show.name}</p>
-                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>{show.class}</p>
+        <div className="bottom-sheet-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+            <div className="bottom-sheet">
+                <button className="bottom-sheet-handle-btn" onClick={onClose} aria-label="Close">
+                    <div className="bottom-sheet-handle" />
+                </button>
+                <div className="bottom-sheet-scroll">
+                    <div className="bottom-sheet-header">
+                        <h3 className="bottom-sheet-title"><MdPayments /> Record Fee Payment</h3>
+                        <button className="btn-close" onClick={onClose}><MdClose /></button>
                     </div>
 
-                    {/* ── Summary Card ── */}
+                    <div className="bottom-sheet-body">
+
+                    {/* ── Summary Card with Student Profile ── */}
                     <div style={{
                         borderRadius: 16, padding: '18px 20px', background: 'var(--primary)',
                         color: '#fff', boxShadow: '0 8px 24px rgba(26,35,126,0.25)', marginBottom: 20,
+                        display: 'flex', gap: 20, alignItems: 'center',
                     }}>
-                        <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 500, opacity: 0.85 }}>
-                            {isTuition ? 'Tuition Fee' : "Book's Fee"} — Amount Due
-                        </p>
-                        <p style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 700 }}>
-                            {formatCurrency(summaryPending)}
-                        </p>
-                        <div style={{ display: 'flex', gap: 16, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 10, fontSize: 12 }}>
-                            <span>Total: <strong>{formatCurrency(summaryTotal)}</strong></span>
-                            <span>Paid: <strong style={{ color: '#a5d6a7' }}>{formatCurrency(summaryPaid)}</strong></span>
-                            <span>Pending: <strong style={{ color: '#ef9a9a' }}>{formatCurrency(summaryPending)}</strong></span>
+                        <div style={{ flex: 1 }}>
+                            <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 500, opacity: 0.85 }}>
+                                {isTuition ? 'Tuition Fee' : "Book's Fee"} — Amount Due
+                            </p>
+                            <p style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 700 }}>
+                                {formatCurrency(summaryPending)}
+                            </p>
+                            <div style={{ display: 'flex', gap: 16, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 10, fontSize: 12 }}>
+                                <span>Total: <strong>{formatCurrency(summaryTotal)}</strong></span>
+                                <span>Paid: <strong style={{ color: '#a5d6a7' }}>{formatCurrency(summaryPaid)}</strong></span>
+                                <span>Pending: <strong style={{ color: '#ef9a9a' }}>{formatCurrency(summaryPending)}</strong></span>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                            <div style={{
+                                width: 56, height: 56, borderRadius: '50%',
+                                background: 'rgba(255,255,255,0.2)', border: '3px solid rgba(255,255,255,0.3)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{initials}</span>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#fff' }}>{show.name}</p>
+                                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>{show.class}</p>
+                            </div>
                         </div>
                     </div>
 
@@ -196,32 +191,17 @@ export default function PaymentModal({
                         </div>
 
                     </form>
-                </div>
+                    </div>
 
-                {/* ── Footer ── */}
-                <div style={{
-                    padding: '14px 20px', borderTop: '1px solid var(--border-light)',
-                    background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', gap: 8,
-                }}>
-                    <button form="payment-form" type="submit"
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                            width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-                            background: 'var(--primary)', color: '#fff', fontSize: 15, fontWeight: 700,
-                            cursor: paymentLoading ? 'not-allowed' : 'pointer',
-                            boxShadow: '0 4px 14px rgba(26,35,126,0.3)',
-                            opacity: paymentLoading ? 0.75 : 1, transition: 'all 0.2s',
-                        }}
-                        disabled={paymentLoading}>
-                        {paymentLoading ? 'Processing...' : (
-                            <><span>Confirm Payment</span><MdArrowForward size={18} /></>
-                        )}
-                    </button>
-                    <p style={{ margin: 0, textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                        <MdLock size={11} /> Secure Transaction
-                    </p>
+                    <div className="bottom-sheet-footer">
+                        <button form="payment-form" type="submit" className="btn btn-success btn-block" disabled={paymentLoading}>
+                            <MdPayments /> {paymentLoading ? 'Processing...' : 'Confirm Payment'}
+                        </button>
+                        <button type="button" className="btn btn-secondary btn-block" onClick={onClose}>
+                            Cancel
+                        </button>
+                    </div>
                 </div>
-
             </div>
         </div>
     );
