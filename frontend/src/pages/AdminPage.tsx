@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import {
     MdAdd, MdEdit, MdSecurity, MdClose, MdAdminPanelSettings,
     MdLockOutline, MdDelete, MdRestore, MdUndo, MdPeople,
-    MdHistory, MdShield, MdVerifiedUser, MdFilterList, MdDownload, MdTimeline
+    MdHistory, MdShield, MdVerifiedUser, MdFilterList, MdDownload, MdTimeline,
+    MdEmail, MdBackup, MdBuild
 } from 'react-icons/md';
 
 const S = {
@@ -235,6 +236,7 @@ export default function AdminPage() {
     const [editUserForm, setEditUserForm] = useState({ name: '', email: '' });
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
     const [activeTab, setActiveTab] = useState('users');
+    const [emailTestLoading, setEmailTestLoading] = useState(false);
     const [history, setHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [hoveredRow, setHoveredRow] = useState(null);
@@ -313,6 +315,20 @@ export default function AdminPage() {
             a.click();
             URL.revokeObjectURL(a.href);
         } catch { toast.error('Export failed'); }
+    };
+
+    const handleTestEmail = async () => {
+        if (!window.confirm('Test backup email? This will create a backup and send it to your configured email address.')) return;
+        setEmailTestLoading(true);
+        toast.loading('Testing backup email...', { id: 'test-email' });
+        try {
+            const res = await API.post('/backup/test-email');
+            toast.success(res.data.message || 'Test email sent! Check your inbox and server console.', { id: 'test-email' });
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Test email failed. Check server console for details.', { id: 'test-email' });
+        } finally {
+            setEmailTestLoading(false);
+        }
     };
 
     const handleAddUser = async (e) => {
@@ -515,6 +531,9 @@ export default function AdminPage() {
                 <button style={S.tab(activeTab === 'logs')} onClick={() => setActiveTab('logs')}>
                     <MdTimeline /> Activity Logs
                 </button>
+                <button style={S.tab(activeTab === 'maintenance')} onClick={() => setActiveTab('maintenance')}>
+                    <MdBuild /> Maintenance
+                </button>
             </div>
 
             {/* ── Content card ── */}
@@ -654,6 +673,66 @@ export default function AdminPage() {
                             </div>
                         )}
                     </>
+                ) : activeTab === 'maintenance' ? (
+                    <div style={{ padding: 24 }}>
+                        <div style={S.cardHeader}>
+                            <span style={S.cardTitle}><MdBuild color="#7267ef" /> System Maintenance Tools</span>
+                        </div>
+                        <div style={{ padding: 24, display: 'grid', gap: 24 }}>
+                            {/* Backup Email Test Section */}
+                            <div style={{
+                                borderRadius: 12,
+                                border: '1px solid #edf2f7',
+                                padding: 20,
+                                background: '#f8f9fc'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                                    <div>
+                                        <h4 style={{ fontSize: 15, fontWeight: 700, color: '#1c232f', margin: '0 0 6px 0' }}>
+                                            <MdEmail style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                                            Test Backup Email
+                                        </h4>
+                                        <p style={{ fontSize: 13, color: '#8996a4', margin: 0, lineHeight: 1.6 }}>
+                                            Manually trigger a database backup and send it to the configured email address. This helps verify the backup system is working correctly.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={handleTestEmail}
+                                        disabled={emailTestLoading}
+                                        style={{
+                                            gap: 8,
+                                            borderRadius: 8,
+                                            padding: '10px 16px',
+                                            background: emailTestLoading ? '#94a3b8' : 'linear-gradient(135deg, #ea580c, #f97316)',
+                                            color: 'white',
+                                            border: 'none',
+                                            cursor: emailTestLoading ? 'not-allowed' : 'pointer',
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0
+                                        }}
+                                    >
+                                        <MdEmail /> {emailTestLoading ? 'Sending…' : 'Test Email'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Info Box */}
+                            <div style={{
+                                borderRadius: 12,
+                                border: '1px solid #d1e7dd',
+                                padding: 16,
+                                background: '#f0f8f6',
+                                fontSize: 13,
+                                color: '#145a32'
+                            }}>
+                                ℹ️ Automatic daily backups run at <strong>midnight IST</strong>. A test email will create a full backup and send it immediately to verify configuration.
+                            </div>
+                        </div>
+                    </div>
                 ) : (
                     /* ── Activity Logs Panel ── */
                     <>
