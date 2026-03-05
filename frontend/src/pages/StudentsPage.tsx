@@ -343,124 +343,150 @@ export default function StudentsPage() {
     };
 
     return (
-        <div className="students-page">
-            <div className="card" style={{ marginBottom: 20 }}>
-                <div className="card-header">
-                    <div className="filters-bar">
-                        <div className="search-bar" style={{ minWidth: 220 }}>
-                            <MdSearch className="search-icon" />
-                            <input
-                                placeholder="Search students..."
-                                value={searchTerm}
-                                onChange={handleSearchChange}
-                            />
-                        </div>
-                        <select
-                            className="form-control"
-                            style={{ width: 130 }}
-                            value={classFilter}
-                            onChange={e => { setClassFilter(e.target.value); setPage(1); }}
-                        >
-                            <option value="">All Classes</option>
-                            {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <select
-                            className="form-control"
-                            style={{ width: 130 }}
-                            value={yearFilter}
-                            onChange={e => { setYearFilter(e.target.value); setPage(1); }}
-                        >
-                            <option value="">All Years</option>
-                            {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
-                    </div>
-                    <div className="btn-group">
-                        {selectedStudents.length > 0 && (
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button className="btn btn-success" onClick={() => toast.success('Sent bulk reminders!')}>
-                                    <FaWhatsapp /> Send {selectedStudents.length} Reminders
-                                </button>
-                                <button className="btn btn-danger" onClick={() => setShowBulkDeleteConfirm(true)}>
-                                    Delete {selectedStudents.length}
-                                </button>
-                            </div>
-                        )}
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            disabled={isLoading}
-                            onClick={async () => {
-                                const loadingToast = toast.loading('Preparing Excel export...');
-                                try {
-                                    const params: any = { limit: 1000 }; // High limit to get all
-                                    if (classFilter) params.class = classFilter;
-                                    if (yearFilter) params.academicYear = yearFilter;
-                                    if (search) params.search = search;
-                                    const res = await API.get('/students', { params });
-                                    exportStudentsExcel(res.data.students);
-                                    toast.success('Excel exported!', { id: loadingToast });
-                                } catch (err) {
-                                    toast.error('Export failed', { id: loadingToast });
-                                }
-                            }}
-                        >
-                            <MdTableChart /> Excel
-                        </button>
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            disabled={isLoading}
-                            onClick={async () => {
-                                const loadingToast = toast.loading('Preparing PDF report...');
-                                try {
-                                    const params: any = { limit: 1000 };
-                                    if (classFilter) params.class = classFilter;
-                                    if (yearFilter) params.academicYear = yearFilter;
-                                    if (search) params.search = search;
-                                    const res = await API.get('/students', { params });
-                                    exportStudentsPDF(res.data.students, settings);
-                                    toast.success('PDF exported!', { id: loadingToast });
-                                } catch (err) {
-                                    toast.error('Export failed', { id: loadingToast });
-                                }
-                            }}
-                        >
-                            <MdPictureAsPdf /> PDF
-                        </button>
-                        {(isAdmin || isOwner) && (
-                            <button className="btn btn-sm btn-warning" onClick={() => { setPromoteResult(null); setShowPromote(true); }}>
-                                🎓 Promote
+        <div style={{ padding: '20px 24px' }}>
+            {/* Page Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+                <div>
+                    <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1e293b', margin: 0 }}>Student Directory</h1>
+                    <p style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>Manage students, fees, and records</p>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    {selectedStudents.length > 0 && (
+                        <>
+                            <button
+                                className="btn btn-success"
+                                onClick={() => toast.success('Sent bulk reminders!')}
+                            >
+                                <FaWhatsapp /> Send {selectedStudents.length} Reminders
                             </button>
-                        )}
-                        <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
-                            Bulk Import
-                        </button>
-                        <button className="btn btn-primary students-add-btn" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}>
-                            <MdAdd /> Add Student
-                        </button>
-                    </div>
-                </div>
-                <div style={{ padding: '8px 24px', fontSize: 13, color: '#6b7280' }}>
-                    Showing <strong>{(page - 1) * 50 + 1} - {(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong> students
-                </div>
-                <div className="status-filter-pills" role="group" aria-label="Filter students by payment status">
-                    {[
-                        { label: 'All Students', value: '' },
-                        { label: 'Paid', value: 'paid' },
-                        { label: 'Partial', value: 'partial' },
-                        { label: 'Unpaid', value: 'unpaid' },
-                    ].map(opt => (
+                            <button
+                                className="btn btn-danger"
+                                onClick={() => setShowBulkDeleteConfirm(true)}
+                            >
+                                Delete {selectedStudents.length}
+                            </button>
+                        </>
+                    )}
+                    <button
+                        disabled={isLoading}
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                            const loadingToast = toast.loading('Preparing Excel export...');
+                            try {
+                                const params: any = { limit: 1000 }; // High limit to get all
+                                if (classFilter) params.class = classFilter;
+                                if (yearFilter) params.academicYear = yearFilter;
+                                if (search) params.search = search;
+                                const res = await API.get('/students', { params });
+                                exportStudentsExcel(res.data.students);
+                                toast.success('Excel exported!', { id: loadingToast });
+                            } catch (err) {
+                                toast.error('Export failed', { id: loadingToast });
+                            }
+                        }}
+                    >
+                        <MdTableChart /> Excel
+                    </button>
+                    <button
+                        disabled={isLoading}
+                        className="btn btn-secondary btn-sm"
+                        onClick={async () => {
+                            const loadingToast = toast.loading('Preparing PDF report...');
+                            try {
+                                const params: any = { limit: 1000 };
+                                if (classFilter) params.class = classFilter;
+                                if (yearFilter) params.academicYear = yearFilter;
+                                if (search) params.search = search;
+                                const res = await API.get('/students', { params });
+                                exportStudentsPDF(res.data.students, settings);
+                                toast.success('PDF exported!', { id: loadingToast });
+                            } catch (err) {
+                                toast.error('Export failed', { id: loadingToast });
+                            }
+                        }}
+                    >
+                        <MdPictureAsPdf /> PDF
+                    </button>
+                    {(isAdmin || isOwner) && (
                         <button
-                            key={opt.value}
-                            className={`status-filter-pill${statusFilter === opt.value ? ' active' : ''}`}
-                            aria-pressed={statusFilter === opt.value}
-                            onClick={() => { setStatusFilter(opt.value); setPage(1); }}
+                            className="btn btn-sm btn-warning"
+                            onClick={() => { setPromoteResult(null); setShowPromote(true); }}
                         >
-                            {opt.label}
+                            🎓 Promote
                         </button>
-                    ))}
+                    )}
+                    <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setShowImportModal(true)}
+                    >
+                        Bulk Import
+                    </button>
+                    <button
+                        className="btn btn-primary students-add-btn"
+                        onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}
+                    >
+                        <MdAdd /> Add Student
+                    </button>
                 </div>
             </div>
 
-            <div className="card">
+            {/* Main Card */}
+            <div className="card" style={{ borderRadius: 12 }}>
+                {/* Filters Row */}
+                <div className="card-header" style={{ gap: 10, flexWrap: 'wrap', padding: '12px 16px' }}>
+                    <div className="search-bar" style={{ flex: 1, minWidth: 200 }}>
+                        <MdSearch className="search-icon" />
+                        <input
+                            placeholder="Search students..."
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                        />
+                    </div>
+                    <select
+                        className="form-control"
+                        style={{ width: 140 }}
+                        value={classFilter}
+                        onChange={e => { setClassFilter(e.target.value); setPage(1); }}
+                    >
+                        <option value="">All Classes</option>
+                        {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <select
+                        className="form-control"
+                        style={{ width: 140 }}
+                        value={yearFilter}
+                        onChange={e => { setYearFilter(e.target.value); setPage(1); }}
+                    >
+                        <option value="">All Years</option>
+                        {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                </div>
+
+                {/* Tabs + Count Row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap', gap: 8 }}>
+                    <div className="status-filter-pills" role="group" aria-label="Filter students by payment status">
+                        {[
+                            { label: 'All Students', value: '' },
+                            { label: 'Paid', value: 'paid' },
+                            { label: 'Partial', value: 'partial' },
+                            { label: 'Unpaid', value: 'unpaid' },
+                        ].map(opt => (
+                            <button
+                                key={opt.value}
+                                className={`status-filter-pill${statusFilter === opt.value ? ' active' : ''}`}
+                                aria-pressed={statusFilter === opt.value}
+                                onClick={() => { setStatusFilter(opt.value); setPage(1); }}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                    <span style={{ fontSize: 13, color: '#6b7280' }}>
+                        Showing <strong>{(page - 1) * 50 + 1}–{(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong> students
+                    </span>
+                </div>
+
+                {/* Table / Cards */}
                 <div className="desktop-only">
                     <StudentTable
                         students={sortedStudents}

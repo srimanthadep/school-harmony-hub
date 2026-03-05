@@ -8,7 +8,7 @@ import {
 import {
     MdPeople, MdSchool, MdAccountBalance, MdWarning,
     MdPayments, MdTrendingUp, MdReceipt, MdCheckCircle, MdRefresh, MdMenuBook,
-    MdArrowUpward, MdArrowDownward, MdGetApp, MdBackup, MdEmail
+    MdArrowUpward, MdArrowDownward, MdGetApp, MdBackup
 } from 'react-icons/md';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,7 +21,6 @@ export default function Dashboard() {
     const queryClient = useQueryClient();
     const { isInstallable, installApp } = usePWA();
     const [backupLoading, setBackupLoading] = useState(false);
-    const [emailTestLoading, setEmailTestLoading] = useState(false);
 
     const handleBackup = async () => {
         if (!window.confirm('Start a full database backup? This may take a moment.')) return;
@@ -47,20 +46,6 @@ export default function Dashboard() {
             toast.error(message);
         } finally {
             setBackupLoading(false);
-        }
-    };
-
-    const handleTestEmail = async () => {
-        if (!window.confirm('Test backup email? This will create a backup and send it to your configured email address.')) return;
-        setEmailTestLoading(true);
-        toast.loading('Testing backup email...', { id: 'test-email' });
-        try {
-            const res = await API.post('/backup/test-email');
-            toast.success(res.data.message || 'Test email sent! Check your inbox and server console.', { id: 'test-email' });
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Test email failed. Check server console for details.', { id: 'test-email' });
-        } finally {
-            setEmailTestLoading(false);
         }
     };
 
@@ -124,15 +109,6 @@ export default function Dashboard() {
                         style={{ gap: 8, borderRadius: 12, padding: '12px 20px', background: backupLoading ? '#94a3b8' : 'linear-gradient(135deg, #059669, #10b981)', color: 'white', border: 'none' }}
                     >
                         <MdBackup className={backupLoading ? 'spin' : ''} /> {backupLoading ? 'Preparing backup…' : 'Download Backup'}
-                    </button>
-                    <button
-                        className="btn btn-secondary hover-lift"
-                        onClick={handleTestEmail}
-                        disabled={emailTestLoading}
-                        style={{ gap: 8, borderRadius: 12, padding: '12px 20px', background: emailTestLoading ? '#94a3b8' : 'linear-gradient(135deg, #ea580c, #f97316)', color: 'white', border: 'none' }}
-                        title="Test backup email functionality"
-                    >
-                        <MdEmail className={emailTestLoading ? 'spin' : ''} /> {emailTestLoading ? 'Sending…' : 'Test Email Backup'}
                     </button>
                     {isInstallable && (
                         <button
