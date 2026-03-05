@@ -74,3 +74,19 @@ exports.downloadBackup = async (req, res) => {
         }
     }
 };
+
+/**
+ * POST /api/backup/test-email
+ * Test endpoint to manually trigger backup email
+ */
+exports.testBackupEmail = async (req, res) => {
+    try {
+        const { performFullBackup } = require('../services/backupService');
+        console.log('🧪 Manual backup test triggered...');
+        await performFullBackup();
+        res.json({ success: true, message: 'Backup email test completed. Check server console and your email.' });
+    } catch (err) {
+        console.error('Test backup error:', err);
+        res.status(500).json({ success: false, message: 'Test backup failed: ' + err.message });
+    }
+};
