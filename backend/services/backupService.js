@@ -48,9 +48,16 @@ const performFullBackup = async () => {
         const output = fs.createWriteStream(zipFile);
         const archive = archiver('zip', { zlib: { level: 9 } });
 
-        archive.pipe(output);
-        archive.directory(tempDir, false);
-        await archive.finalize();
+        // Fix #35: Wait for output stream to finish writing to disk, not just archive finalization
+        await new Promise((resolve, reject) => {
+            output.on('finish', resolve);
+            output.on('error', reject);
+            archive.on('error', reject);
+            
+            archive.pipe(output);
+            archive.directory(tempDir, false);
+            archive.finalize();
+        });
 
         // 3. Fix #29: Only email if ZIP was actually created
         if (fs.existsSync(zipFile)) {
@@ -72,15 +79,22 @@ const performFullBackup = async () => {
             fs.rmSync(tempDir, { recursive: true, force: true });
         }
 
-        // 5. ROTATE local backups (Keep last 7 days) — Fix #20: use backupRootDir, not re-declared var
+        // 5. ROTATE local backups (Keep last 7 days) — Fix #34: Sort by date numerically, not alphabetically
         if (fs.existsSync(backupRootDir)) {
             const allBackups = fs.readdirSync(backupRootDir)
-                .filter(f => f.startsWith('full_db_backup_'))
-                .sort();
+                .filter(f => f.startsWith('full_db_backup_') && f.endsWith('.zip'))
+                .sort() // YYYY-MM-DD naturally sorts chronologically
+                .reverse(); // Newest first
 
-            while (allBackups.length > 7) {
-                const oldFile = allBackups.shift();
-                fs.unlinkSync(path.join(backupRootDir, oldFile));
+            // Keep only last 7 backups
+            const toDelete = allBackups.slice(7);
+            for (const oldFile of toDelete) {
+                try {
+                    fs.unlinkSync(path.join(backupRootDir, oldFile));
+                    console.log(`♻️ Deleted old backup: ${oldFile}`);
+                } catch (err) {
+                    console.warn(`⚠️ Failed to delete ${oldFile}: ${err.message}`);
+                }
             }
         }
     }
