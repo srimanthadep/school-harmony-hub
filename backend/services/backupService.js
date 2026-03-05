@@ -63,6 +63,7 @@ const performFullBackup = async () => {
         if (fs.existsSync(zipFile)) {
             try {
                 await sendBackupEmail([zipFile], `DAILY Institutional Backup - ${dateStr}`);
+                console.log('✅ Backup emailed successfully');
             } catch (emailErr) {
                 console.error('⚠️ Backup ZIP created but email failed to send:', emailErr.message);
             }
