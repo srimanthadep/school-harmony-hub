@@ -685,7 +685,8 @@ body {
 
 table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
 }
 
@@ -699,6 +700,9 @@ thead th {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   cursor: pointer;
+  position: sticky;
+  top: var(--header-height);
+  z-index: 10;
 }
 
 thead th:hover {
