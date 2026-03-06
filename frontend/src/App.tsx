@@ -28,7 +28,8 @@ const GeminiChat = lazy(() => import('./components/GeminiChat'));
 // Icons
 import {
     MdDashboard, MdPeople, MdSchool,
-    MdBarChart, MdSettings, MdLogout, MdMenu, MdAdminPanelSettings, MdReceiptLong, MdChecklist
+    MdBarChart, MdSettings, MdLogout, MdMenu, MdAdminPanelSettings, MdReceiptLong, MdChecklist,
+    MdChevronLeft, MdChevronRight
 } from 'react-icons/md';
 
 const NAV_ITEMS = [
@@ -44,9 +45,11 @@ const NAV_ITEMS = [
 interface SidebarProps {
     isOpen: boolean;
     onClose: () => void;
+    collapsed: boolean;
+    onToggleCollapse: () => void;
 }
 
-function Sidebar({ isOpen, onClose }: SidebarProps) {
+function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
     const { user, logout } = useAuth();
 
     return (
@@ -62,8 +65,15 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     />
                 )}
             </AnimatePresence>
-            <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+            <aside className={`sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
                 <div className="sidebar-logo">
+                    <button
+                        className="sidebar-collapse-btn"
+                        onClick={onToggleCollapse}
+                        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    >
+                        {collapsed ? <MdChevronRight /> : <MdChevronLeft />}
+                    </button>
                     <motion.img
                         initial={{ scale: 0.8 }}
                         animate={{ scale: 1 }}
@@ -87,9 +97,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 to={item.path}
                                 className={({ isActive }) => `nav-item ${isActive ? 'active shadow-sm' : ''}`}
                                 onClick={onClose}
+                                title={collapsed ? item.label : undefined}
                             >
                                 <span className="nav-icon">{item.icon}</span>
-                                {item.label}
+                                <span className="nav-label">{item.label}</span>
                             </NavLink>
                         </motion.div>
                     ))}
@@ -104,17 +115,18 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 to="/admin"
                                 className={({ isActive }) => `nav-item ${isActive ? 'active shadow-sm' : ''}`}
                                 onClick={onClose}
+                                title={collapsed ? 'Admin Panel' : undefined}
                             >
                                 <span className="nav-icon"><MdAdminPanelSettings /></span>
-                                Admin Panel
+                                <span className="nav-label">Admin Panel</span>
                             </NavLink>
                         </motion.div>
                     )}
                 </nav>
                 <div className="sidebar-footer">
-                    <button className="nav-item hover-lift" onClick={logout} style={{ color: '#ef4444', width: '100%', textAlign: 'left' }}>
+                    <button className="nav-item hover-lift" onClick={logout} title={collapsed ? 'Sign Out' : undefined} style={{ color: '#ef4444', width: '100%', textAlign: 'left' }}>
                         <span className="nav-icon"><MdLogout /></span>
-                        Sign Out
+                        <span className="nav-label">Sign Out</span>
                     </button>
                 </div>
             </aside>
@@ -128,7 +140,16 @@ interface AdminLayoutWrapperProps {
 
 function AdminLayoutWrapper() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+    const toggleSidebarCollapse = () => {
+        setSidebarCollapsed(prev => {
+            const next = !prev;
+            localStorage.setItem('sidebar-collapsed', String(next));
+            return next;
+        });
+    };
     const userMenuRef = useRef<HTMLDivElement | null>(null);
     const { user } = useAuth();
     const location = useLocation();
@@ -167,8 +188,8 @@ function AdminLayoutWrapper() {
     }, []);
 
     return (
-        <div className="app-layout">
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className={`app-layout${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
             <div className="main-content">
                 <header className="topbar glass">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -386,7 +407,6 @@ export default function App() {
                             <AppRoutes />
                             <AuthenticatedGeminiChat />
                         </Suspense>
-                        <InstallPromptBanner />
                         <Toaster
                             position="top-right"
                             toastOptions={{

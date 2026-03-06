@@ -9,7 +9,8 @@ import { getCurrentAcademicYear } from '../utils/academicYear';
 
 interface Expense {
     _id: string;
-    type: 'electricity_bill' | 'land_lease' | 'van_fan_fee' | 'van_daily_diesel';
+    type: 'electricity_bill' | 'land_lease' | 'van_fan_fee' | 'van_daily_diesel' | 'other';
+    customType?: string;
     amount: number;
     description?: string;
     date: string;
@@ -20,6 +21,7 @@ interface Expense {
 
 interface ExpenseForm {
     type: string;
+    customType: string;
     amount: string | number;
     description: string;
     date: string;
@@ -33,6 +35,7 @@ const EXPENSE_TYPES = [
     { value: 'land_lease', label: 'Land Lease', icon: <MdLandscape /> },
     { value: 'van_fan_fee', label: 'Van Fee', icon: <MdAir /> },
     { value: 'van_daily_diesel', label: 'Daily Diesel (Van/Bus)', icon: <MdLocalGasStation /> },
+    { value: 'other', label: 'Other Expense', icon: <MdAdd /> },
 ];
 
 const VAN_SUB_TYPES = EXPENSE_TYPES.filter(t => t.value.startsWith('van_'));
@@ -41,12 +44,14 @@ const SUMMARY_CARDS = [
     { value: 'electricity_bill', label: 'Current Bill (Electricity)', icon: <MdElectricBolt />, types: ['electricity_bill'], defaultTab: 'electricity_bill' },
     { value: 'land_lease', label: 'Land Lease', icon: <MdLandscape />, types: ['land_lease'], defaultTab: 'land_lease' },
     { value: 'van', label: 'Van', icon: <MdDirectionsBus />, types: ['van_fan_fee', 'van_daily_diesel'], defaultTab: 'van_fan_fee' },
+    { value: 'other', label: 'Other Expenses', icon: <MdAdd />, types: ['other'], defaultTab: 'other' },
 ];
 
 const PAYMENT_MODES = ['cash', 'bank_transfer', 'cheque', 'online'];
 
 const emptyForm = {
     type: 'electricity_bill',
+    customType: '',
     amount: '',
     description: '',
     date: new Date().toISOString().slice(0, 10),
@@ -63,7 +68,7 @@ export default function ExpensePage() {
     const [form, setForm] = useState<ExpenseForm>({ ...emptyForm });
     const [editId, setEditId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'electricity_bill' | 'land_lease' | 'van_fan_fee' | 'van_daily_diesel'>('electricity_bill');
+    const [activeTab, setActiveTab] = useState<'electricity_bill' | 'land_lease' | 'van_fan_fee' | 'van_daily_diesel' | 'other'>('electricity_bill');
 
     const fetchExpenses = async () => {
         setLoading(true);
@@ -88,6 +93,7 @@ export default function ExpensePage() {
     const openEdit = (expense: Expense) => {
         setForm({
             type: expense.type,
+            customType: expense.customType || '',
             amount: expense.amount,
             description: expense.description || '',
             date: expense.date ? expense.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -101,6 +107,10 @@ export default function ExpensePage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (form.type === 'other' && !form.customType.trim()) {
+            toast.error('Please enter the expense name');
+            return;
+        }
         setSaving(true);
         try {
             const payload = { ...form, amount: Number(form.amount) };
@@ -138,6 +148,7 @@ export default function ExpensePage() {
     const totalFiltered = filtered.reduce((s, e) => s + e.amount, 0);
 
     const currentType = EXPENSE_TYPES.find(t => t.value === activeTab)!;
+    const getExpenseLabel = (exp: Expense) => exp.type === 'other' && exp.customType ? exp.customType : (EXPENSE_TYPES.find(t => t.value === exp.type)?.label || exp.type);
 
     if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
 
@@ -150,8 +161,11 @@ export default function ExpensePage() {
                     <p style={{ color: '#64748b', fontSize: 13 }}>Track school current bills and land lease payments</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-primary hover-lift" onClick={() => openAdd(activeTab)} style={{ gap: 8 }}>
+                    <button className="btn btn-secondary hover-lift" onClick={() => openAdd(activeTab)} style={{ gap: 8 }}>
                         <MdAdd /> Add {currentType.label}
+                    </button>
+                    <button className="btn btn-primary hover-lift" onClick={() => { setForm({ ...emptyForm, type: 'other' }); setEditId(null); setShowForm(true); }} style={{ gap: 8 }}>
+                        <MdAdd /> Add Expense
                     </button>
                 </div>
             </div>
@@ -195,6 +209,11 @@ export default function ExpensePage() {
                         onClick={() => setActiveTab('van_fan_fee')}>
                         <MdDirectionsBus /> Van
                     </button>
+                    <button
+                        className={`btn ${activeTab === 'other' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setActiveTab('other')}>
+                        <MdAdd /> Other
+                    </button>
                 </div>
                 {isVanTab && (
                     <div style={{ display: 'flex', gap: 8, padding: '0 20px 16px', borderTop: '1px solid #e2e8f0', paddingTop: 12 }}>
@@ -221,8 +240,7 @@ export default function ExpensePage() {
                     <table className="students-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
+                                <th>Date</th>                                {activeTab === 'other' && <th>Category</th>}                                <th>Amount</th>
                                 <th>Payment Mode</th>
                                 <th>Paid By</th>
                                 <th>Description</th>
@@ -236,6 +254,7 @@ export default function ExpensePage() {
                             ) : filtered.map((exp: Expense) => (
                                 <tr key={exp._id} className="hover-lift">
                                     <td style={{ fontWeight: 600 }}>{new Date(exp.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                                    {activeTab === 'other' && <td><span className="badge glass">{getExpenseLabel(exp)}</span></td>}
                                     <td style={{ fontWeight: 800, color: '#ef4444' }}>{formatCurrency(exp.amount)}</td>
                                     <td><span className="badge glass" style={{ textTransform: 'capitalize' }}>{exp.paymentMode?.replace('_', ' ')}</span></td>
                                     <td>{exp.paidBy || '-'}</td>
@@ -274,12 +293,20 @@ export default function ExpensePage() {
                                     <div className="form-group">
                                         <label className="form-label">Expense Type</label>
                                         <select className="form-control" value={form.type}
-                                            onChange={e => setForm({ ...form, type: e.target.value })}>
+                                            onChange={e => setForm({ ...form, type: e.target.value, customType: '' })}>
                                             {EXPENSE_TYPES.map(t => (
                                                 <option key={t.value} value={t.value}>{t.label}</option>
                                             ))}
                                         </select>
                                     </div>
+                                    {form.type === 'other' && (
+                                        <div className="form-group">
+                                            <label className="form-label">Expense Name <span style={{ color: '#ef4444' }}>*</span></label>
+                                            <input type="text" className="form-control" placeholder="e.g. Salary, Maintenance, Stationery..." required
+                                                value={form.customType}
+                                                onChange={e => setForm({ ...form, customType: e.target.value })} />
+                                        </div>
+                                    )}
                                     <div className="form-group">
                                         <label className="form-label">Amount (₹)</label>
                                         <input type="number" className="form-control" min="0" required

@@ -41,6 +41,7 @@
   --radius-xl: 24px;
 
   --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
   --header-height: 64px;
 }
 
@@ -190,7 +191,7 @@ body {
   z-index: 100;
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease;
+  transition: width 0.3s ease, transform 0.3s ease;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -211,6 +212,7 @@ body {
 .sidebar-logo {
   padding: 20px 20px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
 }
 
 .sidebar-logo-icon {
@@ -321,6 +323,96 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: margin-left 0.3s ease;
+}
+
+/* ===== COLLAPSED SIDEBAR ===== */
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.sidebar.collapsed .sidebar-logo {
+  padding: 16px 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-logo h2,
+.sidebar.collapsed .sidebar-logo p,
+.sidebar.collapsed .sidebar-logo img,
+.sidebar.collapsed .nav-section-title,
+.sidebar.collapsed .nav-label {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px 8px;
+}
+
+.app-layout.sidebar-collapsed .main-content {
+  margin-left: var(--sidebar-collapsed-width);
+}
+
+.sidebar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 20px;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+.sidebar-collapse-btn {
+  position: absolute;
+  top: 17px;
+  right: 15.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 18px;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.sidebar-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .sidebar-collapse-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar.collapsed {
+    width: 280px;
+  }
+  .app-layout.sidebar-collapsed .main-content {
+    margin-left: 0;
+  }
 }
 
 .topbar {

@@ -4,7 +4,11 @@ const expenseSchema = new mongoose.Schema({
     type: {
         type: String,
         required: [true, 'Expense type is required'],
-        enum: ['electricity_bill', 'land_lease', 'van_fan_fee', 'van_daily_diesel']
+        enum: ['electricity_bill', 'land_lease', 'van_fan_fee', 'van_daily_diesel', 'other']
+    },
+    customType: {
+        type: String,
+        trim: true
     },
     amount: {
         type: Number,
