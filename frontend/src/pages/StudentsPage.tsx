@@ -485,9 +485,10 @@ export default function StudentsPage() {
                         </button>
                     </div>
                 </div>
+            </div>{/* end desktop-only header */}
 
-                {/* ── Filters + Tabs Card ── */}
-                <div className="card" style={{ marginBottom: 20, padding: 0, overflow: 'visible' }}>
+            {/* ── Merged: Filters + Tabs + Table Card ── */}
+            <div className="card" style={{ marginBottom: 20, padding: 0, overflow: 'visible' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', padding: '16px 16px', borderBottom: '1px solid #f1f5f9', overflow: 'visible', position: 'relative', zIndex: 100 }}>
                         <div className="search-bar" style={{ flex: '1 1 240px', minWidth: 200 }}>
                             <MdSearch className="search-icon" />
@@ -511,7 +512,7 @@ export default function StudentsPage() {
                             width={140}
                         />
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 8px', background: '#f8fafc', borderRadius: '0 0 16px 16px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 8px', borderBottom: '1px solid #f1f5f9' }}>
                         <div style={{ display: 'flex', gap: 2 }}>
                             {[{ label: 'All Students', value: '' }, { label: 'Paid', value: 'paid' }, { label: 'Partial', value: 'partial' }, { label: 'Unpaid', value: 'unpaid' }].map(tab => (
                                 <button
@@ -533,143 +534,122 @@ export default function StudentsPage() {
                             Showing <strong style={{ color: '#0f172a' }}>{(page - 1) * 50 + 1} – {(page - 1) * 50 + students.length}</strong> of <strong style={{ color: '#0f172a' }}>{totalStudents}</strong> students
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* ══ MOBILE ONLY: original card layout ══ */}
-            <div className="mobile-only card" style={{ marginBottom: 20 }}>
-                <div className="card-header">
-                    <div className="filters-bar">
-                        <div className="search-bar" style={{ minWidth: 220 }}>
-                            <MdSearch className="search-icon" />
-                            <input
-                                placeholder="Search students..."
-                                value={searchTerm}
-                                onChange={handleSearchChange}
-                            />
-                        </div>
-                        <select className="form-control" style={{ width: 130 }} value={classFilter}
-                            onChange={e => { setClassFilter(e.target.value); setPage(1); }}>
-                            <option value="">All Classes</option>
-                            {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <select className="form-control" style={{ width: 130 }} value={yearFilter}
-                            onChange={e => { setYearFilter(e.target.value); setPage(1); }}>
-                            <option value="">All Years</option>
-                            {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
+                    <div className="desktop-only">
+                        <StudentTable
+                            students={sortedStudents}
+                            isLoading={isLoading}
+                            selectedStudents={selectedStudents}
+                            onSelect={handleSelect}
+                            onSelectAll={handleSelectAll}
+                            onEdit={(s) => { setEditStudent(s); setFormData({ ...s as any }); setShowForm(true); }}
+                            onDelete={(s) => setShowDeleteConfirm(s)}
+                            onRecordPayment={(s) => setShowPayment(s)}
+                            onViewHistory={openHistory}
+                            onViewProfile={(s) => setShowProfileStudent(s)}
+                            onWhatsApp={handleWhatsApp}
+                            sortField={sortField}
+                            sortDir={sortDir}
+                            toggleSort={toggleSort}
+                        />
                     </div>
-                    <div className="btn-group">
-                        {selectedStudents.length > 0 && (
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button className="btn btn-success btn-sm" onClick={() => toast.success('Sent bulk reminders!')}>
-                                    <FaWhatsapp /> {selectedStudents.length} Reminders
-                                </button>
-                                <button className="btn btn-danger btn-sm" onClick={() => setShowBulkDeleteConfirm(true)}>
-                                    Delete {selectedStudents.length}
-                                </button>
+                    <div className="mobile-only">
+                        {/* Mobile filter toolbar */}
+                        <div className="card-header" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <div className="filters-bar">
+                                <div className="search-bar" style={{ minWidth: 220 }}>
+                                    <MdSearch className="search-icon" />
+                                    <input placeholder="Search students..." value={searchTerm} onChange={handleSearchChange} />
+                                </div>
+                                <select className="form-control" style={{ width: 130 }} value={classFilter}
+                                    onChange={e => { setClassFilter(e.target.value); setPage(1); }}>
+                                    <option value="">All Classes</option>
+                                    {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <select className="form-control" style={{ width: 130 }} value={yearFilter}
+                                    onChange={e => { setYearFilter(e.target.value); setPage(1); }}>
+                                    <option value="">All Years</option>
+                                    {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
                             </div>
-                        )}
-                        <button className="btn btn-secondary btn-sm" disabled={isLoading}
-                            onClick={async () => { const t = toast.loading('Preparing Excel...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsExcel(res.data.students); toast.success('Excel exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
-                            <FaFileExcel /> Excel
-                        </button>
-                        <button className="btn btn-secondary btn-sm" disabled={isLoading}
-                            onClick={async () => { const t = toast.loading('Preparing PDF...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsPDF(res.data.students, settings); toast.success('PDF exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
-                            <FaFilePdf /> PDF
-                        </button>
-                        {(isAdmin || isOwner) && (
-                            <button className="btn btn-sm btn-warning" onClick={() => { setPromoteResult(null); setShowPromote(true); }}>
-                                <MdTrendingUp /> Promote
-                            </button>
-                        )}
-                        <button className="btn btn-secondary btn-sm" onClick={() => setShowImportModal(true)}>
-                            <MdUploadFile /> Bulk Import
-                        </button>
-                        <button className="btn btn-primary btn-sm students-add-btn" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}>
-                            <MdAdd /> Add Student
-                        </button>
-                    </div>
-                </div>
-                <div style={{ padding: '8px 24px', fontSize: 13, color: '#6b7280' }}>
-                    Showing <strong>{(page - 1) * 50 + 1} – {(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong> students
-                </div>
-            </div>
-
-            <div className="card">
-                <div className="desktop-only">
-                    <StudentTable
-                        students={sortedStudents}
-                        isLoading={isLoading}
-                        selectedStudents={selectedStudents}
-                        onSelect={handleSelect}
-                        onSelectAll={handleSelectAll}
-                        onEdit={(s) => { setEditStudent(s); setFormData({ ...s as any }); setShowForm(true); }}
-                        onDelete={(s) => setShowDeleteConfirm(s)}
-                        onRecordPayment={(s) => setShowPayment(s)}
-                        onViewHistory={openHistory}
-                        onViewProfile={(s) => setShowProfileStudent(s)}
-                        onWhatsApp={handleWhatsApp}
-                        sortField={sortField}
-                        sortDir={sortDir}
-                        toggleSort={toggleSort}
-                    />
-                </div>
-                <div className="mobile-only">
-                    <StudentCards
-                        students={sortedStudents}
-                        isLoading={isLoading}
-                        onEdit={(s) => { setEditStudent(s); setFormData({ ...s as any }); setShowForm(true); }}
-                        onDelete={(s) => setShowDeleteConfirm(s)}
-                        onRecordPayment={(s) => setShowPayment(s)}
-                        onViewHistory={openHistory}
-                        onViewProfile={(s) => setShowProfileStudent(s)}
-                        onWhatsApp={handleWhatsApp}
-                    />
-                </div>
-
-                {totalPages > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            disabled={page === 1}
-                            onClick={() => setPage(p => p - 1)}
-                            style={{ fontWeight: 700 }}
-                        >Previous</button>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                                const pages: (number | '...')[] = [];
-                                if (totalPages <= 7) return i + 1;
-                                if (i < 3) return i + 1;
-                                if (i === 3) return '...';
-                                return totalPages - (6 - i);
-                            }).map((p, i) =>
-                                p === '...' ? (
-                                    <span key={i} style={{ padding: '0 4px', color: '#94a3b8' }}>...</span>
-                                ) : (
-                                    <button
-                                        key={i}
-                                        onClick={() => setPage(p as number)}
-                                        style={{
-                                            width: 32, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer',
-                                            fontWeight: 700, fontSize: 13,
-                                            background: page === p ? 'var(--primary)' : 'transparent',
-                                            color: page === p ? '#fff' : '#475569',
-                                            transition: 'all 0.15s'
-                                        }}
-                                    >{p}</button>
-                                )
-                            )}
+                            <div className="btn-group">
+                                {selectedStudents.length > 0 && (
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button className="btn btn-success btn-sm" onClick={() => toast.success('Sent bulk reminders!')}><FaWhatsapp /> {selectedStudents.length} Reminders</button>
+                                        <button className="btn btn-danger btn-sm" onClick={() => setShowBulkDeleteConfirm(true)}>Delete {selectedStudents.length}</button>
+                                    </div>
+                                )}
+                                <button className="btn btn-secondary btn-sm" disabled={isLoading}
+                                    onClick={async () => { const t = toast.loading('Preparing Excel...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsExcel(res.data.students); toast.success('Excel exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
+                                    <FaFileExcel /> Excel
+                                </button>
+                                <button className="btn btn-secondary btn-sm" disabled={isLoading}
+                                    onClick={async () => { const t = toast.loading('Preparing PDF...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsPDF(res.data.students, settings); toast.success('PDF exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
+                                    <FaFilePdf /> PDF
+                                </button>
+                                {(isAdmin || isOwner) && (
+                                    <button className="btn btn-sm btn-warning" onClick={() => { setPromoteResult(null); setShowPromote(true); }}><MdTrendingUp /> Promote</button>
+                                )}
+                                <button className="btn btn-secondary btn-sm" onClick={() => setShowImportModal(true)}><MdUploadFile /> Bulk Import</button>
+                                <button className="btn btn-primary btn-sm students-add-btn" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}><MdAdd /> Add Student</button>
+                            </div>
                         </div>
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            disabled={page === totalPages}
-                            onClick={() => setPage(p => p + 1)}
-                            style={{ fontWeight: 700 }}
-                        >Next</button>
+                        <div style={{ padding: '6px 16px', fontSize: 13, color: '#6b7280', borderBottom: '1px solid #f1f5f9' }}>
+                            Showing <strong>{(page - 1) * 50 + 1} – {(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong> students
+                        </div>
+                        <StudentCards
+                            students={sortedStudents}
+                            isLoading={isLoading}
+                            onEdit={(s) => { setEditStudent(s); setFormData({ ...s as any }); setShowForm(true); }}
+                            onDelete={(s) => setShowDeleteConfirm(s)}
+                            onRecordPayment={(s) => setShowPayment(s)}
+                            onViewHistory={openHistory}
+                            onViewProfile={(s) => setShowProfileStudent(s)}
+                            onWhatsApp={handleWhatsApp}
+                        />
                     </div>
-                )}
-            </div>
+
+                    {totalPages > 1 && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', borderRadius: '0 0 16px 16px' }}>
+                            <button
+                                className="btn btn-secondary btn-sm"
+                                disabled={page === 1}
+                                onClick={() => setPage(p => p - 1)}
+                                style={{ fontWeight: 700 }}
+                            >Previous</button>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                                    const pages: (number | '...')[] = [];
+                                    if (totalPages <= 7) return i + 1;
+                                    if (i < 3) return i + 1;
+                                    if (i === 3) return '...';
+                                    return totalPages - (6 - i);
+                                }).map((p, i) =>
+                                    p === '...' ? (
+                                        <span key={i} style={{ padding: '0 4px', color: '#94a3b8' }}>...</span>
+                                    ) : (
+                                        <button
+                                            key={i}
+                                            onClick={() => setPage(p as number)}
+                                            style={{
+                                                width: 32, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer',
+                                                fontWeight: 700, fontSize: 13,
+                                                background: page === p ? 'var(--primary)' : 'transparent',
+                                                color: page === p ? '#fff' : '#475569',
+                                                transition: 'all 0.15s'
+                                            }}
+                                        >{p}</button>
+                                    )
+                                )}
+                            </div>
+                            <button
+                                className="btn btn-secondary btn-sm"
+                                disabled={page === totalPages}
+                                onClick={() => setPage(p => p + 1)}
+                                style={{ fontWeight: 700 }}
+                            >Next</button>
+                        </div>
+                    )}
+                </div>
 
             {/* Modals */}
             <StudentForm

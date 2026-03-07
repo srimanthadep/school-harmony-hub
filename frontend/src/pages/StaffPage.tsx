@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -7,7 +7,7 @@ import { generateSalarySlipPDF, exportStaffExcel, exportStaffPDF } from '../util
 import { getCurrentAcademicYear, getAcademicYearOptions } from '../utils/academicYear';
 import {
     MdAdd, MdSearch, MdPayment, MdReceiptLong, MdHistory, MdDateRange,
-    MdFileDownload, MdPictureAsPdf, MdTableChart, MdPerson
+    MdFileDownload, MdPictureAsPdf, MdTableChart, MdPerson, MdKeyboardArrowDown
 } from 'react-icons/md';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Fuse from 'fuse.js';
@@ -27,6 +27,64 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 
 const ROLES = ['teacher', 'principal', 'vice_principal', 'admin_staff', 'librarian', 'peon', 'guard', 'accountant', 'other'];
 const ACADEMIC_YEARS = getAcademicYearOptions();
+
+function DropDown({ value, onChange, options, width }: {
+    value: string;
+    onChange: (v: string) => void;
+    options: { label: string; value: string }[];
+    width: number;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const selected = options.find(o => o.value === value) || options[0];
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={ref} style={{ position: 'relative', width, flexShrink: 0 }}>
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="form-control"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: '#fff', textAlign: 'left' }}
+            >
+                <span>{selected.label}</span>
+                <MdKeyboardArrowDown style={{ fontSize: 18, color: '#64748b', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', flexShrink: 0 }} />
+            </button>
+            {open && (
+                <div className="dropdown-menu-list" style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 999,
+                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '100%',
+                    maxHeight: 240, overflowY: 'auto', marginTop: 4
+                }}>
+                    {options.map(opt => (
+                        <div
+                            key={opt.value}
+                            onClick={() => { onChange(opt.value); setOpen(false); }}
+                            style={{
+                                padding: '9px 14px', fontSize: 13, cursor: 'pointer',
+                                background: opt.value === value ? 'var(--primary)' : '#fff',
+                                color: opt.value === value ? '#fff' : '#1e293b',
+                                transition: 'background 0.1s'
+                            }}
+                            onMouseEnter={e => { if (opt.value !== value) (e.currentTarget as HTMLDivElement).style.background = '#f1f5f9'; }}
+                            onMouseLeave={e => { if (opt.value !== value) (e.currentTarget as HTMLDivElement).style.background = '#fff'; }}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 const generateMonths = () => {
     const months = [];
@@ -401,95 +459,106 @@ export default function StaffPage() {
 
     return (
         <div>
-            {/* Controls */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="card glass" style={{ marginBottom: 20 }}>
-                <div className="card-header">
-                    <div className="filters-bar">
-                        <div className="search-bar" style={{ minWidth: 260 }}>
-                            <MdSearch className="search-icon" />
-                            <input placeholder="Search name, ID, phone..." value={search} onChange={e => setSearch(e.target.value)} />
-                        </div>
-                        <select className="form-control" style={{ width: 140 }} value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }}>
-                            <option value="">All Roles</option>
-                            {ROLES.map(r => <option key={r} value={r}>{ROLE_DISPLAY(r)}</option>)}
-                        </select>
-                        <select className="form-control" style={{ width: 130 }} value={yearFilter} onChange={e => { setYearFilter(e.target.value); setPage(1); }}>
-                            <option value="">All Sessions</option>
-                            {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
+            {/* ── Page Header (desktop) ── */}
+            <div className="desktop-only" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 24 }}>
+                <div style={{ flexShrink: 0 }}>
+                    <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--primary)', margin: 0, letterSpacing: '-0.5px' }}>Staff Directory</h1>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>Manage staff records, roles, and salary payments.</p>
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
+                    <button
+                        className="btn btn-secondary"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                        disabled={isLoading}
+                        onClick={async () => { const t = toast.loading('Exporting...'); try { const params: any = { limit: 1000 }; if (roleFilter) params.role = roleFilter; if (yearFilter) params.academicYear = yearFilter; const res = await API.get('/staff', { params }); exportStaffExcel(res.data.staff); toast.success('Excel ready!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}
+                        title="Export to Excel"
+                    >
+                        <MdTableChart style={{ fontSize: 20, color: 'var(--success)' }} />
+                    </button>
+                    <button
+                        className="btn btn-secondary"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                        disabled={isLoading}
+                        onClick={async () => { const t = toast.loading('Exporting...'); try { const params: any = { limit: 1000 }; if (roleFilter) params.role = roleFilter; if (yearFilter) params.academicYear = yearFilter; const res = await API.get('/staff', { params }); exportStaffPDF(res.data.staff, settings); toast.success('PDF ready!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}
+                        title="Export to PDF"
+                    >
+                        <MdPictureAsPdf style={{ fontSize: 20, color: 'var(--danger)' }} />
+                    </button>
+                    <button
+                        className="btn btn-primary hover-lift"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', fontSize: 14, fontWeight: 600 }}
+                        onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}
+                    >
+                        <MdAdd style={{ fontSize: 16 }} /> Add Staff
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Merged Card: filters + tabs + table ── */}
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ marginBottom: 20, padding: 0, overflow: 'visible' }}>
+                {/* Search + dropdowns row */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', padding: '16px 16px', borderBottom: '1px solid #f1f5f9', overflow: 'visible', position: 'relative', zIndex: 100 }}>
+                    <div className="search-bar" style={{ flex: '1 1 240px', minWidth: 200 }}>
+                        <MdSearch className="search-icon" />
+                        <input placeholder="Search name, ID, phone..." value={search} onChange={e => setSearch(e.target.value)} />
                     </div>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                        <div className="btn-group">
-                            <button
-                                className="btn btn-secondary"
-                                disabled={isLoading}
-                                onClick={async () => {
-                                    const loadingToast = toast.loading('Exporting all staff to Excel...');
-                                    try {
-                                        const params: any = { limit: 1000 };
-                                        if (roleFilter) params.role = roleFilter;
-                                        if (yearFilter) params.academicYear = yearFilter;
-                                        const res = await API.get('/staff', { params });
-                                        exportStaffExcel(res.data.staff);
-                                        toast.success('Excel ready!', { id: loadingToast });
-                                    } catch {
-                                        toast.error('Export failed', { id: loadingToast });
-                                    }
-                                }}
-                                title="Export to Excel"
-                            >
-                                <MdTableChart />
-                            </button>
-                            <button
-                                className="btn btn-secondary"
-                                disabled={isLoading}
-                                onClick={async () => {
-                                    const loadingToast = toast.loading('Exporting all staff to PDF...');
-                                    try {
-                                        const params: any = { limit: 1000 };
-                                        if (roleFilter) params.role = roleFilter;
-                                        if (yearFilter) params.academicYear = yearFilter;
-                                        const res = await API.get('/staff', { params });
-                                        exportStaffPDF(res.data.staff, settings);
-                                        toast.success('PDF ready!', { id: loadingToast });
-                                    } catch {
-                                        toast.error('Export failed', { id: loadingToast });
-                                    }
-                                }}
-                                title="Export to PDF"
-                            >
-                                <MdPictureAsPdf />
-                            </button>
-                        </div>
-                        <button className="btn btn-primary hover-lift" onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}>
+                    <DropDown
+                        value={roleFilter}
+                        onChange={v => { setRoleFilter(v); setPage(1); }}
+                        options={[{ label: 'All Roles', value: '' }, ...ROLES.map(r => ({ label: ROLE_DISPLAY(r), value: r }))]}
+                        width={160}
+                    />
+                    <DropDown
+                        value={yearFilter}
+                        onChange={v => { setYearFilter(v); setPage(1); }}
+                        options={[{ label: 'All Sessions', value: '' }, ...ACADEMIC_YEARS.map(y => ({ label: y, value: y }))]}
+                        width={140}
+                    />
+                    {/* Mobile action buttons inline */}
+                    <div className="mobile-only" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button className="btn btn-secondary btn-sm" disabled={isLoading}
+                            onClick={async () => { const t = toast.loading('Exporting...'); try { const params: any = { limit: 1000 }; if (roleFilter) params.role = roleFilter; const res = await API.get('/staff', { params }); exportStaffExcel(res.data.staff); toast.success('Excel ready!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
+                            <MdTableChart /> Excel
+                        </button>
+                        <button className="btn btn-secondary btn-sm" disabled={isLoading}
+                            onClick={async () => { const t = toast.loading('Exporting...'); try { const params: any = { limit: 1000 }; if (roleFilter) params.role = roleFilter; const res = await API.get('/staff', { params }); exportStaffPDF(res.data.staff, settings); toast.success('PDF ready!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
+                            <MdPictureAsPdf /> PDF
+                        </button>
+                        <button className="btn btn-primary btn-sm" onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}>
                             <MdAdd /> Add Staff
                         </button>
                     </div>
                 </div>
-                <div style={{ padding: '8px 24px', fontSize: 13, color: '#64748b' }}>
-                    Found <strong>{totalStaffCount}</strong> staff members •
-                    Showing <strong>{staff.length}</strong> on this page
+                {/* Tabs + count row */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 8px', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                        {[
+                            { label: 'All Staff', value: '' },
+                            { label: 'Paid', value: 'paid' },
+                            { label: 'Due', value: 'unpaid' },
+                        ].map(tab => (
+                            <button
+                                key={tab.value}
+                                onClick={() => { setStatusFilter(tab.value); setPage(1); }}
+                                style={{
+                                    padding: '8px 16px', fontSize: 13, fontWeight: statusFilter === tab.value ? 700 : 500,
+                                    background: 'transparent', border: 'none', cursor: 'pointer',
+                                    borderBottom: statusFilter === tab.value ? '2px solid var(--primary)' : '2px solid transparent',
+                                    color: statusFilter === tab.value ? 'var(--primary)' : '#64748b',
+                                    transition: 'all 0.15s'
+                                }}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#64748b', paddingRight: 8 }}>
+                        Found <strong style={{ color: '#0f172a' }}>{totalStaffCount}</strong> staff members •
+                        Showing <strong style={{ color: '#0f172a' }}>{staff.length}</strong> on this page
+                    </div>
                 </div>
-                <div className="status-filter-pills" role="group" aria-label="Filter staff by salary status">
-                    {[
-                        { label: 'All Staff', value: '' },
-                        { label: 'Paid', value: 'paid' },
-                        { label: 'Due', value: 'unpaid' },
-                    ].map(opt => (
-                        <button
-                            key={opt.value}
-                            className={`status-filter-pill${statusFilter === opt.value ? ' active' : ''}`}
-                            aria-pressed={statusFilter === opt.value}
-                            onClick={() => { setStatusFilter(opt.value); setPage(1); }}
-                        >
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
-            </motion.div >
 
-            {/* Table (desktop) / Cards (mobile) */}
-            <div className="card">
+                {/* Table (desktop) / Cards (mobile) */}
                 <div className="desktop-only">
                     <StaffTable
                         staff={filteredStaff}
@@ -564,7 +633,7 @@ export default function StaffPage() {
                         </button>
                     </div>
                 )}
-            </div >
+            </motion.div>
 
             {/* Modals */}
             <StaffForm
