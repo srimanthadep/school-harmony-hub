@@ -242,7 +242,11 @@ body {
   margin-top: 2px;
 }
 
-.charts-grid,
+.charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+}
+
 .reports-stats-grid,
 .promote-result-grid {
   display: grid;
