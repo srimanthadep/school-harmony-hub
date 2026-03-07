@@ -460,42 +460,25 @@ export default function StaffPage() {
     return (
         <div>
             {/* ── Page Header (desktop) ── */}
-            <div className="desktop-only" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 24 }}>
+            <div className="desktop-only" style={{ background: '#f9cb5b', margin: '-28px -28px 0 -28px', padding: '28px 28px 70px 28px', borderRadius: '0 0 1% 1% / 0 0 8px 8px', position: 'relative' }}>
+                <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                 <div style={{ flexShrink: 0 }}>
-                    <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--primary)', margin: 0, letterSpacing: '-0.5px' }}>Staff Directory</h1>
-                    <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>Manage staff records, roles, and salary payments.</p>
+                    <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a1a1a', margin: 0, letterSpacing: '-0.5px' }}>Staff Directory</h1>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: '#4a3f00' }}>Manage staff records, roles, and salary payments.</p>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
                     <button
-                        className="btn btn-secondary"
-                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                        disabled={isLoading}
-                        onClick={async () => { const t = toast.loading('Exporting...'); try { const params: any = { limit: 1000 }; if (roleFilter) params.role = roleFilter; if (yearFilter) params.academicYear = yearFilter; const res = await API.get('/staff', { params }); exportStaffExcel(res.data.staff); toast.success('Excel ready!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}
-                        title="Export to Excel"
-                    >
-                        <MdTableChart style={{ fontSize: 20, color: 'var(--success)' }} />
-                    </button>
-                    <button
-                        className="btn btn-secondary"
-                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                        disabled={isLoading}
-                        onClick={async () => { const t = toast.loading('Exporting...'); try { const params: any = { limit: 1000 }; if (roleFilter) params.role = roleFilter; if (yearFilter) params.academicYear = yearFilter; const res = await API.get('/staff', { params }); exportStaffPDF(res.data.staff, settings); toast.success('PDF ready!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}
-                        title="Export to PDF"
-                    >
-                        <MdPictureAsPdf style={{ fontSize: 20, color: 'var(--danger)' }} />
-                    </button>
-                    <button
-                        className="btn btn-primary hover-lift"
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', fontSize: 14, fontWeight: 600 }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, height: 42, padding: '0 44px', fontSize: 14, fontWeight: 700, borderRadius: 22, border: 'none', background: '#242f8c', color: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
                         onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}
                     >
-                        <MdAdd style={{ fontSize: 16 }} /> Add Staff
+                        <MdAdd style={{ fontSize: 20 }} /> Add Staff
                     </button>
+                </div>
                 </div>
             </div>
 
             {/* ── Merged Card: filters + tabs + table ── */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ marginBottom: 20, padding: 0, overflow: 'visible' }}>
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ marginBottom: 20, marginTop: -50, padding: 0, overflow: 'visible', position: 'relative', zIndex: 10 }}>
                 {/* Search + dropdowns row */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', padding: '16px 16px', borderBottom: '1px solid #f1f5f9', overflow: 'visible', position: 'relative', zIndex: 100 }}>
                     <div className="search-bar" style={{ flex: '1 1 240px', minWidth: 200 }}>
@@ -523,9 +506,6 @@ export default function StaffPage() {
                         <button className="btn btn-secondary btn-sm" disabled={isLoading}
                             onClick={async () => { const t = toast.loading('Exporting...'); try { const params: any = { limit: 1000 }; if (roleFilter) params.role = roleFilter; const res = await API.get('/staff', { params }); exportStaffPDF(res.data.staff, settings); toast.success('PDF ready!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
                             <MdPictureAsPdf /> PDF
-                        </button>
-                        <button className="btn btn-primary btn-sm" onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}>
-                            <MdAdd /> Add Staff
                         </button>
                     </div>
                 </div>

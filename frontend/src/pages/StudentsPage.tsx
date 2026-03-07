@@ -404,12 +404,12 @@ export default function StudentsPage() {
         <div className="students-page">
 
             {/* ══ DESKTOP ONLY: new header + filter card ══ */}
-            <div className="desktop-only">
+            <div className="desktop-only" style={{ background: '#f9cb5b', margin: '-28px -28px 0 -28px', padding: '28px 28px 70px 28px', borderRadius: '0 0 1% 1% / 0 0 8px 8px', position: 'relative' }}>
                 {/* ── Page Header ── */}
-                <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 24 }}>
+                <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                     <div style={{ flexShrink: 0 }}>
-                        <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--primary)', margin: 0, letterSpacing: '-0.5px' }}>Student Directory</h1>
-                        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>Manage and monitor student records across all academic years.</p>
+                        <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a1a1a', margin: 0, letterSpacing: '-0.5px' }}>Welcome, {user?.name || 'User'}</h1>
+                        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#4a3f00' }}>Manage and monitor student records across all academic years.</p>
                     </div>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                         {selectedStudents.length > 0 && (
@@ -422,63 +422,22 @@ export default function StudentsPage() {
                                 </button>
                             </>
                         )}
-                        <button
-                            className="btn btn-secondary"
-                            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                            disabled={isLoading}
-                            onClick={async () => {
-                                const t = toast.loading('Preparing Excel...');
-                                try {
-                                    const params: any = { limit: 1000 };
-                                    if (classFilter) params.class = classFilter;
-                                    if (yearFilter) params.academicYear = yearFilter;
-                                    if (search) params.search = search;
-                                    const res = await API.get('/students', { params });
-                                    exportStudentsExcel(res.data.students);
-                                    toast.success('Excel exported!', { id: t });
-                                } catch { toast.error('Export failed', { id: t }); }
-                            }}
-                        >
-                            <MdFileDownload style={{ fontSize: 20, color: 'var(--success)' }} />
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                            disabled={isLoading}
-                            onClick={async () => {
-                                const t = toast.loading('Preparing PDF...');
-                                try {
-                                    const params: any = { limit: 1000 };
-                                    if (classFilter) params.class = classFilter;
-                                    if (yearFilter) params.academicYear = yearFilter;
-                                    if (search) params.search = search;
-                                    const res = await API.get('/students', { params });
-                                    exportStudentsPDF(res.data.students, settings);
-                                    toast.success('PDF exported!', { id: t });
-                                } catch { toast.error('Export failed', { id: t }); }
-                            }}
-                        >
-                            <MdPictureAsPdf style={{ fontSize: 20, color: 'var(--danger)' }} />
-                        </button>
                         {(isAdmin || isOwner) && (
                             <button
-                                className="btn btn-warning"
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', fontSize: 14, fontWeight: 600 }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 20px', fontSize: 14, fontWeight: 700, borderRadius: 22, border: 'none', background: '#fff', color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', transition: 'transform 0.15s' }}
                                 onClick={() => { setPromoteResult(null); setShowPromote(true); }}
                             >
-                                <MdTrendingUp style={{ fontSize: 16 }} /> Promote
+                                <MdTrendingUp style={{ fontSize: 18 }} /> Promote
                             </button>
                         )}
                         <button
-                            className="btn btn-secondary"
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1e293b', color: '#fff', borderColor: '#1e293b', height: 40, padding: '0 16px', fontSize: 14, fontWeight: 600 }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 20px', fontSize: 14, fontWeight: 700, borderRadius: 22, border: 'none', background: '#242f8c', color: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'transform 0.15s' }}
                             onClick={() => setShowImportModal(true)}
                         >
                             <MdUploadFile style={{ fontSize: 16 }} /> Bulk Import
                         </button>
                         <button
-                            className="btn btn-primary students-add-btn"
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#0f172a', borderColor: '#0f172a', height: 40, padding: '0 16px', fontSize: 14, fontWeight: 600 }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 20px', fontSize: 14, fontWeight: 700, borderRadius: 22, border: 'none', background: '#242f8c', color: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'transform 0.15s' }}
                             onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}
                         >
                             <MdPersonAdd style={{ fontSize: 16 }} /> Add Student
@@ -488,7 +447,7 @@ export default function StudentsPage() {
             </div>{/* end desktop-only header */}
 
             {/* ── Merged: Filters + Tabs + Table Card ── */}
-            <div className="card" style={{ marginBottom: 20, padding: 0, overflow: 'visible' }}>
+            <div className="card" style={{ marginBottom: 20, marginTop: -50, padding: 0, overflow: 'visible', position: 'relative', zIndex: 10 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', padding: '16px 16px', borderBottom: '1px solid #f1f5f9', overflow: 'visible', position: 'relative', zIndex: 100 }}>
                         <div className="search-bar" style={{ flex: '1 1 240px', minWidth: 200 }}>
                             <MdSearch className="search-icon" />
@@ -511,6 +470,16 @@ export default function StudentsPage() {
                             options={[{ label: 'All Years', value: '' }, ...ACADEMIC_YEARS.map(y => ({ label: y, value: y }))]}
                             width={140}
                         />
+                        <div className="desktop-only" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <button className="btn btn-secondary btn-sm" disabled={isLoading}
+                                onClick={async () => { const t = toast.loading('Preparing Excel...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsExcel(res.data.students); toast.success('Excel exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
+                                <MdFileDownload /> Excel
+                            </button>
+                            <button className="btn btn-secondary btn-sm" disabled={isLoading}
+                                onClick={async () => { const t = toast.loading('Preparing PDF...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsPDF(res.data.students, settings); toast.success('PDF exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
+                                <MdPictureAsPdf /> PDF
+                            </button>
+                        </div>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 8px', borderBottom: '1px solid #f1f5f9' }}>
                         <div style={{ display: 'flex', gap: 2 }}>
