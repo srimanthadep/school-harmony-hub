@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import API from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -12,10 +12,10 @@ import {
 import { getCurrentAcademicYear, getAcademicYearOptions } from '../utils/academicYear';
 import { Student, StudentListResponse, PaymentHistoryResponse, Settings } from '../types';
 import {
-    MdAdd, MdSearch,
-    MdPictureAsPdf, MdTableChart, MdPerson
+    MdAdd, MdSearch, MdPerson,
+    MdFileDownload, MdPictureAsPdf, MdTrendingUp, MdUploadFile, MdPersonAdd, MdKeyboardArrowDown
 } from 'react-icons/md';
-import { FaWhatsapp } from 'react-icons/fa';
+import { FaWhatsapp, FaFileExcel, FaFilePdf, FaFileImport } from 'react-icons/fa';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { debounce } from 'lodash-es';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,6 +41,64 @@ const emptyStudent = {
     gender: 'male', parentName: '', parentPhone: '', parentEmail: '',
     dateOfBirth: '', address: '', totalFee: '', totalBookFee: '', academicYear: getCurrentAcademicYear()
 };
+
+function DropDown({ value, onChange, options, width }: {
+    value: string;
+    onChange: (v: string) => void;
+    options: { label: string; value: string }[];
+    width: number;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const selected = options.find(o => o.value === value) || options[0];
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={ref} style={{ position: 'relative', width, flexShrink: 0 }}>
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="form-control"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: '#fff', textAlign: 'left' }}
+            >
+                <span>{selected.label}</span>
+                <MdKeyboardArrowDown style={{ fontSize: 18, color: '#64748b', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', flexShrink: 0 }} />
+            </button>
+            {open && (
+                <div className="dropdown-menu-list" style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 999,
+                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '100%',
+                    maxHeight: 240, overflowY: 'auto', marginTop: 4
+                }}>
+                    {options.map(opt => (
+                        <div
+                            key={opt.value}
+                            onClick={() => { onChange(opt.value); setOpen(false); }}
+                            style={{
+                                padding: '9px 14px', fontSize: 13, cursor: 'pointer',
+                                background: opt.value === value ? 'var(--primary)' : '#fff',
+                                color: opt.value === value ? '#fff' : '#1e293b',
+                                transition: 'background 0.1s'
+                            }}
+                            onMouseEnter={e => { if (opt.value !== value) (e.currentTarget as HTMLDivElement).style.background = '#f1f5f9'; }}
+                            onMouseLeave={e => { if (opt.value !== value) (e.currentTarget as HTMLDivElement).style.background = '#fff'; }}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function StudentsPage() {
     const queryClient = useQueryClient();
@@ -344,7 +402,142 @@ export default function StudentsPage() {
 
     return (
         <div className="students-page">
-            <div className="card" style={{ marginBottom: 20 }}>
+
+            {/* ══ DESKTOP ONLY: new header + filter card ══ */}
+            <div className="desktop-only">
+                {/* ── Page Header ── */}
+                <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 24 }}>
+                    <div style={{ flexShrink: 0 }}>
+                        <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--primary)', margin: 0, letterSpacing: '-0.5px' }}>Student Directory</h1>
+                        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>Manage and monitor student records across all academic years.</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                        {selectedStudents.length > 0 && (
+                            <>
+                                <button className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => toast.success('Sent bulk reminders!')}>
+                                    <FaWhatsapp /> Send {selectedStudents.length} Reminders
+                                </button>
+                                <button className="btn btn-danger" onClick={() => setShowBulkDeleteConfirm(true)}>
+                                    Delete {selectedStudents.length}
+                                </button>
+                            </>
+                        )}
+                        <button
+                            className="btn btn-secondary"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                            disabled={isLoading}
+                            onClick={async () => {
+                                const t = toast.loading('Preparing Excel...');
+                                try {
+                                    const params: any = { limit: 1000 };
+                                    if (classFilter) params.class = classFilter;
+                                    if (yearFilter) params.academicYear = yearFilter;
+                                    if (search) params.search = search;
+                                    const res = await API.get('/students', { params });
+                                    exportStudentsExcel(res.data.students);
+                                    toast.success('Excel exported!', { id: t });
+                                } catch { toast.error('Export failed', { id: t }); }
+                            }}
+                        >
+                            <MdFileDownload style={{ fontSize: 20, color: 'var(--success)' }} />
+                        </button>
+                        <button
+                            className="btn btn-secondary"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                            disabled={isLoading}
+                            onClick={async () => {
+                                const t = toast.loading('Preparing PDF...');
+                                try {
+                                    const params: any = { limit: 1000 };
+                                    if (classFilter) params.class = classFilter;
+                                    if (yearFilter) params.academicYear = yearFilter;
+                                    if (search) params.search = search;
+                                    const res = await API.get('/students', { params });
+                                    exportStudentsPDF(res.data.students, settings);
+                                    toast.success('PDF exported!', { id: t });
+                                } catch { toast.error('Export failed', { id: t }); }
+                            }}
+                        >
+                            <MdPictureAsPdf style={{ fontSize: 20, color: 'var(--danger)' }} />
+                        </button>
+                        {(isAdmin || isOwner) && (
+                            <button
+                                className="btn btn-warning"
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', fontSize: 14, fontWeight: 600 }}
+                                onClick={() => { setPromoteResult(null); setShowPromote(true); }}
+                            >
+                                <MdTrendingUp style={{ fontSize: 16 }} /> Promote
+                            </button>
+                        )}
+                        <button
+                            className="btn btn-secondary"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1e293b', color: '#fff', borderColor: '#1e293b', height: 40, padding: '0 16px', fontSize: 14, fontWeight: 600 }}
+                            onClick={() => setShowImportModal(true)}
+                        >
+                            <MdUploadFile style={{ fontSize: 16 }} /> Bulk Import
+                        </button>
+                        <button
+                            className="btn btn-primary students-add-btn"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#0f172a', borderColor: '#0f172a', height: 40, padding: '0 16px', fontSize: 14, fontWeight: 600 }}
+                            onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}
+                        >
+                            <MdPersonAdd style={{ fontSize: 16 }} /> Add Student
+                        </button>
+                    </div>
+                </div>
+
+                {/* ── Filters + Tabs Card ── */}
+                <div className="card" style={{ marginBottom: 20, padding: 0, overflow: 'visible' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', padding: '16px 16px', borderBottom: '1px solid #f1f5f9', overflow: 'visible', position: 'relative', zIndex: 100 }}>
+                        <div className="search-bar" style={{ flex: '1 1 240px', minWidth: 200 }}>
+                            <MdSearch className="search-icon" />
+                            <input
+                                type="text"
+                                placeholder="Search students by name, ID, or class..."
+                                value={searchTerm}
+                                onChange={handleSearchChange}
+                            />
+                        </div>
+                        <DropDown
+                            value={classFilter}
+                            onChange={v => { setClassFilter(v); setPage(1); }}
+                            options={[{ label: 'All Classes', value: '' }, ...CLASSES.map(c => ({ label: c, value: c }))]}
+                            width={160}
+                        />
+                        <DropDown
+                            value={yearFilter}
+                            onChange={v => { setYearFilter(v); setPage(1); }}
+                            options={[{ label: 'All Years', value: '' }, ...ACADEMIC_YEARS.map(y => ({ label: y, value: y }))]}
+                            width={140}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 8px', background: '#f8fafc', borderRadius: '0 0 16px 16px' }}>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                            {[{ label: 'All Students', value: '' }, { label: 'Paid', value: 'paid' }, { label: 'Partial', value: 'partial' }, { label: 'Unpaid', value: 'unpaid' }].map(tab => (
+                                <button
+                                    key={tab.value}
+                                    onClick={() => { setStatusFilter(tab.value); setPage(1); }}
+                                    style={{
+                                        padding: '8px 16px', fontSize: 13, fontWeight: statusFilter === tab.value ? 700 : 500,
+                                        background: 'transparent', border: 'none', cursor: 'pointer',
+                                        borderBottom: statusFilter === tab.value ? '2px solid var(--primary)' : '2px solid transparent',
+                                        color: statusFilter === tab.value ? 'var(--primary)' : '#64748b',
+                                        transition: 'all 0.15s'
+                                    }}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div style={{ fontSize: 13, color: '#64748b', paddingRight: 8 }}>
+                            Showing <strong style={{ color: '#0f172a' }}>{(page - 1) * 50 + 1} – {(page - 1) * 50 + students.length}</strong> of <strong style={{ color: '#0f172a' }}>{totalStudents}</strong> students
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* ══ MOBILE ONLY: original card layout ══ */}
+            <div className="mobile-only card" style={{ marginBottom: 20 }}>
                 <div className="card-header">
                     <div className="filters-bar">
                         <div className="search-bar" style={{ minWidth: 220 }}>
@@ -355,21 +548,13 @@ export default function StudentsPage() {
                                 onChange={handleSearchChange}
                             />
                         </div>
-                        <select
-                            className="form-control"
-                            style={{ width: 130 }}
-                            value={classFilter}
-                            onChange={e => { setClassFilter(e.target.value); setPage(1); }}
-                        >
+                        <select className="form-control" style={{ width: 130 }} value={classFilter}
+                            onChange={e => { setClassFilter(e.target.value); setPage(1); }}>
                             <option value="">All Classes</option>
                             {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <select
-                            className="form-control"
-                            style={{ width: 130 }}
-                            value={yearFilter}
-                            onChange={e => { setYearFilter(e.target.value); setPage(1); }}
-                        >
+                        <select className="form-control" style={{ width: 130 }} value={yearFilter}
+                            onChange={e => { setYearFilter(e.target.value); setPage(1); }}>
                             <option value="">All Years</option>
                             {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
@@ -377,69 +562,37 @@ export default function StudentsPage() {
                     <div className="btn-group">
                         {selectedStudents.length > 0 && (
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <button className="btn btn-success" onClick={() => toast.success('Sent bulk reminders!')}>
-                                    <FaWhatsapp /> Send {selectedStudents.length} Reminders
+                                <button className="btn btn-success btn-sm" onClick={() => toast.success('Sent bulk reminders!')}>
+                                    <FaWhatsapp /> {selectedStudents.length} Reminders
                                 </button>
-                                <button className="btn btn-danger" onClick={() => setShowBulkDeleteConfirm(true)}>
+                                <button className="btn btn-danger btn-sm" onClick={() => setShowBulkDeleteConfirm(true)}>
                                     Delete {selectedStudents.length}
                                 </button>
                             </div>
                         )}
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            disabled={isLoading}
-                            onClick={async () => {
-                                const loadingToast = toast.loading('Preparing Excel export...');
-                                try {
-                                    const params: any = { limit: 1000 }; // High limit to get all
-                                    if (classFilter) params.class = classFilter;
-                                    if (yearFilter) params.academicYear = yearFilter;
-                                    if (search) params.search = search;
-                                    const res = await API.get('/students', { params });
-                                    exportStudentsExcel(res.data.students);
-                                    toast.success('Excel exported!', { id: loadingToast });
-                                } catch (err) {
-                                    toast.error('Export failed', { id: loadingToast });
-                                }
-                            }}
-                        >
-                            <MdTableChart /> Excel
+                        <button className="btn btn-secondary btn-sm" disabled={isLoading}
+                            onClick={async () => { const t = toast.loading('Preparing Excel...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsExcel(res.data.students); toast.success('Excel exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
+                            <FaFileExcel /> Excel
                         </button>
-                        <button
-                            className="btn btn-secondary btn-sm"
-                            disabled={isLoading}
-                            onClick={async () => {
-                                const loadingToast = toast.loading('Preparing PDF report...');
-                                try {
-                                    const params: any = { limit: 1000 };
-                                    if (classFilter) params.class = classFilter;
-                                    if (yearFilter) params.academicYear = yearFilter;
-                                    if (search) params.search = search;
-                                    const res = await API.get('/students', { params });
-                                    exportStudentsPDF(res.data.students, settings);
-                                    toast.success('PDF exported!', { id: loadingToast });
-                                } catch (err) {
-                                    toast.error('Export failed', { id: loadingToast });
-                                }
-                            }}
-                        >
-                            <MdPictureAsPdf /> PDF
+                        <button className="btn btn-secondary btn-sm" disabled={isLoading}
+                            onClick={async () => { const t = toast.loading('Preparing PDF...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsPDF(res.data.students, settings); toast.success('PDF exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>
+                            <FaFilePdf /> PDF
                         </button>
                         {(isAdmin || isOwner) && (
                             <button className="btn btn-sm btn-warning" onClick={() => { setPromoteResult(null); setShowPromote(true); }}>
-                                🎓 Promote
+                                <MdTrendingUp /> Promote
                             </button>
                         )}
-                        <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
-                            Bulk Import
+                        <button className="btn btn-secondary btn-sm" onClick={() => setShowImportModal(true)}>
+                            <MdUploadFile /> Bulk Import
                         </button>
-                        <button className="btn btn-primary students-add-btn" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}>
+                        <button className="btn btn-primary btn-sm students-add-btn" onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}>
                             <MdAdd /> Add Student
                         </button>
                     </div>
                 </div>
                 <div style={{ padding: '8px 24px', fontSize: 13, color: '#6b7280' }}>
-                    Showing <strong>{(page - 1) * 50 + 1} - {(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong> students
+                    Showing <strong>{(page - 1) * 50 + 1} – {(page - 1) * 50 + students.length}</strong> of <strong>{totalStudents}</strong> students
                 </div>
             </div>
 
@@ -476,10 +629,44 @@ export default function StudentsPage() {
                 </div>
 
                 {totalPages > 1 && (
-                    <div className="pagination">
-                        <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</button>
-                        <span className="pagination-info">Page <strong>{page}</strong> of {totalPages}</span>
-                        <button className="pagination-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            disabled={page === 1}
+                            onClick={() => setPage(p => p - 1)}
+                            style={{ fontWeight: 700 }}
+                        >Previous</button>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                                const pages: (number | '...')[] = [];
+                                if (totalPages <= 7) return i + 1;
+                                if (i < 3) return i + 1;
+                                if (i === 3) return '...';
+                                return totalPages - (6 - i);
+                            }).map((p, i) =>
+                                p === '...' ? (
+                                    <span key={i} style={{ padding: '0 4px', color: '#94a3b8' }}>...</span>
+                                ) : (
+                                    <button
+                                        key={i}
+                                        onClick={() => setPage(p as number)}
+                                        style={{
+                                            width: 32, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer',
+                                            fontWeight: 700, fontSize: 13,
+                                            background: page === p ? 'var(--primary)' : 'transparent',
+                                            color: page === p ? '#fff' : '#475569',
+                                            transition: 'all 0.15s'
+                                        }}
+                                    >{p}</button>
+                                )
+                            )}
+                        </div>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            disabled={page === totalPages}
+                            onClick={() => setPage(p => p + 1)}
+                            style={{ fontWeight: 700 }}
+                        >Next</button>
                     </div>
                 )}
             </div>

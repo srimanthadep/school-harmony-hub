@@ -209,6 +209,26 @@ body {
   border-radius: 4px;
 }
 
+/* Slim scrollbar for custom dropdowns */
+.dropdown-menu-list {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.dropdown-menu-list::-webkit-scrollbar {
+  width: 4px;
+}
+.dropdown-menu-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+.dropdown-menu-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.dropdown-menu-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .sidebar-logo {
   padding: 20px 20px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -1574,6 +1594,15 @@ html.dark .status-filter-pill.active {
 @media (max-width: 768px) {
   .desktop-only { display: none; }
   .mobile-only  { display: block; }
+}
+
+/* Student page header action buttons */
+.students-desktop-actions { display: flex; }
+.students-mobile-actions  { display: none; }
+
+@media (max-width: 768px) {
+  .students-desktop-actions { display: none; }
+  .students-mobile-actions  { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 }
 
 .search-bar {

@@ -11,7 +11,7 @@ const xlsx = require('xlsx');
 // @desc    Get all students
 // @route   GET /api/students
 exports.getStudents = asyncHandler(async (req, res) => {
-    const { class: cls, academicYear, search, page = 1, limit = 50 } = req.query;
+    const { class: cls, academicYear, search, page = 1, limit = 50, tuitionStatus: tuitionStatusFilter } = req.query;
     const query = { isActive: true };
 
     if (cls) query.class = cls;
@@ -28,11 +28,11 @@ exports.getStudents = asyncHandler(async (req, res) => {
         ];
     }
 
+    // When filtering by tuitionStatus, fetch all (status is computed, not stored in DB)
+    const fetchAll = !!tuitionStatusFilter;
     const students = await Student.find(query)
         .sort({ class: 1, rollNo: 1 })
         .collation({ locale: 'en_US', numericOrdering: true })
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit))
         .lean();
 
     // Manually attach virtual fields for lean objects
@@ -84,15 +84,25 @@ exports.getStudents = asyncHandler(async (req, res) => {
         };
     });
 
-    const total = await Student.countDocuments(query);
-    const limitNum = parseInt(limit); // Fix #19: parse as integer
+    const limitNum = parseInt(limit);
+
+    // Filter by computed tuitionStatus if requested
+    const filtered = tuitionStatusFilter
+        ? studentsWithVirtuals.filter(s => s.tuitionStatus === tuitionStatusFilter)
+        : studentsWithVirtuals;
+
+    const total = tuitionStatusFilter ? filtered.length : await Student.countDocuments(query);
+    const pageNum = parseInt(page);
+    const paginated = tuitionStatusFilter
+        ? filtered.slice((pageNum - 1) * limitNum, pageNum * limitNum)
+        : filtered;
 
     res.json({
         success: true,
-        count: studentsWithVirtuals.length,
+        count: paginated.length,
         total,
         pages: Math.ceil(total / limitNum),
-        students: studentsWithVirtuals
+        students: paginated
     });
 });
 
