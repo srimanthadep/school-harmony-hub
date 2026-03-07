@@ -408,7 +408,7 @@ export default function StudentsPage() {
                 {/* ── Page Header ── */}
                 <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                     <div style={{ flexShrink: 0 }}>
-                        <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a1a1a', margin: 0, letterSpacing: '-0.5px' }}>Welcome, {user?.name || 'User'}</h1>
+                        <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a1a1a', margin: 0, letterSpacing: '-0.5px' }}>Student Directory</h1>
                         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#4a3f00' }}>Manage and monitor student records across all academic years.</p>
                     </div>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
