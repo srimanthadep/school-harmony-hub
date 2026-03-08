@@ -93,9 +93,7 @@ exports.getStudents = asyncHandler(async (req, res) => {
 
     const total = tuitionStatusFilter ? filtered.length : await Student.countDocuments(query);
     const pageNum = parseInt(page);
-    const paginated = tuitionStatusFilter
-        ? filtered.slice((pageNum - 1) * limitNum, pageNum * limitNum)
-        : filtered;
+    const paginated = filtered.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
     res.json({
         success: true,

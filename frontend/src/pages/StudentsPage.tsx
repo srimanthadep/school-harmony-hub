@@ -12,7 +12,7 @@ import {
 import { getCurrentAcademicYear, getAcademicYearOptions } from '../utils/academicYear';
 import { Student, StudentListResponse, PaymentHistoryResponse, Settings } from '../types';
 import {
-    MdAdd, MdSearch, MdPerson,
+    MdAdd, MdSearch, MdPerson, MdDelete,
     MdFileDownload, MdPictureAsPdf, MdTrendingUp, MdUploadFile, MdPersonAdd, MdKeyboardArrowDown
 } from 'react-icons/md';
 import { FaWhatsapp, FaFileExcel, FaFilePdf, FaFileImport } from 'react-icons/fa';
@@ -404,43 +404,44 @@ export default function StudentsPage() {
         <div className="students-page">
 
             {/* ══ DESKTOP ONLY: new header + filter card ══ */}
-            <div className="desktop-only" style={{ background: '#f9cb5b', margin: '-28px -28px 0 -28px', padding: '28px 28px 70px 28px', borderRadius: '0 0 1% 1% / 0 0 8px 8px', position: 'relative' }}>
+            <div className="desktop-only" style={{ background: '#f9cb5b', margin: '-28px -28px 0 -28px', padding: '28px 28px 70px 28px', borderRadius: '0 0 1% 1% / 0 0 8px 8px', position: 'relative', overflow: 'hidden' }}>
                 {/* ── Page Header ── */}
-                <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
                     <div style={{ flexShrink: 0 }}>
                         <h1 style={{ fontSize: 28, fontWeight: 900, color: '#1a1a1a', margin: 0, letterSpacing: '-0.5px' }}>Student Directory</h1>
                         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#4a3f00' }}>Manage and monitor student records across all academic years.</p>
                     </div>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                    <div style={{ display: 'flex', gap: 14, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         {selectedStudents.length > 0 && (
-                            <>
-                                <button className="btn btn-success" style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => toast.success('Sent bulk reminders!')}>
-                                    <FaWhatsapp /> Send {selectedStudents.length} Reminders
+                                <button className="btn btn-danger" style={{ display: 'flex', alignItems: 'center', gap: 6, height: 44, padding: '0 18px', fontSize: 14, fontWeight: 600, borderRadius: 11, whiteSpace: 'nowrap' }} onClick={() => setShowBulkDeleteConfirm(true)}>
+                                    <MdDelete style={{ fontSize: 18 }} /> Delete {selectedStudents.length}
                                 </button>
-                                <button className="btn btn-danger" onClick={() => setShowBulkDeleteConfirm(true)}>
-                                    Delete {selectedStudents.length}
-                                </button>
-                            </>
                         )}
                         {(isAdmin || isOwner) && (
                             <button
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 20px', fontSize: 14, fontWeight: 700, borderRadius: 22, border: 'none', background: '#fff', color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', transition: 'transform 0.15s' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 7, height: 44, padding: '0 22px', fontSize: 14, fontWeight: 600, borderRadius: 11, border: '2px solid rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', color: '#1a1a1a', cursor: 'pointer', backdropFilter: 'blur(4px)', transition: 'all 0.2s' }}
                                 onClick={() => { setPromoteResult(null); setShowPromote(true); }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.85)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
                             >
                                 <MdTrendingUp style={{ fontSize: 18 }} /> Promote
                             </button>
                         )}
                         <button
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 20px', fontSize: 14, fontWeight: 700, borderRadius: 22, border: 'none', background: '#242f8c', color: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'transform 0.15s' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 7, height: 44, padding: '0 22px', fontSize: 14, fontWeight: 600, borderRadius: 11, border: '2px solid rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', color: '#1a1a1a', cursor: 'pointer', backdropFilter: 'blur(4px)', transition: 'all 0.2s' }}
                             onClick={() => setShowImportModal(true)}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.85)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
                         >
-                            <MdUploadFile style={{ fontSize: 16 }} /> Bulk Import
+                            <MdUploadFile style={{ fontSize: 17 }} /> Bulk Import
                         </button>
                         <button
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 20px', fontSize: 14, fontWeight: 700, borderRadius: 22, border: 'none', background: '#242f8c', color: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'transform 0.15s' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 7, height: 44, padding: '0 26px', fontSize: 14, fontWeight: 700, borderRadius: 11, border: 'none', background: '#242f8c', color: '#fff', cursor: 'pointer', boxShadow: '0 4px 14px rgba(36,47,140,0.35)', transition: 'all 0.2s' }}
                             onClick={() => { setEditStudent(null); setFormData(emptyStudent); setShowForm(true); }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#1a2270'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(36,47,140,0.45)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#242f8c'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(36,47,140,0.35)'; }}
                         >
-                            <MdPersonAdd style={{ fontSize: 16 }} /> Add Student
+                            <MdPersonAdd style={{ fontSize: 18 }} /> Add Student
                         </button>
                     </div>
                 </div>
@@ -542,10 +543,7 @@ export default function StudentsPage() {
                             </div>
                             <div className="btn-group">
                                 {selectedStudents.length > 0 && (
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <button className="btn btn-success btn-sm" onClick={() => toast.success('Sent bulk reminders!')}><FaWhatsapp /> {selectedStudents.length} Reminders</button>
-                                        <button className="btn btn-danger btn-sm" onClick={() => setShowBulkDeleteConfirm(true)}>Delete {selectedStudents.length}</button>
-                                    </div>
+                                        <button className="btn btn-danger btn-sm" onClick={() => setShowBulkDeleteConfirm(true)}><MdDelete /> Delete {selectedStudents.length}</button>
                                 )}
                                 <button className="btn btn-secondary btn-sm" disabled={isLoading}
                                     onClick={async () => { const t = toast.loading('Preparing Excel...'); try { const params: any = { limit: 1000 }; if (classFilter) params.class = classFilter; if (yearFilter) params.academicYear = yearFilter; if (search) params.search = search; const res = await API.get('/students', { params }); exportStudentsExcel(res.data.students); toast.success('Excel exported!', { id: t }); } catch { toast.error('Export failed', { id: t }); } }}>

@@ -127,30 +127,30 @@ export default function StaffTable({
                                 </td>
                                 <td data-label="Actions">
                                     <div className="actions-grid">
-                                        <button className="btn btn-success btn-sm btn-icon hover-lift" title="Pay Salary"
-                                            onClick={() => onPaySalary(s)}>
+                                        <button className="btn btn-icon btn-secondary" title="Pay Salary"
+                                            onClick={() => onPaySalary(s)} style={{ color: '#10b981' }}>
                                             <MdPayment />
                                         </button>
                                         <button
-                                            className="btn btn-primary btn-sm btn-icon hover-lift"
+                                            className="btn btn-icon btn-secondary"
                                             title="Download Latest Payslip"
-                                            style={{ opacity: s.totalSalaryPaid > 0 ? 1 : 0.3, cursor: s.totalSalaryPaid > 0 ? 'pointer' : 'default' }}
+                                            style={{ color: 'var(--primary)', opacity: s.totalSalaryPaid > 0 ? 1 : 0.3, cursor: s.totalSalaryPaid > 0 ? 'pointer' : 'default' }}
                                             onClick={() => s.totalSalaryPaid > 0 && downloadLatestPayslip(s)}>
                                             <MdReceiptLong />
                                         </button>
-                                        <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Salary History"
-                                            onClick={() => onViewHistory(s)}>
+                                        <button className="btn btn-icon btn-secondary" title="Salary History"
+                                            onClick={() => onViewHistory(s)} style={{ color: '#f59e0b' }}>
                                             <MdHistory />
                                         </button>
-                                        <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Leaves"
-                                            onClick={() => onViewLeaves(s)}>
+                                        <button className="btn btn-icon btn-secondary" title="Leaves"
+                                            onClick={() => onViewLeaves(s)} style={{ color: '#8b5cf6' }}>
                                             <MdDateRange />
                                         </button>
-                                        <button className="btn btn-secondary btn-sm btn-icon hover-lift" title="Edit" onClick={() => onEdit(s)}>
+                                        <button className="btn btn-icon btn-secondary" title="Edit" onClick={() => onEdit(s)} style={{ color: '#3b82f6' }}>
                                             <MdEdit />
                                         </button>
-                                        <button className="btn btn-danger btn-sm btn-icon hover-lift" title="Delete"
-                                            onClick={() => onDelete(s)}>
+                                        <button className="btn btn-icon btn-secondary" title="Delete"
+                                            onClick={() => onDelete(s)} style={{ color: '#ef4444' }}>
                                             <MdDelete />
                                         </button>
                                     </div>

@@ -739,7 +739,8 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: #f8faff;
+  background: #eef2ff;
+  transition: background 0.15s;
 }
 
 tbody td {

@@ -7,7 +7,7 @@ import { generateSalarySlipPDF, exportStaffExcel, exportStaffPDF } from '../util
 import { getCurrentAcademicYear, getAcademicYearOptions } from '../utils/academicYear';
 import {
     MdAdd, MdSearch, MdPayment, MdReceiptLong, MdHistory, MdDateRange,
-    MdFileDownload, MdPictureAsPdf, MdTableChart, MdPerson, MdKeyboardArrowDown
+    MdFileDownload, MdPictureAsPdf, MdTableChart, MdPerson, MdKeyboardArrowDown, MdPersonAdd
 } from 'react-icons/md';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Fuse from 'fuse.js';
@@ -468,10 +468,12 @@ export default function StaffPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap' }}>
                     <button
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, height: 42, padding: '0 44px', fontSize: 14, fontWeight: 700, borderRadius: 22, border: 'none', background: '#242f8c', color: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, height: 44, padding: '0 26px', fontSize: 14, fontWeight: 700, borderRadius: 11, border: 'none', background: '#242f8c', color: '#fff', cursor: 'pointer', boxShadow: '0 4px 14px rgba(36,47,140,0.35)', transition: 'all 0.2s' }}
                         onClick={() => { setEditStaff(null); setFormData(emptyStaff); setFormErrors({}); setShowForm(true); }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#1a2270'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(36,47,140,0.45)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#242f8c'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(36,47,140,0.35)'; }}
                     >
-                        <MdAdd style={{ fontSize: 20 }} /> Add Staff
+                        <MdPersonAdd style={{ fontSize: 18 }} /> Add Staff
                     </button>
                 </div>
                 </div>
